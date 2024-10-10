@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import OfferCard from "./OfferCard";
+import OfferCard from "./dashOfferCard";
+import OfferModal from "./OfferModal";
 import { Offer } from '../types';
 
 const Offers: Offer[] = [
@@ -14,6 +15,14 @@ const Offers: Offer[] = [
     type: "one-time",
     price: 500,
     company: "TechCorp Inc.",
+    quantity: 20,
+    unit: "pieces",
+    location: "New York, NY",
+    availableFrom: "2023-06-01",
+    availableUntil: "2023-07-31",
+    certifications: ["ISO 14001"],
+    contactPerson: "John Doe",
+    contactEmail: "john.doe@techcorp.com"
   },
   {
     id: 2,
@@ -22,6 +31,14 @@ const Offers: Offer[] = [
     type: "recurring",
     price: "open",
     company: "PrintMaster Ltd.",
+    quantity: 500,
+    unit: "kg",
+    location: "Chicago, IL",
+    availableFrom: "2023-06-01",
+    availableUntil: "2024-05-31",
+    certifications: ["FSC Recycled"],
+    contactPerson: "Jane Smith",
+    contactEmail: "jane.smith@printmaster.com"
   },
   {
     id: 3,
@@ -30,6 +47,14 @@ const Offers: Offer[] = [
     type: "one-time",
     price: 250,
     company: "GreenTech Solutions",
+    quantity: 100,
+    unit: "kg",
+    location: "Chicago, IL",
+    availableFrom: "2023-06-01",
+    availableUntil: "2023-07-31",
+    certifications: ["ISO 14001"],
+    contactPerson: "John Doe",
+    contactEmail: "john.doe@greentech.com"
   },
   {
     id: 4,
@@ -38,13 +63,38 @@ const Offers: Offer[] = [
     type: "recurring",
     price: "open",
     company: "MegaCorp Enterprises",
+    quantity: 500,
+    unit: "kg",
+    location: "Chicago, IL",
+    availableFrom: "2023-06-01",
+    availableUntil: "2024-05-31",
+    certifications: ["FSC Recycled"],
+    contactPerson: "Jane Smith",
+    contactEmail: "jane.smith@megacorp.com"
   },
+  {
+    id: 5,
+    title: "Industrial Metal Scrap",
+    description: "Various metal scraps from manufacturing processes",
+    type: "one-time",
+    price: 1000,
+    company: "MetalWorks Co.",
+    quantity: 1000,
+    unit: "kg",
+    location: "Chicago, IL",
+    availableFrom: "2023-06-01",
+    availableUntil: "2023-07-31",
+    certifications: ["ISO 14001"],
+    contactPerson: "John Doe",
+    contactEmail: "john.doe@metalworks.com"
+  }
 ];
 
 export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "one-time" | "recurring">("all");
   const [priceFilter, setPriceFilter] = useState<"all" | "fixed" | "open">("all");
+  const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
   const filteredOffers = Offers.filter((offer) => {
     const matchesSearch =
@@ -103,10 +153,22 @@ export default function Dashboard() {
       <div className="flex-1 overflow-auto p-4">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredOffers.map((offer) => (
-            <OfferCard key={offer.id} offer={offer} />
+            <OfferCard 
+              key={offer.id} 
+              offer={offer} 
+              onClick={() => setSelectedOffer(offer)}
+            />
           ))}
         </div>
       </div>
+
+      {/* Offer Modal */}
+      {selectedOffer && (
+        <OfferModal
+          offer={selectedOffer}
+          onClose={() => setSelectedOffer(null)}
+        />
+      )}
     </>
   );
 }
