@@ -42,12 +42,11 @@ const Offers: Offer[] = [
 ];
 
 export default function Dashboard() {
-  const [offers, setOffers] = useState<Offer[]>(Offers);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "one-time" | "recurring">("all");
   const [priceFilter, setPriceFilter] = useState<"all" | "fixed" | "open">("all");
 
-  const filteredOffers = offers.filter((offer) => {
+  const filteredOffers = Offers.filter((offer) => {
     const matchesSearch =
       offer.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       offer.description.toLowerCase().includes(searchTerm.toLowerCase()) ||

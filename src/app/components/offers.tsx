@@ -14,8 +14,8 @@ type Offer = {
   status: "active" | "pending" | "completed";
 };
 
-export default function Offers() {
-  const [offers, setOffers] = useState<Offer[]>([
+const OfferList: Offer[] =
+  [
     {
       id: 1,
       title: "Surplus Office Furniture",
@@ -52,18 +52,22 @@ export default function Offers() {
       company: "MegaCorp Enterprises",
       status: "active",
     },
-  ]);
+  ]
+
+
+export default function Offers() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "completed">("all");
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
 
-  const filteredOffers = offers.filter((offer) => {
+  const filteredOffers = OfferList.filter((offer) => {
     const matchesSearch =
       offer.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       offer.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       offer.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || offer.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || offer.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
