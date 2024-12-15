@@ -29,11 +29,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
    depenses,
  }) => {
    return (
-     <Card>
-       <CardHeader>
-         <CardTitle>Comparaison avec les données réelles</CardTitle>
-       </CardHeader>
-       <CardContent>
          <>
            <div className="h-96">
              <ResponsiveContainer width="100%" height="100%">
@@ -59,7 +54,5 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
              </p>
            </div>
          </>
-       </CardContent>
-     </Card>
    );
  };
