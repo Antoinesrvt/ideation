@@ -1,23 +1,11 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { GeistSans } from "geist/font/sans";
 import "./globals.css";
-import Sidebar from "./components/Sidebar";
-import TopBar from "./components/TopBar";
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Waste Marketplace",
-  description: "A marketplace for waste and surplus materials",
+  title: "StartupCanvas AI",
+  description: "AI-powered platform for startup ideation and validation",
 };
 
 export default function RootLayout({
@@ -26,19 +14,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <div className="flex h-screen bg-gray-100">
-          {/* <Sidebar /> */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* <TopBar /> */}
-            <main className="flex-1 overflow-x-hidden overflow-y-auto">
-              {children}
-            </main>
-          </div>
-        </div>
+    <html lang="en" suppressHydrationWarning>
+      <body className={GeistSans.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
