@@ -15,6 +15,7 @@ import { FinancialProjectionsModule } from "@/components/modules/financial-proje
 import { RiskAssessmentModule } from "@/components/modules/risk-assessment"
 import { ImplementationTimelineModule } from "@/components/modules/implementation-timeline"
 import { PitchDeckModule } from "@/components/modules/pitch-deck"
+import { IdeationLayout } from "@/components/layouts/ideation-layout"
 
 interface PathOption {
   id: "guided" | "expert"
@@ -152,8 +153,11 @@ export default function IdeationPage() {
     completed: completedModules.has(step.id)
   }))
 
+  // Calculate overall progress
+  const overallProgress = (Array.from(completedModules).length / (moduleSteps.length - 1)) * 100
+
   return (
-    <AnimatePresence mode="wait">
+    <>
       {currentStep === "selection" ? (
         <motion.div
           key="selection"
@@ -257,170 +261,181 @@ export default function IdeationPage() {
             </p>
           </motion.div>
         </motion.div>
-      ) : currentStep === "vision-problem" ? (
-        <motion.div
-          key="vision-problem"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -100 }}
-          className="max-w-7xl mx-auto space-y-6"
-        >
-          <VisionProblemModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("selection")}
-            onComplete={() => {
-              handleModuleComplete("vision-problem")
-              handleNextModule("vision-problem")
-            }}
-            currentModuleId="vision-problem"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
-      ) : currentStep === "market-analysis" ? (
-        <motion.div
-          key="market-analysis"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-6xl mx-auto space-y-6"
-        >
-          <MarketAnalysisModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("vision-problem")}
-            onComplete={() => {
-              handleModuleComplete("market-analysis")
-              handleNextModule("market-analysis")
-            }}
-            currentModuleId="market-analysis"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
-      ) : currentStep === "business-model" ? (
-        <motion.div
-          key="business-model"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-6xl mx-auto space-y-6"
-        >
-          <BusinessModelModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("market-analysis")}
-            onComplete={() => {
-              handleModuleComplete("business-model")
-              handleNextModule("business-model")
-            }}
-            currentModuleId="business-model"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
-      ) : currentStep === "go-to-market" ? (
-        <motion.div
-          key="go-to-market"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-7xl mx-auto space-y-6"
-        >
-          <GoToMarketModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("business-model")}
-            onComplete={() => {
-              handleModuleComplete("go-to-market")
-              // This is the last module, handle completion differently
-              // Maybe redirect to summary or dashboard
-            }}
-            currentModuleId="go-to-market"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
-      ) : currentStep === "financial-projections" ? (
-        <motion.div
-          key="financial-projections"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-7xl mx-auto space-y-6"
-        >
-          <FinancialProjectionsModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("go-to-market")}
-            onComplete={() => {
-              handleModuleComplete("financial-projections")
-              // This is the last module, handle completion differently
-              // Maybe redirect to summary or dashboard
-            }}
-            currentModuleId="financial-projections"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
-      ) : currentStep === "risk-assessment" ? (
-        <motion.div
-          key="risk-assessment"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-7xl mx-auto space-y-6"
-        >
-          <RiskAssessmentModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("financial-projections")}
-            onComplete={() => {
-              handleModuleComplete("risk-assessment")
-              handleNextModule("risk-assessment")
-            }}
-            currentModuleId="risk-assessment"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
-      ) : currentStep === "implementation-timeline" ? (
-        <motion.div
-          key="implementation-timeline"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-7xl mx-auto space-y-6"
-        >
-          <ImplementationTimelineModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("risk-assessment")}
-            onComplete={() => {
-              handleModuleComplete("implementation-timeline")
-              handleNextModule("implementation-timeline")
-            }}
-            currentModuleId="implementation-timeline"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
       ) : (
-        <motion.div
-          key="pitch-deck"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0 }}
-          className="max-w-7xl mx-auto space-y-6"
+        <IdeationLayout
+          steps={currentModules}
+          currentStepId={currentStep}
+          onStepSelect={handleModuleSelect}
+          progress={overallProgress}
+          moduleRecaps={[]}
         >
-          <PitchDeckModule 
-            mode={selectedPath!}
-            onBack={() => setCurrentStep("implementation-timeline")}
-            onComplete={() => {
-              handleModuleComplete("pitch-deck")
-              // Final module - handle completion
-              console.log("All modules completed!")
-            }}
-            currentModuleId="pitch-deck"
-            allModules={currentModules}
-            onModuleSelect={handleModuleSelect}
-          />
-        </motion.div>
+          <AnimatePresence mode="wait">
+            {currentStep === "vision-problem" && (
+              <motion.div
+                key="vision-problem"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <VisionProblemModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("selection")}
+                  onComplete={() => {
+                    handleModuleComplete("vision-problem")
+                    handleNextModule("vision-problem")
+                  }}
+                  currentModuleId="vision-problem"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "market-analysis" && (
+              <motion.div
+                key="market-analysis"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <MarketAnalysisModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("vision-problem")}
+                  onComplete={() => {
+                    handleModuleComplete("market-analysis")
+                    handleNextModule("market-analysis")
+                  }}
+                  currentModuleId="market-analysis"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "business-model" && (
+              <motion.div
+                key="business-model"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <BusinessModelModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("market-analysis")}
+                  onComplete={() => {
+                    handleModuleComplete("business-model")
+                    handleNextModule("business-model")
+                  }}
+                  currentModuleId="business-model"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "go-to-market" && (
+              <motion.div
+                key="go-to-market"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <GoToMarketModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("business-model")}
+                  onComplete={() => {
+                    handleModuleComplete("go-to-market")
+                    // This is the last module, handle completion differently
+                    // Maybe redirect to summary or dashboard
+                  }}
+                  currentModuleId="go-to-market"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "financial-projections" && (
+              <motion.div
+                key="financial-projections"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <FinancialProjectionsModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("go-to-market")}
+                  onComplete={() => {
+                    handleModuleComplete("financial-projections")
+                    // This is the last module, handle completion differently
+                    // Maybe redirect to summary or dashboard
+                  }}
+                  currentModuleId="financial-projections"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "risk-assessment" && (
+              <motion.div
+                key="risk-assessment"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <RiskAssessmentModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("financial-projections")}
+                  onComplete={() => {
+                    handleModuleComplete("risk-assessment")
+                    handleNextModule("risk-assessment")
+                  }}
+                  currentModuleId="risk-assessment"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "implementation-timeline" && (
+              <motion.div
+                key="implementation-timeline"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <ImplementationTimelineModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("risk-assessment")}
+                  onComplete={() => {
+                    handleModuleComplete("implementation-timeline")
+                    handleNextModule("implementation-timeline")
+                  }}
+                  currentModuleId="implementation-timeline"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+            {currentStep === "pitch-deck" && (
+              <motion.div
+                key="pitch-deck"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <PitchDeckModule 
+                  mode={selectedPath!}
+                  onBack={() => setCurrentStep("implementation-timeline")}
+                  onComplete={() => {
+                    handleModuleComplete("pitch-deck")
+                    // Final module - handle completion
+                    console.log("All modules completed!")
+                  }}
+                  currentModuleId="pitch-deck"
+                  allModules={currentModules}
+                  onModuleSelect={handleModuleSelect}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </IdeationLayout>
       )}
-    </AnimatePresence>
+    </>
   )
 }

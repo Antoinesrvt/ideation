@@ -104,9 +104,6 @@ export function GoToMarketModule({
       title="Go-to-Market Strategy"
       progress={progress}
       onBack={onBack}
-      currentModuleId={currentModuleId}
-      allModules={allModules}
-      onModuleSelect={onModuleSelect}
     >
       <div className="grid gap-6 md:grid-cols-7">
         <StepCard
