@@ -2,6 +2,7 @@ import {
   Loader2,
   Mail,
   Github,
+  AlertCircle,
 } from 'lucide-react'
 
 export const Icons = {
@@ -25,4 +26,5 @@ export const Icons = {
   ),
   gitHub: Github,
   mail: Mail,
+  alertCircle: AlertCircle,
 } 

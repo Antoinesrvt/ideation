@@ -1,10 +1,18 @@
-import { AuthError, SupabaseClient } from '@supabase/supabase-js'
+import { AuthError, SupabaseClient, User, Session } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
+
+interface AuthResponse {
+  data: {
+    user: User | null
+    session: Session | null
+  } | null
+  error: AuthError | null
+}
 
 export class AuthService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
-  async signUp(email: string, password: string) {
+  async signUp(email: string, password: string): Promise<AuthResponse> {
     const { data, error } = await this.supabase.auth.signUp({
       email,
       password,
@@ -13,24 +21,16 @@ export class AuthService {
       },
     })
 
-    if (error) {
-      throw error
-    }
-
-    return data
+    return { data: { user: data.user, session: data.session }, error }
   }
 
-  async signIn(email: string, password: string) {
+  async signIn(email: string, password: string): Promise<AuthResponse> {
     const { data, error } = await this.supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    if (error) {
-      throw error
-    }
-
-    return data
+    return { data: { user: data.user, session: data.session }, error }
   }
 
   async signInWithProvider(provider: 'google' | 'github') {

@@ -31,13 +31,24 @@ export function AuthForm({ type }: AuthFormProps) {
       const password = formData.get('password') as string
 
       if (type === 'signin') {
-        await authService.signIn(email, password)
+        const { data } = await authService.signIn(email, password)
+        if (data?.user?.email_confirmed_at) {
+          router.refresh()
+          router.push('/dashboard')
+        } else {
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+        }
       } else {
-        await authService.signUp(email, password)
+        const { data } = await authService.signUp(email, password)
+        if (data?.user && !data.session) {
+          // Email verification required
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+        } else if (data?.session) {
+          // Auto-confirm enabled or email already confirmed
+          router.refresh()
+          router.push('/dashboard')
+        }
       }
-
-      router.refresh()
-      router.push('/dashboard')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
