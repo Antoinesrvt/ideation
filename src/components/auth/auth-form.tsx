@@ -31,26 +31,66 @@ export function AuthForm({ type }: AuthFormProps) {
       const password = formData.get('password') as string
 
       if (type === 'signin') {
-        const { data } = await authService.signIn(email, password)
-        if (data?.user?.email_confirmed_at) {
-          router.refresh()
-          router.push('/dashboard')
-        } else {
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+        console.log('Attempting sign in...')
+        const { data, error } = await authService.signIn(email, password)
+        
+        if (error) {
+          // Check for verification needed
+          if (error.message.toLowerCase().includes('verify') || 
+              error.message.includes('confirmation') ||
+              error.message.includes('verification')) {
+            console.log('Email verification needed, redirecting...')
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+            return
+          }
+
+          setError(error.message)
+          return
         }
+
+        if (!data?.user) {
+          console.error('No user data received')
+          setError('An unexpected error occurred during sign in')
+          return
+        }
+
+        // Always verify email confirmation status
+        const { data: { user: verifiedUser } } = await authService.getUser()
+        
+        if (!verifiedUser?.email_confirmed_at) {
+          console.log('Email not confirmed, redirecting to verification...')
+          router.push(`/verify-email?email=${encodeURIComponent(email)}`)
+          return
+        }
+
+        console.log('Sign in successful, redirecting to dashboard...')
+        router.refresh()
+        router.push('/dashboard')
       } else {
-        const { data } = await authService.signUp(email, password)
-        if (data?.user && !data.session) {
-          // Email verification required
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`)
-        } else if (data?.session) {
-          // Auto-confirm enabled or email already confirmed
-          router.refresh()
-          router.push('/dashboard')
+        const { data, error } = await authService.signUp(email, password)
+        
+        if (error) {
+          // Handle already registered case
+          if (error.message.includes('already registered')) {
+            setError('This email is already registered. Please sign in instead.')
+            return
+          }
+
+          setError(error.message)
+          return
         }
+
+        if (!data?.user) {
+          setError('Failed to create account')
+          return
+        }
+
+        // For new sign up, redirect to verify email page
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`)
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      console.error('Auth error:', error)
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +103,6 @@ export function AuthForm({ type }: AuthFormProps) {
       await authService.signInWithProvider(provider)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred')
-    } finally {
       setIsLoading(false)
     }
   }

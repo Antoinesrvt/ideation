@@ -9,90 +9,139 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookieOptions: {
-        name: 'sb',
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-      },
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
+  try {
+    // Initialize Supabase with cookie handling
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          flowType: 'pkce',
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          persistSession: true,
         },
-        set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is updated, update the cookies for the request and response
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: CookieOptions) {
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+          },
         },
-        remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the cookies for the request and response
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
+      }
+    )
+
+    // Get user data - this is secure as it validates with Supabase server
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+    if (userError) {
+      throw userError
     }
-  )
 
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession()
+    const { pathname } = request.nextUrl
 
-  if (error) {
-    console.error('Auth error:', error.message)
+    // Auth routes handling (signin, signup, auth callbacks)
+    const isAuthRoute = pathname.startsWith('/signin') || 
+                       pathname.startsWith('/signup') || 
+                       pathname.startsWith('/auth/') ||
+                       pathname.startsWith('/verify-email')
+
+    if (isAuthRoute) {
+      if (user) {
+        // If email is not verified, redirect to verification page
+        if (!user.email_confirmed_at) {
+          return NextResponse.redirect(new URL('/verify-email', request.url))
+        }
+        // If user is signed in and verified, redirect to dashboard
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+      // Allow access to auth routes for non-authenticated users
+      return response
+    }
+
+    // Protected routes handling
+    const isProtectedRoute = pathname.startsWith('/dashboard')
+    if (isProtectedRoute) {
+      if (!user) {
+        // If user is not signed in and tries to access protected routes
+        return NextResponse.redirect(new URL('/signin', request.url))
+      }
+      
+      // Check if email needs verification
+      if (!user.email_confirmed_at) {
+        return NextResponse.redirect(new URL('/verify-email', request.url))
+      }
+      
+      // User is authenticated and verified, allow access
+      return response
+    }
+
+    // Handle root path redirect for authenticated users
+    if (pathname === '/' && user) {
+      if (!user.email_confirmed_at) {
+        return NextResponse.redirect(new URL('/verify-email', request.url))
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    return response
+  } catch (error) {
+    console.error('Middleware error:', error)
+    
+    // On error, clear any invalid session cookies
+    response = NextResponse.redirect(new URL('/signin', request.url))
+    response.cookies.set({
+      name: 'sb-auth-token',
+      value: '',
+      path: '/',
+      maxAge: 0,
+    })
+    
     return response
   }
-
-  // Protected routes
-  const protectedRoutes = ['/dashboard']
-  const isProtectedRoute = protectedRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route)
-  )
-
-  if (!session && isProtectedRoute) {
-    const redirectUrl = new URL('/', request.url)
-    redirectUrl.searchParams.set('from', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // Redirect from home if logged in
-  if (session && request.nextUrl.pathname === '/') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  return response
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 } 

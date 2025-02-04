@@ -34,12 +34,27 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-8">
-            <span className="text-xl font-bold">Waste Marketplace</span>
+          <div className="flex items-center gap-8 px-4">
+            <span className="text-xl font-bold">Startup AI</span>
             <nav className="hidden md:flex items-center gap-6">
-              <a href="/dashboard" className="text-sm font-medium hover:text-primary">Dashboard</a>
-              <a href="/dashboard/projects" className="text-sm font-medium text-muted-foreground hover:text-primary">Projects</a>
-              <a href="/dashboard/analytics" className="text-sm font-medium text-muted-foreground hover:text-primary">Analytics</a>
+              <a
+                href="/dashboard"
+                className="text-sm font-medium hover:text-primary"
+              >
+                Dashboard
+              </a>
+              <a
+                href="/dashboard/projects"
+                className="text-sm font-medium text-muted-foreground hover:text-primary"
+              >
+                Projects
+              </a>
+              <a
+                href="/dashboard/analytics"
+                className="text-sm font-medium text-muted-foreground hover:text-primary"
+              >
+                Analytics
+              </a>
             </nav>
           </div>
           <UserNav user={user} />
@@ -54,5 +69,5 @@ export default function DashboardLayout({
         </div>
       </div>
     </div>
-  )
+  );
 } 
