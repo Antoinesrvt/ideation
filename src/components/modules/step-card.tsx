@@ -49,7 +49,7 @@ export function StepCard({
           onChange={(e) => onChange(e.target.value)}
         />
         <div className="flex justify-between">
-          {showPrevious && (
+          {showPrevious ? (
             <Button
               variant="outline"
               onClick={onPrevious}
@@ -57,7 +57,7 @@ export function StepCard({
             >
               Previous
             </Button>
-          )}
+          ): <div />}
           {showNext && (
             <Button
               onClick={onNext}

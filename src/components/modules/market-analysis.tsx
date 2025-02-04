@@ -4,7 +4,7 @@ import { useState } from "react"
 import { BarChart2, Target, Users, TrendingUp } from "lucide-react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
-import { AIAssistant } from "./ai-assistant"
+import { ExpertTips } from "./expert-tips"
 import { ModuleStep } from "./module-navigation"
 
 interface MarketAnalysisModuleProps {
@@ -102,32 +102,39 @@ export function MarketAnalysisModule({
       title="Market Analysis"
       progress={progress}
       onBack={onBack}
+      moduleId={currentModuleId}
+      stepId={currentStep.id}
+      currentText={responses[currentStep.id] || ""}
+      onSuggestionApply={(suggestion) => {
+        setResponses((prev) => ({
+          ...prev,
+          [currentStep.id]: suggestion,
+        }));
+      }}
     >
-      <div className="grid gap-6 md:grid-cols-7">
+      <div className="space-y-2">
         <StepCard
           icon={currentStep.icon}
           title={currentStep.title}
           description={currentStep.description}
           placeholder={currentStep.placeholder}
           value={responses[currentStep.id] || ""}
-          onChange={(value) => 
-            setResponses(prev => ({
+          onChange={(value) =>
+            setResponses((prev) => ({
               ...prev,
-              [currentStep.id]: value
+              [currentStep.id]: value,
             }))
           }
           onPrevious={currentStepIndex > 0 ? handlePrevious : undefined}
           onNext={currentStepIndex < steps.length - 1 ? handleNext : undefined}
         />
 
-        <AIAssistant
-          mode={mode}
-          context={currentStep.title.toLowerCase()}
-          suggestion={aiSuggestion}
-          onSuggest={() => setAiSuggestion("Based on your industry, consider...")}
-          expertTips={expertTips[currentStep.id as keyof typeof expertTips]}
-        />
+        {mode === "expert" && (
+          <ExpertTips
+            tips={expertTips[currentStep.id as keyof typeof expertTips]}
+          />
+        )}
       </div>
     </ModuleLayout>
-  )
+  );
 } 

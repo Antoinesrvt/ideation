@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-
+import { AIProvider } from "@/context/ai-context";
 export const metadata: Metadata = {
   title: "StartupCanvas AI",
   description: "AI-powered platform for startup ideation and validation",
@@ -22,7 +22,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AIProvider>
+            {children}
+          </AIProvider>
         </ThemeProvider>
       </body>
     </html>

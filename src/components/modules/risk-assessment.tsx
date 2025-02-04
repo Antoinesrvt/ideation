@@ -4,7 +4,7 @@ import { useState } from "react"
 import { AlertTriangle, Shield, Users, Zap, Target } from "lucide-react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
-import { AIAssistant } from "./ai-assistant"
+import { ExpertTips } from "./expert-tips"
 import { ModuleStep } from "./module-navigation"
 
 interface RiskAssessmentModuleProps {
@@ -104,18 +104,27 @@ export function RiskAssessmentModule({
       title="Risk Assessment"
       progress={progress}
       onBack={onBack}
+      moduleId={currentModuleId}
+      stepId={currentStep.id}
+      currentText={responses[currentStep.id] || ""}
+      onSuggestionApply={(suggestion) => {
+        setResponses((prev) => ({
+          ...prev,
+          [currentStep.id]: suggestion,
+        }));
+      }}
     >
-      <div className="grid gap-6 md:grid-cols-7">
+      <div className="space-y-2">
         <StepCard
           icon={currentStep.icon}
           title={currentStep.title}
           description={currentStep.description}
           placeholder={currentStep.placeholder}
           value={responses[currentStep.id] || ""}
-          onChange={(value) => 
-            setResponses(prev => ({
+          onChange={(value) =>
+            setResponses((prev) => ({
               ...prev,
-              [currentStep.id]: value
+              [currentStep.id]: value,
             }))
           }
           onPrevious={currentStepIndex > 0 ? handlePrevious : undefined}
@@ -124,14 +133,12 @@ export function RiskAssessmentModule({
           showPrevious={currentStepIndex > 0}
         />
 
-        <AIAssistant
-          mode={mode}
-          context={currentStep.title.toLowerCase()}
-          suggestion={aiSuggestion}
-          onSuggest={() => setAiSuggestion("Based on your business model, consider these risks...")}
-          expertTips={expertTips[currentStep.id as keyof typeof expertTips]}
-        />
+        {mode === "expert" && (
+          <ExpertTips
+            tips={expertTips[currentStep.id as keyof typeof expertTips]}
+          />
+        )}
       </div>
     </ModuleLayout>
-  )
+  );
 } 

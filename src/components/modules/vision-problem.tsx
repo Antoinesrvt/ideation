@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Target, Users, Lightbulb } from "lucide-react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
-import { AIAssistant } from "./ai-assistant"
+import { ExpertTips } from "./expert-tips"
 import { ModuleStep } from "./module-navigation"
 
 interface VisionProblemModuleProps {
@@ -40,6 +40,14 @@ const steps = [
   },
 ]
 
+const expertTips = {
+  vision: [
+    "Consider market trends in your vision",
+    "Validate assumptions with data",
+    "Think about scalability"
+  ]
+}
+
 export function VisionProblemModule({ 
   mode, 
   onBack, 
@@ -74,18 +82,27 @@ export function VisionProblemModule({
       title="Vision & Problem"
       progress={progress}
       onBack={onBack}
+      moduleId={currentModuleId}
+      stepId={currentStep.id}
+      currentText={responses[currentStep.id] || ""}
+      onSuggestionApply={(suggestion) => {
+        setResponses((prev) => ({
+          ...prev,
+          [currentStep.id]: suggestion,
+        }));
+      }}
     >
-      <div className="grid gap-6 md:grid-cols-7">
+      <div className="space-y-2">
         <StepCard
           icon={currentStep.icon}
           title={currentStep.title}
           description={currentStep.description}
           placeholder={currentStep.placeholder}
           value={responses[currentStep.id] || ""}
-          onChange={(value) => 
-            setResponses(prev => ({
+          onChange={(value) =>
+            setResponses((prev) => ({
               ...prev,
-              [currentStep.id]: value
+              [currentStep.id]: value,
             }))
           }
           onPrevious={currentStepIndex > 0 ? handlePrevious : undefined}
@@ -94,18 +111,12 @@ export function VisionProblemModule({
           showPrevious={currentStepIndex > 0}
         />
 
-        <AIAssistant
-          mode={mode}
-          context={currentStep.title.toLowerCase()}
-          suggestion={aiSuggestion}
-          onSuggest={() => setAiSuggestion("Based on your input, consider focusing on...")}
-          expertTips={[
-            "Consider market trends in your vision",
-            "Validate assumptions with data",
-            "Think about scalability"
-          ]}
-        />
+        {/* {mode === "expert" && (
+          <ExpertTips 
+            tips={expertTips[currentStep.id as keyof typeof expertTips]} 
+          />
+        )} */}
       </div>
     </ModuleLayout>
-  )
+  );
 } 

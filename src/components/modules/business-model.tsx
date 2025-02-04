@@ -4,7 +4,7 @@ import { useState } from "react"
 import { DollarSign, Users, Boxes, Truck, Target } from "lucide-react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
-import { AIAssistant } from "./ai-assistant"
+import { ExpertTips } from "./expert-tips"
 import { ModuleStep } from "./module-navigation"
 
 interface BusinessModelModuleProps {
@@ -92,7 +92,6 @@ export function BusinessModelModule({
 }: BusinessModelModuleProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [responses, setResponses] = useState<Record<string, string>>({})
-  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
 
   const currentStep = steps[currentStepIndex]
   const progress = ((currentStepIndex + 1) / steps.length) * 100
@@ -114,10 +113,21 @@ export function BusinessModelModule({
   return (
     <ModuleLayout
       title="Business Model"
+      description={currentStep.description}
       progress={progress}
       onBack={onBack}
+      previousResponses={responses}
+      moduleId={currentModuleId}
+      stepId={currentStep.id}
+      currentText={responses[currentStep.id] || ""}
+      onSuggestionApply={(suggestion) => {
+        setResponses(prev => ({
+          ...prev,
+          [currentStep.id]: suggestion
+        }))
+      }}
     >
-      <div className="grid gap-6 md:grid-cols-7">
+      <div className="space-y-2">
         <StepCard
           icon={currentStep.icon}
           title={currentStep.title}
@@ -136,13 +146,11 @@ export function BusinessModelModule({
           showPrevious={currentStepIndex > 0}
         />
 
-        <AIAssistant
-          mode={mode}
-          context={currentStep.title.toLowerCase()}
-          suggestion={aiSuggestion}
-          onSuggest={() => setAiSuggestion("Based on your industry, consider...")}
-          expertTips={expertTips[currentStep.id as keyof typeof expertTips]}
-        />
+        {mode === "expert" && (
+          <ExpertTips 
+            tips={expertTips[currentStep.id as keyof typeof expertTips]} 
+          />
+        )}
       </div>
     </ModuleLayout>
   )

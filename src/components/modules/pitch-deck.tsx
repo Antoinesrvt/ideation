@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Presentation, Target, Users, LineChart, Rocket } from "lucide-react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
-import { AIAssistant } from "./ai-assistant"
 import { ModuleStep } from "./module-navigation"
+import { ExpertTips } from "./expert-tips"
 
 interface PitchDeckModuleProps {
   mode: "guided" | "expert"
@@ -116,18 +116,27 @@ export function PitchDeckModule({
       title="Pitch Deck"
       progress={progress}
       onBack={onBack}
+      moduleId={currentModuleId}
+      stepId={currentStep.id}
+      currentText={responses[currentStep.id] || ""}
+      onSuggestionApply={(suggestion) => {
+        setResponses((prev) => ({
+          ...prev,
+          [currentStep.id]: suggestion,
+        }));
+      }}
     >
-      <div className="grid gap-6 md:grid-cols-7">
+      <div className="space-y-2">
         <StepCard
           icon={currentStep.icon}
           title={currentStep.title}
           description={currentStep.description}
           placeholder={currentStep.placeholder}
           value={responses[currentStep.id] || ""}
-          onChange={(value) => 
-            setResponses(prev => ({
+          onChange={(value) =>
+            setResponses((prev) => ({
               ...prev,
-              [currentStep.id]: value
+              [currentStep.id]: value,
             }))
           }
           onPrevious={currentStepIndex > 0 ? handlePrevious : undefined}
@@ -136,14 +145,12 @@ export function PitchDeckModule({
           showPrevious={currentStepIndex > 0}
         />
 
-        <AIAssistant
-          mode={mode}
-          context={currentStep.title.toLowerCase()}
-          suggestion={aiSuggestion}
-          onSuggest={() => setAiSuggestion("To make your pitch more compelling, consider...")}
-          expertTips={expertTips[currentStep.id as keyof typeof expertTips]}
-        />
+        {mode === "expert" && (
+          <ExpertTips
+            tips={expertTips[currentStep.id as keyof typeof expertTips]}
+          />
+        )}
       </div>
     </ModuleLayout>
-  )
+  );
 } 
