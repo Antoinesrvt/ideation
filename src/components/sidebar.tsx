@@ -3,82 +3,105 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
-  ListTodo,
+  FolderKanban,
   BarChart3,
   Settings,
-  Users,
+  User,
   HelpCircle,
 } from "lucide-react"
 
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
+const navigation = [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    name: "Projects",
+    href: "/dashboard/projects",
+    icon: FolderKanban,
+  },
+  {
+    name: "Analytics",
+    href: "/dashboard/analytics",
+    icon: BarChart3,
+  },
+]
 
-export function Sidebar({ className, ...props }: SidebarProps) {
+const secondaryNavigation = [
+  {
+    name: "Settings",
+    href: "/dashboard/settings",
+    icon: Settings,
+  },
+  {
+    name: "Help",
+    href: "/dashboard/help",
+    icon: HelpCircle,
+  },
+]
+
+export function Sidebar() {
   const pathname = usePathname()
 
-  const routes = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      href: "/dashboard",
-      color: "text-sky-500",
-    },
-    {
-      label: "Projects",
-      icon: ListTodo,
-      href: "/dashboard/projects",
-      color: "text-violet-500",
-    },
-    {
-      label: "Analytics",
-      icon: BarChart3,
-      href: "/dashboard/analytics",
-      color: "text-pink-700",
-    },
-    {
-      label: "Team",
-      icon: Users,
-      href: "/dashboard/team",
-      color: "text-orange-700",
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      href: "/dashboard/settings",
-    },
-    {
-      label: "Help",
-      icon: HelpCircle,
-      href: "/dashboard/help",
-    },
-  ]
-
   return (
-    <div className={cn("pb-12", className)} {...props}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="space-y-1">
-            {routes.map((route) => (
+    <div className="flex h-full flex-col border-r bg-background">
+      {/* Logo */}
+      <div className="border-b">
+        <div className="flex h-16 items-center px-4">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 font-semibold tracking-tight"
+          >
+            <span className="text-xl">Startup AI</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Navigation - Scrollable if needed */}
+      <div className="flex-1 overflow-y-auto py-4">
+        <nav className="flex flex-col gap-1 px-4">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
               <Link
-                key={route.href}
-                href={route.href}
+                key={item.name}
+                href={item.href}
                 className={cn(
-                  "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-primary hover:bg-primary/10 rounded-lg transition",
-                  pathname === route.href
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground",
+                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
                 )}
               >
-                <div className="flex items-center flex-1">
-                  <route.icon className={cn("h-5 w-5 mr-3", route.color)} />
-                  {route.label}
-                </div>
+                <item.icon className="h-4 w-4" />
+                {item.name}
               </Link>
-            ))}
-          </div>
-        </div>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* Secondary Navigation - Fixed at bottom */}
+      <div className="border-t">
+        <nav className="flex flex-col gap-1 p-4">
+          {secondaryNavigation.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
+                  isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
       </div>
     </div>
   )

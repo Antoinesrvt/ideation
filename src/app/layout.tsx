@@ -5,6 +5,7 @@ import { SupabaseProvider } from '@/context/supabase-context'
 import { ThemeProvider } from "@/components/theme-provider";
 import { AIProvider } from "@/context/ai-context";
 import { GeistSans } from "geist/font/sans";
+import { Toaster } from '@/components/ui/toaster'
 
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default async function RootLayout({
             </SupabaseProvider>
           </AIProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

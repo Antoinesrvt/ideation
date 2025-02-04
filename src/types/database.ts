@@ -6,6 +6,19 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface ProfileMetadata {
+  bio: string
+  company: string
+  role: string
+  location: string
+  website: string
+  social_links: {
+    twitter: string
+    linkedin: string
+    github: string
+  }
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -14,6 +27,7 @@ export interface Database {
           id: string
           full_name: string | null
           avatar_url: string | null
+          metadata: ProfileMetadata
           created_at: string
           updated_at: string
         }
@@ -21,10 +35,12 @@ export interface Database {
           id: string
           full_name?: string | null
           avatar_url?: string | null
+          metadata?: Partial<ProfileMetadata>
         }
         Update: {
           full_name?: string | null
           avatar_url?: string | null
+          metadata?: Partial<ProfileMetadata>
         }
       }
       projects: {

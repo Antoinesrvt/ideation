@@ -31,8 +31,28 @@ create table if not exists public.profiles (
     id uuid references auth.users primary key,
     full_name text,
     avatar_url text,
+    metadata jsonb default jsonb_build_object(
+        'bio', '',
+        'company', '',
+        'role', '',
+        'location', '',
+        'website', '',
+        'social_links', jsonb_build_object(
+            'twitter', '',
+            'linkedin', '',
+            'github', ''
+        )
+    ),
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+    updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    constraint valid_metadata check (
+        jsonb_typeof(metadata->'bio') = 'string' and
+        jsonb_typeof(metadata->'company') = 'string' and
+        jsonb_typeof(metadata->'role') = 'string' and
+        jsonb_typeof(metadata->'location') = 'string' and
+        jsonb_typeof(metadata->'website') = 'string' and
+        jsonb_typeof(metadata->'social_links') = 'object'
+    )
 );
 
 -- Create projects table
