@@ -52,77 +52,69 @@ export function IdeationLayout({
   }, [])
 
   const Sidebar = () => (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Overall Progress
-            </h2>
-            <p className="text-xs text-muted-foreground text-right">
-              {Math.round(progress)}% Complete
-            </p>
-          </div>
-          <div className="relative h-2 bg-secondary/50 rounded-full overflow-hidden">
-            <motion.div
-              className="absolute inset-y-0 left-0 bg-primary"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            />
+    <div className="flex flex-col h-full">
+      {/* Header with Progress */}
+      <header className="flex-none h-20 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-full items-center px-4">
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold tracking-tight">
+                Overall Progress
+              </h2>
+              <p className="text-xs text-muted-foreground text-right">
+                {Math.round(progress)}% Complete
+              </p>
+            </div>
+            <div className="relative h-2 bg-secondary/50 rounded-full overflow-hidden">
+              <motion.div
+                className="absolute inset-y-0 left-0 bg-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+              />
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* {mode === "guided" && (
-          <Card className="p-3 bg-primary/5 border-primary/10">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Complete each step to build your startup plan. We'll guide you
-              through the process.
-            </p>
-          </Card>
-        )} */}
-
+      {/* Navigation Content */}
+      <div className="flex-1 p-4">
         <ModuleNavigation
           steps={steps}
           currentStepId={currentStepId}
           onStepSelect={onStepSelect}
-          className="mt-6"
         />
       </div>
     </div>
   );
 
   return (
-    <div className="relative min-h-screen bg-background">
-      <div className="container flex-1 items-start lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-10 p-4">
-        {/* Mobile Menu */}
-        {isMobile ? (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="lg:hidden fixed bottom-4 left-4 z-50 rounded-full shadow-lg">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] p-6">
-              <Sidebar />
-            </SheetContent>
-          </Sheet>
-        ) : (
-          <aside className="hidden lg:block sticky top-4">
+    <div className="grid h-screen grid-cols-1 lg:grid-cols-[280px_1fr] overflow-hidden">
+      {/* Sidebar Navigation */}
+      {isMobile ? (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon" className="lg:hidden fixed bottom-4 left-4 z-50 rounded-full shadow-lg">
+              <Menu className="h-4 w-4" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[280px] p-0">
             <Sidebar />
-          </aside>
-        )}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <aside className="hidden lg:block border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <Sidebar />
+        </aside>
+      )}
 
-        {/* Main Content */}
-        <main className="lg:px-8">
-          <div className="mx-auto space-y-8 ">
-            {children}
-          </div>
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="relative bg-background">
+        {children}
+      </main>
 
-      {/* Enhanced Recap Panel */}
-      <motion.div
+      {/* Progress Recap Panel */}
+      {/* <motion.div
         initial={false}
         animate={{ 
           height: isRecapOpen ? "auto" : "48px",
@@ -213,7 +205,7 @@ export function IdeationLayout({
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
+      </motion.div> */}
     </div>
   )
 } 

@@ -25,8 +25,6 @@ import {
 import { QuickAction, QuickActionGroup } from "@/types/ai"
 
 interface QuickActionsProps {
-  moduleId: string
-  stepId: string
   onActionSelect: (action: QuickAction) => void
   contextualActions?: QuickActionGroup[]
   onSave?: () => void
@@ -62,8 +60,6 @@ const GLOBAL_ACTIONS: QuickAction[] = [
 ]
 
 export function QuickActions({
-  moduleId,
-  stepId,
   onActionSelect,
   contextualActions,
   onSave,
@@ -102,16 +98,31 @@ export function QuickActions({
       >
         <CommandIcon className="h-4 w-4" />
         <span className="hidden sm:inline">Quick Actions</span>
-        <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 ml-2">
+        {/* <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 ml-2">
           <span className="text-xs">⌘</span>K
-        </kbd>
+        </kbd> */}
       </Button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
           <CommandEmpty>No actions found.</CommandEmpty>
-
+          {contextualActions?.map((group) => (
+            <>
+              <CommandGroup key={group.id} heading={group.label}>
+                {group.actions.map((action) => (
+                  <CommandItem
+                    key={action.id}
+                    onSelect={() => handleSelect(action.id)}
+                  >
+                    {action.icon}
+                    <span className="ml-2">{action.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          ))}
           <CommandGroup heading="Global Actions">
             {GLOBAL_ACTIONS.map((action) => (
               <CommandItem
@@ -128,24 +139,8 @@ export function QuickActions({
               </CommandItem>
             ))}
           </CommandGroup>
-
-          <CommandSeparator />
-
-          {contextualActions?.map((group) => (
-            <CommandGroup key={group.id} heading={group.label}>
-              {group.actions.map((action) => (
-                <CommandItem
-                  key={action.id}
-                  onSelect={() => handleSelect(action.id)}
-                >
-                  {action.icon}
-                  <span className="ml-2">{action.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          ))}
         </CommandList>
       </CommandDialog>
     </div>
-  )
+  );
 } 

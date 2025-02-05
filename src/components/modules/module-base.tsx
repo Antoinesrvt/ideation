@@ -5,6 +5,7 @@ import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
 import { ExpertTips } from "./expert-tips"
 import { ModuleCompletionOverlay } from "./module-completion-overlay"
+import { ModuleUpdateOverlay } from "./module-update-overlay"
 import { useModule } from "@/hooks/use-module"
 import { ModuleType, MODULES_CONFIG } from "@/config/modules"
 import { LucideIcon } from "lucide-react"
@@ -59,8 +60,10 @@ const ModuleBase = memo(function ModuleBase({
     }
   })
 
+  const { project } = useProject()
   const { toast } = useToast()
   const [showCompletion, setShowCompletion] = useState(false)
+  const [showUpdate, setShowUpdate] = useState(false)
   const [previousContent, setPreviousContent] = useState<{
     stepId: string | undefined
   } | null>(null)
@@ -96,7 +99,12 @@ const ModuleBase = memo(function ModuleBase({
         // If it's the last step, try to complete the module
         const success = await completeModule()
         if (success) {
-          setShowCompletion(true)
+          // Check if this is the first completion or an update
+          if (module?.completed) {
+            setShowUpdate(true)
+          } else {
+            setShowCompletion(true)
+          }
         }
       } else {
         // Always move to the next step in sequence
@@ -215,6 +223,8 @@ const ModuleBase = memo(function ModuleBase({
           stepProgress={currentStep && config.steps ? 
             `Step ${config.steps.findIndex(s => s.id === currentStep) + 1} of ${config.steps.length}` : 
             undefined}
+          moduleType={moduleType}
+          projectId={project?.id || ''}
         >
           <AnimatePresence mode="wait">
             {currentStep && config.steps && (
@@ -231,6 +241,7 @@ const ModuleBase = memo(function ModuleBase({
           </AnimatePresence>
         </ModuleLayout>
 
+        {/* Completion Overlay */}
         <ModuleCompletionOverlay
           isVisible={showCompletion}
           onNext={() => {
@@ -238,7 +249,21 @@ const ModuleBase = memo(function ModuleBase({
             onComplete()
           }}
           nextModuleName={getNextModuleName()}
-          onClose={() => setShowCompletion(false)}
+        />
+
+        {/* Update Overlay */}
+        <ModuleUpdateOverlay
+          isVisible={showUpdate}
+          onGenerateDocument={() => {
+            setShowUpdate(false)
+            // TODO: Implement document generation
+            onComplete()
+          }}
+          onSkip={() => {
+            setShowUpdate(false)
+            onComplete()
+          }}
+          documentName={config.title}
         />
       </motion.div>
     </ModuleErrorBoundary>

@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect, useMemo } from 'react'
 import { useProject } from '@/context/project-context'
 import { ModuleType, MODULE_CONFIG } from '@/config/modules'
-import { Module, ModuleResponse } from '@/types/module'
+import { Module, ModuleResponse, parseModuleResponse } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
 import { useAI } from '@/context/ai-context'
 import { ModuleResponseRow } from '@/lib/services/project-service'
@@ -39,17 +39,14 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     if (module) {
       // Convert module responses to local format
       const responses = module.responses?.reduce<Record<string, ModuleResponse>>((acc, response) => {
-        acc[response.step_id] = {
-          content: response.content,
-          lastUpdated: response.last_updated
-        }
+        acc[response.step_id] = parseModuleResponse(response)
         return acc
       }, {}) || {}
 
       setLocalResponses(responses)
       setUnsavedChanges({})
-      if (module.current_step_id) {
-        setCurrentStepId(module.current_step_id)
+      if (module.currentStepId) {
+        setCurrentStepId(module.currentStepId)
       }
       setIsInitializing(false)
     }
@@ -57,8 +54,8 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
   // Helper functions for completion status
   const isStepCompleted = useCallback((stepId: string) => 
-    module?.completed_step_ids?.includes(stepId) || false
-  , [module?.completed_step_ids])
+    module?.completedStepIds?.includes(stepId) || false
+  , [module?.completedStepIds])
 
   const isModuleCompleted = useCallback(() => 
     config.steps.every(step => isStepCompleted(step.id))
@@ -118,9 +115,9 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       }
 
       // Update completed steps in backend
-      const newCompletedStepIds = Array.from(new Set([...(module.completed_step_ids || []), stepId]))
+      const newCompletedStepIds = Array.from(new Set([...(module.completedStepIds || []), stepId]))
       await updateModule(module.id, {
-        completed_step_ids: newCompletedStepIds
+        completedStepIds: newCompletedStepIds
       })
 
       // Return whether all steps are now completed
@@ -136,7 +133,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     } finally {
       setIsSyncing(false)
     }
-  }, [module?.id, module?.completed_step_ids, config.steps, unsavedChanges, syncStepWithBackend, updateModule, toast])
+  }, [module?.id, module?.completedStepIds, config.steps, unsavedChanges, syncStepWithBackend, updateModule, toast])
 
   // Handle navigation between steps
   const navigateToStep = useCallback(async (stepId: string) => {
@@ -152,7 +149,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
       // Update current step in backend
       await updateModule(module.id, {
-        current_step_id: stepId
+        currentStepId: stepId
       })
       
       // Update local navigation state

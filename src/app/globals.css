@@ -76,3 +76,108 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Markdown Preview Styles */
+.wmde-markdown {
+  background-color: transparent !important;
+  font-family: inherit !important;
+}
+
+.wmde-markdown pre {
+  background-color: hsl(var(--muted)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+.wmde-markdown code {
+  color: hsl(var(--primary)) !important;
+  background-color: hsl(var(--muted)) !important;
+  border-radius: 0.25rem !important;
+  padding: 0.125rem 0.25rem !important;
+}
+
+.wmde-markdown table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 1rem 0 !important;
+}
+
+.wmde-markdown th,
+.wmde-markdown td {
+  border: 1px solid hsl(var(--border)) !important;
+  padding: 0.5rem !important;
+}
+
+.wmde-markdown th {
+  background-color: hsl(var(--muted)) !important;
+  font-weight: 600 !important;
+}
+
+.wmde-markdown blockquote {
+  border-left-color: hsl(var(--primary)) !important;
+  background-color: hsl(var(--muted)) !important;
+  margin: 1rem 0 !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.wmde-markdown hr {
+  border-color: hsl(var(--border)) !important;
+  margin: 1rem 0 !important;
+}
+
+.wmde-markdown a {
+  color: hsl(var(--primary)) !important;
+  text-decoration: none !important;
+}
+
+.wmde-markdown a:hover {
+  text-decoration: underline !important;
+}
+
+.wmde-markdown img {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 0.5rem !important;
+  margin: 1rem 0 !important;
+}
+
+.wmde-markdown ul,
+.wmde-markdown ol {
+  padding-left: 1.5rem !important;
+  margin: 0.5rem 0 !important;
+}
+
+.wmde-markdown li {
+  margin: 0.25rem 0 !important;
+}
+
+.wmde-markdown h1,
+.wmde-markdown h2,
+.wmde-markdown h3,
+.wmde-markdown h4,
+.wmde-markdown h5,
+.wmde-markdown h6 {
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+  margin: 1.5rem 0 1rem !important;
+}
+
+.wmde-markdown h1 {
+  font-size: 1.875rem !important;
+}
+
+.wmde-markdown h2 {
+  font-size: 1.5rem !important;
+}
+
+.wmde-markdown h3 {
+  font-size: 1.25rem !important;
+}
+
+.wmde-markdown h4 {
+  font-size: 1.125rem !important;
+}
+
+.wmde-markdown h5,
+.wmde-markdown h6 {
+  font-size: 1rem !important;
+}

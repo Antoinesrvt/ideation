@@ -87,7 +87,7 @@ export interface Database {
           last_updated: string
           created_at: string
           updated_at: string
-          metadata: Json // For additional flexible data
+          metadata: Json
         }
         Insert: {
           project_id: string
@@ -211,6 +211,97 @@ export interface Database {
           response?: Json
         }
       }
+      document_templates: {
+        Row: {
+          id: string
+          module_type: ModuleType
+          name: string
+          description: string | null
+          template_path: string
+          version: number
+          tags: string[]
+          metadata: Json
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          module_type: ModuleType
+          name: string
+          description?: string | null
+          template_path: string
+          version?: number
+          tags?: string[]
+          metadata?: Json
+          created_by: string
+        }
+        Update: {
+          name?: string
+          description?: string | null
+          template_path?: string
+          version?: number
+          tags?: string[]
+          metadata?: Json
+        }
+      }
+      documents: {
+        Row: {
+          id: string
+          project_id: string
+          module_type: ModuleType
+          name: string
+          type: 'pdf' | 'docx' | 'md'
+          storage_path: string
+          version: number
+          template_version: number
+          status: 'pending' | 'processing' | 'completed' | 'failed'
+          tags: string[]
+          metadata: Json
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          project_id: string
+          module_type: ModuleType
+          name: string
+          type: 'pdf' | 'docx' | 'md'
+          storage_path: string
+          version?: number
+          template_version?: number
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          tags?: string[]
+          metadata?: Json
+          created_by: string
+        }
+        Update: {
+          name?: string
+          type?: 'pdf' | 'docx' | 'md'
+          storage_path?: string
+          version?: number
+          template_version?: number
+          status?: 'pending' | 'processing' | 'completed' | 'failed'
+          tags?: string[]
+          metadata?: Json
+        }
+      }
+      project_members: {
+        Row: {
+          id: string
+          project_id: string
+          user_id: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          project_id: string
+          user_id: string
+          role: string
+        }
+        Update: {
+          role?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -221,6 +312,11 @@ export interface Database {
     Enums: {
       module_type: ModuleType
       ai_analysis_type: 'content' | 'context' | 'research'
+      document_type: 'pdf' | 'docx' | 'md'
+      document_status: 'pending' | 'processing' | 'completed' | 'failed'
+      member_role: 'admin' | 'member'
     }
   }
-} 
+}
+
+export type Tables = Database['public']['Tables'] 

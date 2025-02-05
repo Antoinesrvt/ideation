@@ -14,32 +14,44 @@ export interface ModuleResponse {
 }
 
 // Extend the base Supabase type with responses
-export interface Module extends ModuleRow {
-  responses?: ModuleResponseRow[]
+export interface Module {
+  id: string;
+  projectId: string;
+  type: ModuleType;
+  title: string;
+  completed: boolean;
+  currentStepId: string | null;
+  completedStepIds: string[];
+  responses?: ModuleResponseRow[];
+  lastUpdated: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata: Json;
 }
 
 // Type for updating a module
 export type ModuleUpdateData = {
   completed?: boolean
-  current_step_id?: string | null
-  completed_step_ids?: string[]
+  currentStepId?: string | null
+  completedStepIds?: string[]
   metadata?: Json
+  lastUpdated?: string
 }
 
 // Helper to create a new module
 export function createModule(partial: Partial<Module> = {}): Module {
   return {
     id: '',
-    project_id: '',
+    projectId: '',
     type: 'vision-problem',
     title: '',
     completed: false,
-    current_step_id: null,
-    completed_step_ids: [],
-    last_updated: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    metadata: {},
+    currentStepId: null,
+    completedStepIds: [],
+    lastUpdated: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    metadata: null,
     ...partial
   }
 }

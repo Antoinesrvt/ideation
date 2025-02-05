@@ -5,10 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import type { Module, ModuleResponse, ModuleUpdateData } from '@/types/module'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { ProjectService, ProjectRow, ModuleResponseRow } from '@/lib/services/project-service'
+import { ProjectService, ProjectRow } from '@/lib/services/project-service'
 import { useSupabase } from './supabase-context'
 import { ModuleType } from '@/config/modules'
-import { Json } from '@/types/supabase'
 
 interface ProjectState {
   project: ProjectRow | null
@@ -21,7 +20,7 @@ interface ProjectContextType extends ProjectState {
   refreshProject: () => Promise<void>
   updateProject: (updates: Partial<ProjectRow>) => Promise<void>
   updateModule: (moduleId: string, updates: ModuleUpdateData) => Promise<Module>
-  saveModuleResponse: (moduleId: string, stepId: string, response: ModuleResponse) => Promise<ModuleResponseRow>
+  saveModuleResponse: (moduleId: string, stepId: string, response: ModuleResponse) => Promise<void>
   createModule: (data: Omit<Module, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   ensureModule: (moduleType: ModuleType) => Promise<Module>
 }
@@ -129,7 +128,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [state.project?.id, projectService, toast])
 
   // Module update
-  const updateModule = useCallback(async (moduleId: string, updates: ModuleUpdateData) => {
+  const updateModule = useCallback(async (moduleId: string, updates: ModuleUpdateData): Promise<Module> => {
     try {
       const updated = await projectService.updateModule(moduleId, updates)
       setState(prev => ({
@@ -172,7 +171,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     moduleId: string,
     stepId: string,
     response: ModuleResponse
-  ): Promise<ModuleResponseRow> => {
+  ) => {
     try {
       const savedResponse = await projectService.saveModuleResponse(moduleId, stepId, response)
       setState(prev => ({
@@ -187,7 +186,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           } : m
         )
       }))
-      return savedResponse
     } catch (err) {
       console.error('Error saving module response:', err)
       toast({

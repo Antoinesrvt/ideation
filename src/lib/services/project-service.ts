@@ -3,6 +3,8 @@ import { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { ModuleType } from '@/types/project'
 import { MODULE_CONFIG } from '@/config/modules'
 import { ModuleResponse, prepareModuleResponse } from '@/types/module'
+import { Module, ModuleUpdateData } from '@/types/module'
+import { transformDatabaseModule, transformModuleForDatabase, transformModuleUpdates } from '@/lib/transformers/module'
 
 export type Tables = Database['public']['Tables']
 export type ProjectRow = Tables['projects']['Row']
@@ -43,51 +45,23 @@ export class ProjectService {
     return (data ?? []) as ProjectRow[]
   }
 
-  async getProject(id: string) {
-    console.log('Fetching project from database:', {
-      id,
-      timestamp: new Date().toISOString()
-    })
-
-    const { data, error } = await this.supabase
+  async getProject(projectId: string): Promise<ProjectRow & { modules: Module[] }> {
+    const { data: project, error: projectError } = await this.supabase
       .from('projects')
-      .select(`
-        *,
-        modules(
-          *,
-          responses:module_responses(*)
-        )
-      `)
-      .eq('id', id)
+      .select('*, modules(*)')
+      .eq('id', projectId)
       .single()
 
-    if (error) {
-      console.error('Error fetching project:', {
-        id,
-        error,
-        timestamp: new Date().toISOString()
-      })
-      this.handleError(error, `getProject(${id})`)
-    }
+    if (projectError) throw projectError
+    if (!project) throw new Error('Project not found')
 
-    if (!data) {
-      console.error('Project not found:', {
-        id,
-        timestamp: new Date().toISOString()
-      })
-      throw new Error(`Project not found: ${id}`)
-    }
-
-    console.log('Project data retrieved:', {
-      id,
-      hasModules: data.modules ? data.modules.length > 0 : false,
-      timestamp: new Date().toISOString()
-    })
+    // Transform modules
+    const modules = (project.modules as Tables['modules']['Row'][]).map(transformDatabaseModule)
 
     return {
-      ...data,
-      modules: data.modules || []
-    } as ProjectWithModules
+      ...project,
+      modules
+    }
   }
 
   async createProject(
@@ -104,20 +78,18 @@ export class ProjectService {
     return project
   }
 
-  async updateProject(
-    id: string,
-    data: Tables['projects']['Update']
-  ): Promise<ProjectRow> {
-    const { data: project, error } = await this.supabase
+  async updateProject(projectId: string, updates: Partial<ProjectRow>): Promise<ProjectRow> {
+    const { data, error } = await this.supabase
       .from('projects')
-      .update(data)
-      .eq('id', id)
+      .update(updates)
+      .eq('id', projectId)
       .select()
       .single()
 
-    if (error) this.handleError(error)
-    if (!project) throw new Error(`Project not found: ${id}`)
-    return project
+    if (error) throw error
+    if (!data) throw new Error('Failed to update project')
+
+    return data
   }
 
   async deleteProject(id: string): Promise<void> {
@@ -129,37 +101,65 @@ export class ProjectService {
     if (error) this.handleError(error)
   }
 
-  async createModule(
-    data: Tables['modules']['Insert']
-  ): Promise<ModuleRow> {
-    const { data: module, error } = await this.supabase
+  async createModule(data: Omit<Module, 'id' | 'created_at' | 'updated_at'>): Promise<Module> {
+    const dbData = transformModuleForDatabase(data)
+
+    const { data: created, error } = await this.supabase
       .from('modules')
-      .insert(data)
+      .insert(dbData)
       .select()
       .single()
 
-    if (error) this.handleError(error)
-    if (!module) throw new Error('Failed to create module')
-    return module
+    if (error) throw error
+    if (!created) throw new Error('Failed to create module')
+
+    return transformDatabaseModule(created)
   }
 
-  async updateModule(
-    id: string,
-    data: Tables['modules']['Update']
-  ): Promise<ModuleRow> {
-    const { data: module, error } = await this.supabase
-      .from('modules')
-      .update(data)
-      .eq('id', id)
-      .select(`
-        *,
-        responses:module_responses(*)
-      `)
-      .single()
+  async updateModule(moduleId: string, updates: ModuleUpdateData): Promise<Module> {
+    try {
+      // First verify the module exists
+      const { data: existing, error: checkError } = await this.supabase
+        .from('modules')
+        .select('id')
+        .eq('id', moduleId)
+        .maybeSingle()
 
-    if (error) this.handleError(error)
-    if (!module) throw new Error(`Module not found: ${id}`)
-    return module
+      if (checkError) throw checkError
+      if (!existing) throw new Error(`Module with id ${moduleId} not found`)
+
+      // Transform updates using the specific update transformer
+      const dbUpdates = transformModuleUpdates(updates)
+
+      // Perform the update
+      const { data, error } = await this.supabase
+        .from('modules')
+        .update(dbUpdates)
+        .eq('id', moduleId)
+        .select()
+
+      if (error) {
+        console.error('Error updating module:', {
+          moduleId,
+          updates,
+          error,
+          timestamp: new Date().toISOString()
+        })
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('Failed to update module: No data returned')
+      }
+
+      // Transform the response back to our frontend type
+      return transformDatabaseModule(data[0])
+    } catch (error) {
+      console.error('Error in updateModule:', error)
+      throw error instanceof Error 
+        ? error 
+        : new Error('An unknown error occurred while updating the module')
+    }
   }
 
   async createStep(
@@ -221,114 +221,100 @@ export class ProjectService {
     stepId: string,
     response: ModuleResponse
   ): Promise<ModuleResponseRow> {
-    console.log('Saving module response:', {
-      moduleId,
-      stepId,
-      timestamp: new Date().toISOString()
-    })
+    try {
+      // Verify the module exists
+      const { data: module, error: moduleError } = await this.supabase
+        .from('modules')
+        .select('id')
+        .eq('id', moduleId)
+        .maybeSingle()
 
-    const { data, error } = await this.supabase
-      .from('module_responses')
-      .upsert({
+      if (moduleError) throw moduleError
+      if (!module) throw new Error(`Module with id ${moduleId} not found`)
+
+      // Prepare the response data
+      const responseData = {
         module_id: moduleId,
         step_id: stepId,
         content: response.content,
-        last_updated: response.lastUpdated
-      }, {
-        onConflict: 'module_id,step_id',
-        ignoreDuplicates: false
-      })
-      .select()
-      .single()
+        last_updated: response.lastUpdated || new Date().toISOString()
+      }
 
-    if (error) {
-      console.error('Error in saveModuleResponse:', {
-        error,
-        moduleId,
-        stepId,
-        timestamp: new Date().toISOString()
-      })
-      this.handleError(error, `saveModuleResponse(${moduleId}, ${stepId})`)
+      // Check if a response already exists
+      const { data: existing, error: checkError } = await this.supabase
+        .from('module_responses')
+        .select('id')
+        .eq('module_id', moduleId)
+        .eq('step_id', stepId)
+        .maybeSingle()
+
+      if (checkError) throw checkError
+
+      let result
+      if (existing) {
+        // Update existing response
+        const { data, error } = await this.supabase
+          .from('module_responses')
+          .update(responseData)
+          .eq('id', existing.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        result = data
+      } else {
+        // Insert new response
+        const { data, error } = await this.supabase
+          .from('module_responses')
+          .insert(responseData)
+          .select()
+          .single()
+
+        if (error) throw error
+        result = data
+      }
+
+      if (!result) {
+        throw new Error('Failed to save module response: No data returned')
+      }
+
+      return result
+    } catch (error) {
+      console.error('Error in saveModuleResponse:', error)
+      throw error instanceof Error 
+        ? error 
+        : new Error('An unknown error occurred while saving the module response')
     }
-
-    if (!data) {
-      throw new Error('Failed to save module response')
-    }
-
-    console.log('Module response saved successfully:', {
-      moduleId,
-      stepId,
-      timestamp: new Date().toISOString()
-    })
-
-    return data
   }
 
-  async ensureModuleExists(projectId: string, moduleType: ModuleType): Promise<ModuleRow> {
-    console.log('Ensuring module exists:', {
-      projectId,
-      moduleType,
-      timestamp: new Date().toISOString()
-    })
-
+  async ensureModuleExists(projectId: string, moduleType: string): Promise<Module> {
     // First try to find existing module
-    const { data: existingModules, error: findError } = await this.supabase
+    const { data: existing } = await this.supabase
       .from('modules')
-      .select(`
-        *,
-        responses:module_responses(*)
-      `)
+      .select()
       .eq('project_id', projectId)
       .eq('type', moduleType)
-      .limit(1)
+      .single()
 
-    if (findError) {
-      this.handleError(findError, `ensureModuleExists.find(${projectId}, ${moduleType})`)
+    if (existing) {
+      return transformDatabaseModule(existing)
     }
 
-    // If module exists, return it
-    if (existingModules && existingModules.length > 0) {
-      return existingModules[0]
-    }
-
-    // Create new module
-    const { data: newModule, error: createError } = await this.supabase
+    // Create new module if none exists
+    const { data: created, error } = await this.supabase
       .from('modules')
       .insert({
         project_id: projectId,
         type: moduleType,
-        title: moduleType,
-        completed: false,
-        current_step_id: null,
-        completed_step_ids: [],
-        metadata: {} // Keep metadata for additional flexible data
+        title: moduleType.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        completed: false
       })
-      .select(`
-        *,
-        responses:module_responses(*)
-      `)
+      .select()
       .single()
 
-    if (createError) {
-      console.error('Error creating module:', {
-        error: createError,
-        projectId,
-        moduleType,
-        timestamp: new Date().toISOString()
-      })
-      this.handleError(createError, `ensureModuleExists.create(${projectId}, ${moduleType})`)
-    }
+    if (error) throw error
+    if (!created) throw new Error('Failed to create module')
 
-    if (!newModule) {
-      throw new Error('Failed to create module')
-    }
-
-    console.log('Created new module:', {
-      moduleId: newModule.id,
-      type: moduleType,
-      timestamp: new Date().toISOString()
-    })
-
-    return newModule
+    return transformDatabaseModule(created)
   }
 } 
