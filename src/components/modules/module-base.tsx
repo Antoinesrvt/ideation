@@ -5,7 +5,7 @@ import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
 import { ExpertTips } from "./expert-tips"
 import { useModule } from "@/hooks/use-module"
-import { MODULE_CONFIG, ModuleType } from "@/types/project"
+import { ModuleType } from "@/config/modules"
 import { LucideIcon } from "lucide-react"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -13,43 +13,9 @@ import { ModuleErrorBoundary } from "./module-error-boundary"
 import { useProject } from "@/context/project-context"
 import { useToast } from "@/hooks/use-toast"
 import { useAI } from "@/context/ai-context"
-import { JsonCompatible, ModuleMetadataContent, StepResponse } from "@/types/project"
-
-// Add loading skeleton component that matches the real design
-function ModuleLoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="grid md:grid-cols-[2fr,1fr] gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <Skeleton className="h-6 w-[200px]" />
-            </div>
-            <Skeleton className="h-4 w-[300px] mt-2" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[300px] w-full" />
-            <div className="flex justify-between mt-6">
-              <Skeleton className="h-10 w-[100px]" />
-              <Skeleton className="h-10 w-[100px]" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-[150px]" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-[80%]" />
-            <Skeleton className="h-4 w-[90%]" />
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
+import { ModuleMetadata, ModuleResponse } from "@/types/module"
+import { MODULE_CONFIG } from "@/config/modules"
+import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 
 interface ModuleBaseProps {
   moduleType: ModuleType
@@ -66,218 +32,136 @@ const ModuleBase = memo(function ModuleBase({
   onComplete,
   stepIcons
 }: ModuleBaseProps) {
-  const { project, updateModule } = useProject()
-  const { toast } = useToast()
-  const { generateSuggestion } = useAI()
-  const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false)
-  const [isInitializing, setIsInitializing] = useState(true)
-  const [previousContent, setPreviousContent] = useState<{
-    metadata: ModuleMetadataContent | undefined
-    step: any
-  } | null>(null)
-
-  // Memoize module lookup to prevent unnecessary re-renders
-  const module = useMemo(() => 
-    project?.modules.find((m: { type: ModuleType }) => m.type === moduleType),
-    [project?.modules, moduleType]
-  )
-
-  const currentMetadata = module?.metadata as ModuleMetadataContent | undefined
-  const responses = currentMetadata?.responses || {}
-  
-  // Memoize steps and current step calculations
-  const { steps, currentStep, validStepIndex, currentResponse } = useMemo(() => {
-    const steps = MODULE_CONFIG[moduleType].steps
-    const savedStep = currentMetadata?.currentStep
-    const currentStepIndex = savedStep 
-      ? steps.findIndex(step => step.step_id === savedStep)
-      : 0
-    const validStepIndex = currentStepIndex === -1 ? 0 : currentStepIndex
-    const currentStep = steps[validStepIndex]
-    const currentResponse = currentStep ? responses[currentStep.step_id] : undefined
-
-    return { steps, currentStep, validStepIndex, currentResponse }
-  }, [moduleType, currentMetadata?.currentStep, responses])
-
-  // Store previous content when transitioning
-  useEffect(() => {
-    if (currentMetadata && currentStep) {
-      setPreviousContent({
-        metadata: currentMetadata,
-        step: currentStep
-      })
-      setIsInitializing(false)
-    }
-  }, [currentMetadata, currentStep])
-
-  // Memoize handlers to prevent unnecessary re-renders
-  const handleUpdateMetadata = useMemo(() => async (updates: Partial<ModuleMetadataContent>) => {
-    if (!module || !currentMetadata) return
-
-    try {
-      await updateModule(module.id, {
-        metadata: {
-          ...currentMetadata,
-          ...updates,
-          lastUpdated: new Date().toISOString()
-        } as JsonCompatible<ModuleMetadataContent>
-      })
-    } catch (err) {
-      console.error('Error updating module metadata:', err)
+  const {
+    module,
+    config,
+    responses,
+    currentStep,
+    progress,
+    saveResponse,
+    completeStep,
+    setCurrentStep,
+    generateAISuggestion,
+    isGeneratingSuggestion,
+    isInitializing,
+    quickActionGroups
+  } = useModule(moduleType, {
+    onComplete,
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to update module. Please try again.",
+        description: error.message,
         variant: "destructive"
       })
     }
-  }, [module, currentMetadata, updateModule, toast])
+  })
 
-  const saveResponse = async (stepId: string, content: string) => {
-    if (!currentMetadata) return
+  const { toast } = useToast()
+  const [previousContent, setPreviousContent] = useState<{
+    metadata: ModuleMetadata | undefined
+    stepId: string | undefined
+  } | null>(null)
 
-    const updatedResponses = {
-      ...responses,
-      [stepId]: {
-        content,
-        lastUpdated: new Date().toISOString()
-      } as StepResponse
-    }
-
-    await handleUpdateMetadata({
-      responses: updatedResponses
-    })
-  }
-
-  const completeStep = async (stepId: string) => {
-    if (!currentMetadata) return
-
-    const updatedSteps = currentMetadata.steps.map(step =>
-      step.step_id === stepId ? { ...step, completed: true } : step
-    )
-
-    const progress = (updatedSteps.filter(step => step.completed).length / steps.length) * 100
-
-    await handleUpdateMetadata({
-      steps: updatedSteps,
-      progress
-    })
-  }
-
-  const setCurrentStep = async (stepId: string) => {
-    await handleUpdateMetadata({
-      currentStep: stepId
-    })
-  }
-
+  // Store previous content when transitioning
   useEffect(() => {
-    // Initialize first step if none is set
-    if (currentMetadata && !currentMetadata.currentStep && currentStep) {
-      console.log('Initializing first step:', {
-        moduleId: module?.id,
-        moduleType,
-        stepId: currentStep.step_id,
-        timestamp: new Date().toISOString()
-      })
-      handleUpdateMetadata({
-        currentStep: currentStep.step_id
+    if (module?.metadata && currentStep) {
+      setPreviousContent({
+        metadata: module.metadata,
+        stepId: currentStep
       })
     }
-  }, [currentMetadata, currentStep, module?.id, moduleType])
+  }, [module?.metadata, currentStep])
 
   const handleNext = async () => {
-    if (!currentStep) return
+    if (!currentStep || !config.steps) return
 
     // Save current step as completed
-    await completeStep(currentStep.step_id)
+    await completeStep(currentStep)
 
-    if (validStepIndex < steps.length - 1) {
-      const nextStep = steps[validStepIndex + 1]
-      await setCurrentStep(nextStep.step_id)
+    const currentIndex = config.steps.findIndex(step => step.id === currentStep)
+    if (currentIndex < config.steps.length - 1) {
+      const nextStep = config.steps[currentIndex + 1]
+      await setCurrentStep(nextStep.id)
     } else {
-      // Complete module
-      if (module) {
-        await updateModule(module.id, {
-          completed: true
-        })
-      }
       onComplete?.()
     }
   }
 
   const handlePrevious = async () => {
-    if (validStepIndex > 0) {
-      const prevStep = steps[validStepIndex - 1]
-      await setCurrentStep(prevStep.step_id)
+    if (!currentStep || !config.steps) return
+
+    const currentIndex = config.steps.findIndex(step => step.id === currentStep)
+    if (currentIndex > 0) {
+      const prevStep = config.steps[currentIndex - 1]
+      await setCurrentStep(prevStep.id)
     } else {
       onBack?.()
     }
   }
 
-  const handleGenerateSuggestion = async () => {
-    if (!currentStep || !currentResponse) return
-
-    setIsGeneratingSuggestion(true)
-    try {
-      const suggestion = await generateSuggestion(currentStep.step_id)
-      if (suggestion) {
-        await saveResponse(currentStep.step_id, suggestion)
-      }
-    } catch (err) {
-      console.error('Error generating suggestion:', err)
-      toast({
-        title: "Error",
-        description: "Failed to generate suggestion. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsGeneratingSuggestion(false)
-    }
+  const handleGenerateSuggestion = async (context: string) => {
+    if (!currentStep) return
+    await generateAISuggestion(currentStep, context)
   }
 
-  // Only show skeleton on very first load
-  if (isInitializing && !previousContent) {
+  // Helper function to render module content
+  function renderModuleContent(currentStepId: string, steps: typeof MODULE_CONFIG[ModuleType]['steps']) {
+    const step = steps.find((s) => s.id === currentStepId)
+    if (!step) return null
+
+    return (
+      <div className="grid md:grid-cols-[2fr,1fr] gap-6">
+        <StepCard
+          key={step.id}
+          title={step.title}
+          description={step.description}
+          placeholder={step.placeholder || ''}
+          icon={stepIcons[step.id] || Object.values(stepIcons)[0]}
+          value={responses[step.id]?.content || ""}
+          onChange={(value) => saveResponse(step.id, value)}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          showNext={true}
+          showPrevious={true}
+        />
+        {mode === "expert" && step.expert_tips && (
+          <ExpertTips 
+            key={`tips-${step.id}`}
+            tips={step.expert_tips} 
+          />
+        )}
+      </div>
+    )
+  }
+
+  // Show loading skeleton during initialization or when module is not yet available
+  if (isInitializing || (!module && !previousContent)) {
     return <ModuleLoadingSkeleton />
   }
 
-  // Use previous content during transitions
-  if (!module || !currentMetadata || !currentStep) {
-    if (previousContent) {
+  // Use previous content during transitions or while waiting for initialization
+  if (!module?.metadata || !currentStep || !config.steps) {
+    if (previousContent?.metadata && previousContent.stepId) {
       return (
         <ModuleErrorBoundary>
           <ModuleLayout
-            title={MODULE_CONFIG[moduleType].title}
-            description={MODULE_CONFIG[moduleType].description}
-            progress={previousContent.metadata?.progress || 0}
+            title={config.title}
+            description={config.description}
+            progress={progress}
             onBack={onBack}
-            currentStep={previousContent.step.step_id}
-            currentResponse={responses[previousContent.step.step_id]}
+            currentStep={previousContent.stepId}
+            currentResponse={responses[previousContent.stepId]}
             previousResponses={responses}
             onSuggestionRequest={handleGenerateSuggestion}
-            onSuggestionApply={handleGenerateSuggestion}
+            onSuggestionApply={(suggestion) => {
+              if (previousContent.stepId) {
+                saveResponse(previousContent.stepId, suggestion)
+              }
+            }}
             isGeneratingSuggestion={isGeneratingSuggestion}
-            quickActionGroups={[]}
+            quickActionGroups={quickActionGroups}
           >
-            <div className="grid md:grid-cols-[2fr,1fr] gap-6">
-              <StepCard
-                key={previousContent.step.step_id}
-                title={previousContent.step.title}
-                description={previousContent.step.description}
-                placeholder={previousContent.step.placeholder || ''}
-                icon={stepIcons[previousContent.step.step_id] || Object.values(stepIcons)[0]}
-                value={responses[previousContent.step.step_id]?.content || ""}
-                onChange={(value) => saveResponse(previousContent.step.step_id, value)}
-                onPrevious={validStepIndex > 0 ? handlePrevious : undefined}
-                onNext={handleNext}
-                showNext={true}
-                showPrevious={validStepIndex > 0}
-              />
-              {mode === "expert" && (
-                <ExpertTips 
-                  key={`tips-${previousContent.step.step_id}`}
-                  tips={previousContent.step.expert_tips} 
-                />
-              )}
-            </div>
+            {renderModuleContent(previousContent.stepId, config.steps)}
           </ModuleLayout>
         </ModuleErrorBoundary>
       )
@@ -288,44 +172,23 @@ const ModuleBase = memo(function ModuleBase({
   return (
     <ModuleErrorBoundary>
       <ModuleLayout
-        title={MODULE_CONFIG[moduleType].title}
-        description={MODULE_CONFIG[moduleType].description}
-        progress={currentMetadata.progress}
+        title={config.title}
+        description={config.description}
+        progress={progress}
         onBack={onBack}
-        currentStep={currentStep.step_id}
-        currentResponse={currentResponse}
+        currentStep={currentStep}
+        currentResponse={responses[currentStep]}
         previousResponses={responses}
         onSuggestionRequest={handleGenerateSuggestion}
-        onSuggestionApply={handleGenerateSuggestion}
+        onSuggestionApply={(suggestion) => saveResponse(currentStep, suggestion)}
         isGeneratingSuggestion={isGeneratingSuggestion}
-        quickActionGroups={[]}
+        quickActionGroups={quickActionGroups}
       >
-        <div className="grid md:grid-cols-[2fr,1fr] gap-6">
-          <StepCard
-            key={currentStep.step_id}
-            title={currentStep.title}
-            description={currentStep.description}
-            placeholder={currentStep.placeholder || ''}
-            icon={stepIcons[currentStep.step_id] || Object.values(stepIcons)[0]}
-            value={responses[currentStep.step_id]?.content || ""}
-            onChange={(value) => saveResponse(currentStep.step_id, value)}
-            onPrevious={validStepIndex > 0 ? handlePrevious : undefined}
-            onNext={handleNext}
-            showNext={true}
-            showPrevious={validStepIndex > 0}
-          />
-          {mode === "expert" && (
-            <ExpertTips 
-              key={`tips-${currentStep.step_id}`}
-              tips={currentStep.expert_tips} 
-            />
-          )}
-        </div>
+        {renderModuleContent(currentStep, config.steps)}
       </ModuleLayout>
     </ModuleErrorBoundary>
   )
 }, (prevProps, nextProps) => {
-  // Custom comparison function to determine if re-render is needed
   return (
     prevProps.moduleType === nextProps.moduleType &&
     prevProps.mode === nextProps.mode &&
@@ -333,5 +196,4 @@ const ModuleBase = memo(function ModuleBase({
   )
 })
 
-// Export the memoized component
-export { ModuleBase } 
+export default ModuleBase 

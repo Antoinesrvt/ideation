@@ -5,11 +5,11 @@ import { Bot, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { StepResponse } from "@/types/project"
+import { ModuleResponse } from "@/types/module"
 import { motion } from "framer-motion"
 
 interface AIAssistantProps {
-  currentResponse?: StepResponse
+  currentResponse?: ModuleResponse
   onSuggestionRequest: (context: string) => Promise<void>
   onSuggestionApply: (suggestion: string) => void
   isGenerating: boolean

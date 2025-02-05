@@ -11,20 +11,17 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { ModuleBase } from "@/components/modules/module-base"
+import ModuleBase from "@/components/modules/module-base"
 import { ModuleStep } from "@/components/modules/module-navigation"
 import { IdeationLayout } from "@/components/layouts/ideation-layout"
 import { useProject } from "@/context/project-context"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  ModuleType, 
-  MODULE_TYPES, 
-  ProjectMetadataContent, 
-  ModuleMetadataContent,
-  JsonCompatible,
-  isProjectMetadata
-} from "@/types/project"
+import { ModuleType } from "@/config/modules"
 import { useToast } from "@/hooks/use-toast"
+import { Database } from "@/types/database"
+
+type ProjectRow = Database["public"]["Tables"]["projects"]["Row"]
+type ModuleRow = Database["public"]["Tables"]["modules"]["Row"]
 
 // Map of icons for each module's steps
 const MODULE_STEP_ICONS = {
@@ -166,124 +163,64 @@ export default function IdeationPage() {
   const { project, loading, error, updateProject, ensureModule } = useProject()
   const { toast } = useToast()
 
-  // Memoize project metadata getter
-  const getProjectMetadata = useCallback((): ProjectMetadataContent => {
-    if (!project?.metadata || !isProjectMetadata(project.metadata)) {
-      return {
-        path: null,
-        currentStep: null,
-        completedAt: null,
-        stage: 'idea',
-        industry: null
-      }
-    }
-    return project.metadata
-  }, [project?.metadata])
+  const [currentStep, setCurrentStep] = useState<StepState>('selection')
+  const [selectedPath, setSelectedPath] = useState<"guided" | "expert" | null>(null)
 
-  const [currentStep, setCurrentStep] = useState<StepState>(() => {
-    const metadata = getProjectMetadata()
-    return metadata?.currentStep || 'selection'
-  })
-  
-  const [selectedPath, setSelectedPath] = useState<"guided" | "expert" | null>(() => {
-    const metadata = getProjectMetadata()
-    return metadata?.path || null
-  })
-
-  // Update state only when metadata actually changes
+  // Update state when project changes
   useEffect(() => {
     if (project?.metadata) {
-      const metadata = getProjectMetadata()
-      const newPath = metadata.path
-      const newStep = metadata.currentStep || 'selection'
-
-      setSelectedPath(prevPath => {
-        if (prevPath !== newPath) return newPath
-        return prevPath
-      })
-
-      setCurrentStep(prevStep => {
-        if (prevStep !== newStep) return newStep
-        return prevStep
-      })
+      const metadata = project.metadata as { path?: "guided" | "expert", currentStep?: ModuleType }
+      setSelectedPath(metadata.path || null)
+      setCurrentStep(metadata.currentStep || 'selection')
     }
-  }, [project?.metadata, getProjectMetadata])
+  }, [project?.metadata])
 
-  const handleStartJourney = async () => {
-    console.log('Starting journey:', {
-      selectedPath,
-      projectId: project?.id,
-      hasProject: !!project,
-      timestamp: new Date().toISOString()
-    })
-
-    if (!selectedPath || !project) {
-      console.warn('Missing required data:', {
-        selectedPath,
-        hasProject: !!project,
-        timestamp: new Date().toISOString()
-      })
-      return
-    }
+  const handleStartJourney = useCallback(async () => {
+    if (!project || !selectedPath) return
 
     try {
       // First ensure the module exists
-      console.log('Creating vision-problem module...')
       const module = await ensureModule('vision-problem')
       
-      console.log('Module created:', {
-        moduleId: module.id,
-        type: module.type,
-        timestamp: new Date().toISOString()
-      })
+      // Only update project metadata if module was created successfully
+      if (module) {
+        await updateProject({
+          metadata: {
+            ...project.metadata as Record<string, unknown>,
+            path: selectedPath,
+            currentStep: 'vision-problem'
+          }
+        })
 
-      // Then update project metadata
-      await updateProject({
-        metadata: {
-          path: selectedPath,
-          currentStep: 'vision-problem',
-          completedAt: null,
-          stage: 'idea',
-          industry: null
-        } as JsonCompatible<ProjectMetadataContent>
-      })
-
-      // Wait for state to update
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      console.log('Journey started successfully, updating UI...')
-      setCurrentStep('vision-problem')
+        // Update state after both operations succeed
+        setCurrentStep('vision-problem')
+      }
     } catch (err) {
-      console.error('Error starting journey:', {
-        error: err,
-        context: 'handleStartJourney',
-        timestamp: new Date().toISOString()
-      })
+      console.error('Error starting journey:', err)
       toast({
         title: "Error",
         description: "Failed to start journey. Please try again.",
         variant: "destructive"
       })
+      // Reset loading state in case of error
+      setCurrentStep('selection')
     }
-  }
+  }, [project, selectedPath, updateProject, ensureModule, toast])
 
   // Memoize handlers to prevent unnecessary re-renders
   const handleModuleSelect = useCallback(async (moduleId: ModuleType) => {
     if (!project) return
 
     try {
-      const currentMetadata = getProjectMetadata()
-      if (!currentMetadata) return
-
       // First ensure module exists before switching to it
       await ensureModule(moduleId)
 
       // Then update project metadata
       await updateProject({
         metadata: {
-          ...currentMetadata,
-          currentStep: moduleId
-        } as JsonCompatible<ProjectMetadataContent>
+          currentStep: moduleId,
+          ...(project.metadata as Record<string, unknown>)
+        }
       })
       
       // Update state after successful API calls
@@ -300,40 +237,34 @@ export default function IdeationPage() {
 
   // Memoize module data calculations
   const { currentModules, overallProgress, moduleRecaps } = useMemo(() => {
-    const completedModules = project?.modules.filter(m => m.completed) || []
-    const overallProgress = (completedModules.length / MODULE_TYPES.length) * 100
+    const modules = (project as ProjectRow & { modules: ModuleRow[] })?.modules || []
+    const completedModules = modules.filter(m => m.completed)
+    const overallProgress = (completedModules.length / Object.keys(MODULE_STEP_ICONS).length) * 100
 
-    const currentModules = MODULE_TYPES.map(type => {
-      const module = project?.modules.find(m => m.type === type)
-      return {
-        id: type,
-        title: module?.title || type.split('-').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' '),
-        completed: module?.completed ?? false
-      }
-    })
+    const currentModules = Object.keys(MODULE_STEP_ICONS).map(type => ({
+      id: type as ModuleType,
+      title: modules.find(m => m.type === type)?.title || 
+        type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      completed: modules.find(m => m.type === type)?.completed ?? false
+    }))
 
-    const moduleRecaps = project?.modules.map(m => {
-      const metadata = m.metadata as unknown as ModuleMetadataContent
-      return {
-        id: m.type,
-        title: m.title,
-        completed: m.completed,
-        summary: metadata?.summary || undefined
-      }
-    }) || []
+    const moduleRecaps = modules.map(m => ({
+      id: m.type,
+      title: m.title,
+      completed: m.completed,
+      summary: (m.metadata as { summary?: string })?.summary
+    }))
 
     return { currentModules, overallProgress, moduleRecaps }
-  }, [project?.modules])
+  }, [(project as ProjectRow & { modules: ModuleRow[] })?.modules])
 
   // Memoize handlers
   const handleBack = useCallback(() => {
     if (currentStep === 'selection') return
 
-    const currentIndex = MODULE_TYPES.indexOf(currentStep)
+    const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
     if (currentIndex > 0) {
-      handleModuleSelect(MODULE_TYPES[currentIndex - 1])
+      handleModuleSelect(Object.keys(MODULE_STEP_ICONS)[currentIndex - 1] as ModuleType)
     } else {
       setCurrentStep("selection")
     }
@@ -342,9 +273,9 @@ export default function IdeationPage() {
   const handleComplete = useCallback(() => {
     if (currentStep === 'selection') return
 
-    const currentIndex = MODULE_TYPES.indexOf(currentStep)
-    if (currentIndex < MODULE_TYPES.length - 1) {
-      handleModuleSelect(MODULE_TYPES[currentIndex + 1])
+    const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
+    if (currentIndex < Object.keys(MODULE_STEP_ICONS).length - 1) {
+      handleModuleSelect(Object.keys(MODULE_STEP_ICONS)[currentIndex + 1] as ModuleType)
     } else {
       router.push('/dashboard/projects')
     }

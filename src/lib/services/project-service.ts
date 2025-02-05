@@ -1,11 +1,7 @@
 import { Database } from '@/types/database'
 import { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
-import { 
-  ModuleType, 
-  MODULE_CONFIG, 
-  ModuleStepTemplate,
-  BaseModuleStep
-} from '@/types/project'
+import { ModuleType } from '@/types/project'
+import { MODULE_CONFIG } from '@/config/modules'
 
 export type Tables = Database['public']['Tables']
 export type ProjectRow = Tables['projects']['Row']
@@ -222,38 +218,20 @@ export class ProjectService {
       return existingModules[0]
     }
 
-    // Get steps from MODULE_CONFIG
-    const moduleConfig = MODULE_CONFIG[moduleType]
-    const steps = moduleConfig.steps.map((step: ModuleStepTemplate): BaseModuleStep => ({
-      id: step.id,
-      module_type: moduleType,
-      step_id: step.step_id,
-      title: step.title,
-      description: step.description,
-      placeholder: step.placeholder || null,
-      order_index: step.order_index,
-      expert_tips: step.expert_tips,
-      completed: false,
-      lastUpdated: new Date().toISOString()
-    }))
-
-    // Create new module if it doesn't exist
+    // Create new module with minimal metadata structure
+    // Only store essential backend data, frontend config stays in the frontend
     const { data: newModule, error: createError } = await this.supabase
       .from('modules')
       .insert({
         project_id: projectId,
         type: moduleType,
-        title: moduleConfig.title,
+        title: moduleType, // Use the type as title, frontend will display proper title from config
         completed: false,
         metadata: {
-          description: moduleConfig.description,
-          currentStep: steps[0].step_id,
-          progress: 0,
-          summary: null,
-          steps: steps,
           responses: {},
-          lastUpdated: new Date().toISOString(),
-          files: []
+          currentStepId: null, // Don't set initial step, let frontend handle it
+          completedStepIds: [],
+          lastUpdated: new Date().toISOString()
         }
       })
       .select()
@@ -264,8 +242,6 @@ export class ProjectService {
         error: createError,
         projectId,
         moduleType,
-        moduleConfig,
-        steps,
         timestamp: new Date().toISOString()
       })
       this.handleError(createError, `ensureModuleExists.create(${projectId}, ${moduleType})`)
@@ -278,7 +254,6 @@ export class ProjectService {
     console.log('Created new module:', {
       moduleId: newModule.id,
       type: moduleType,
-      steps: steps.length,
       timestamp: new Date().toISOString()
     })
 

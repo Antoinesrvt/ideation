@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AIAssistant } from "./ai-assistant"
-import { StepResponse } from "@/types/project"
+import { ModuleResponse } from "@/types/module"
 import { QuickActions } from "@/components/ai/quick-actions"
 import type { QuickActionGroup } from "@/types/ai"
 import { cn } from "@/lib/utils"
@@ -21,8 +21,8 @@ interface ModuleLayoutProps {
   onBack: () => void
   children: React.ReactNode
   currentStep: string
-  currentResponse?: StepResponse
-  previousResponses?: Record<string, StepResponse>
+  currentResponse?: ModuleResponse
+  previousResponses?: Record<string, ModuleResponse>
   onSuggestionRequest: (context: string) => Promise<void>
   onSuggestionApply: (suggestion: string) => void
   isGeneratingSuggestion: boolean
@@ -168,12 +168,9 @@ export function ModuleLayout({
                         <Card className="p-4">
                           <h4 className="text-sm font-medium mb-2">{key}</h4>
                           <p className="text-sm text-muted-foreground">{response.content}</p>
-                          {response.aiSuggestion && (
-                            <div className="mt-2 pt-2 border-t">
-                              <p className="text-xs font-medium text-muted-foreground">AI Suggestion</p>
-                              <p className="text-sm">{response.aiSuggestion}</p>
-                            </div>
-                          )}
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Last updated: {new Date(response.lastUpdated).toLocaleString()}
+                          </div>
                         </Card>
                       </motion.div>
                     ))}
