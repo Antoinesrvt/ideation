@@ -104,8 +104,47 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     }
   }, [module?.id, localResponses, unsavedChanges, saveModuleResponse, toast])
 
-  // Handle step changes
-  const setCurrentStep = useCallback(async (stepId: string) => {
+  // Handle step completion
+  const markStepAsCompleted = useCallback(async (stepId: string) => {
+    if (!module?.id || !config.steps) return
+
+    // Prepare new state
+    const newCompletedStepIds = Array.from(new Set([...completedStepIds, stepId]))
+    const isModuleCompleted = newCompletedStepIds.length === config.steps.length
+
+    setIsSyncing(true)
+
+    try {
+      // First, sync current step if there are unsaved changes
+      if (unsavedChanges[stepId]) {
+        await syncStepWithBackend(stepId)
+      }
+
+      // Then update module state
+      await updateModule(module.id, {
+        completed: isModuleCompleted,
+        completed_step_ids: newCompletedStepIds
+      })
+
+      // Update local state
+      setCompletedStepIds(newCompletedStepIds)
+
+      return isModuleCompleted
+    } catch (err) {
+      console.error('Error completing step:', err)
+      toast({
+        title: "Error",
+        description: "Failed to complete step. Please try again.",
+        variant: "destructive"
+      })
+      throw err
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [module?.id, config.steps, completedStepIds, unsavedChanges, syncStepWithBackend, updateModule, toast])
+
+  // Handle navigation between steps
+  const navigateToStep = useCallback(async (stepId: string) => {
     if (!module?.id || stepId === currentStepId) return
 
     setIsSyncing(true)
@@ -136,55 +175,46 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     }
   }, [module?.id, currentStepId, unsavedChanges, syncStepWithBackend, updateModule, toast])
 
-  // Handle step completion
-  const completeStep = useCallback(async (stepId: string) => {
+  // Handle module completion and transition
+  const completeModule = useCallback(async () => {
     if (!module?.id || !config.steps) return
 
-    const currentIndex = config.steps.findIndex(step => step.id === stepId)
-    const nextStep = currentIndex < config.steps.length - 1 ? config.steps[currentIndex + 1] : null
-    const nextStepId = nextStep?.id || currentStepId
-
-    // Prepare new state
-    const newCompletedStepIds = Array.from(new Set([...completedStepIds, stepId]))
-    const isModuleCompleted = newCompletedStepIds.length === config.steps.length
-
-    setIsSyncing(true)
-
     try {
-      // First, sync current step if there are unsaved changes
-      if (unsavedChanges[stepId]) {
-        await syncStepWithBackend(stepId)
+      // Ensure all steps are completed
+      const allStepsCompleted = config.steps.every(step => 
+        completedStepIds.includes(step.id)
+      )
+
+      if (!allStepsCompleted) {
+        toast({
+          title: "Incomplete Steps",
+          description: "Please complete all steps before finishing the module.",
+          variant: "destructive"
+        })
+        return false
       }
 
-      // Then update module state
+      // Update module state
       await updateModule(module.id, {
-        completed: isModuleCompleted,
-        current_step_id: nextStepId,
-        completed_step_ids: newCompletedStepIds
+        completed: true
       })
 
-      // Update local state
-      setCompletedStepIds(newCompletedStepIds)
-      if (nextStepId !== currentStepId) {
-        setCurrentStepId(nextStepId)
-      }
-
-      // Trigger completion callback if module is complete
-      if (isModuleCompleted && options.onComplete) {
+      // Trigger completion callback
+      if (options.onComplete) {
         options.onComplete()
       }
+
+      return true
     } catch (err) {
-      console.error('Error completing step:', err)
+      console.error('Error completing module:', err)
       toast({
         title: "Error",
-        description: "Failed to complete step. Please try again.",
+        description: "Failed to complete module. Please try again.",
         variant: "destructive"
       })
       throw err
-    } finally {
-      setIsSyncing(false)
     }
-  }, [module?.id, config.steps, currentStepId, completedStepIds, unsavedChanges, syncStepWithBackend, updateModule, options, toast])
+  }, [module?.id, config.steps, completedStepIds, updateModule, options, toast])
 
   // AI suggestion generation
   const generateAISuggestion = useCallback(async (stepId: string, context: string) => {
@@ -220,8 +250,9 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     isInitializing,
     isGeneratingSuggestion,
     saveResponse,
-    completeStep,
-    setCurrentStep,
+    markStepAsCompleted,
+    navigateToStep,
+    completeModule,
     generateAISuggestion,
     quickActionGroups: getQuickActionsForModule(moduleType) ? [getQuickActionsForModule(moduleType)] : []
   }

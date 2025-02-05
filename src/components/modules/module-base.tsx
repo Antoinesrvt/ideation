@@ -38,8 +38,9 @@ const ModuleBase = memo(function ModuleBase({
     currentStep,
     progress,
     saveResponse,
-    completeStep,
-    setCurrentStep,
+    markStepAsCompleted,
+    navigateToStep,
+    completeModule,
     generateAISuggestion,
     isGeneratingSuggestion,
     isInitializing,
@@ -73,22 +74,37 @@ const ModuleBase = memo(function ModuleBase({
   useEffect(() => {
     if (module && config.steps && (!currentStep || !config.steps.find(s => s.id === currentStep))) {
       const firstStep = config.steps[0]
-      setCurrentStep(firstStep.id)
+      navigateToStep(firstStep.id)
     }
-  }, [module, config.steps, currentStep, setCurrentStep])
+  }, [module, config.steps, currentStep, navigateToStep])
 
   const handleNext = async () => {
     if (!currentStep || !config.steps) return
 
-    // Save current step as completed
-    await completeStep(currentStep)
-
     const currentIndex = config.steps.findIndex(step => step.id === currentStep)
-    if (currentIndex < config.steps.length - 1) {
-      const nextStep = config.steps[currentIndex + 1]
-      await setCurrentStep(nextStep.id)
-    } else {
-      onComplete?.()
+    const isLastStep = currentIndex === config.steps.length - 1
+
+    try {
+      // First mark the current step as completed
+      const isModuleCompleted = await markStepAsCompleted(currentStep)
+
+      if (isLastStep) {
+        // If it's the last step and all steps are completed, complete the module
+        if (isModuleCompleted) {
+          await completeModule()
+        }
+      } else {
+        // Always move to the next step in sequence
+        const nextStep = config.steps[currentIndex + 1]
+        await navigateToStep(nextStep.id)
+      }
+    } catch (error) {
+      console.error('Error handling next step:', error)
+      toast({
+        title: "Error",
+        description: "Failed to proceed to next step. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -96,11 +112,23 @@ const ModuleBase = memo(function ModuleBase({
     if (!currentStep || !config.steps) return
 
     const currentIndex = config.steps.findIndex(step => step.id === currentStep)
-    if (currentIndex > 0) {
-      const prevStep = config.steps[currentIndex - 1]
-      await setCurrentStep(prevStep.id)
-    } else {
-      onBack?.()
+    
+    try {
+      if (currentIndex > 0) {
+        // Move to the previous step in sequence
+        const prevStep = config.steps[currentIndex - 1]
+        await navigateToStep(prevStep.id)
+      } else {
+        // If we're at the first step, go back to the previous module
+        onBack?.()
+      }
+    } catch (error) {
+      console.error('Error handling previous step:', error)
+      toast({
+        title: "Error",
+        description: "Failed to go to previous step. Please try again.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -120,6 +148,7 @@ const ModuleBase = memo(function ModuleBase({
     const stepProgress = `Step ${currentIndex + 1} of ${steps.length}`
     const firstModuleId = MODULES_CONFIG[0]?.id
     const isFirstModule = moduleType === firstModuleId
+    const isStepCompleted = module?.completed_step_ids?.includes(currentStepId) || false
 
     return (
       <div className="space-y-6">
@@ -142,6 +171,7 @@ const ModuleBase = memo(function ModuleBase({
           showPrevious={!(isFirstStep && isFirstModule)}
           nextButtonText={isLastStep ? "Finish Module" : "Next"}
           previousButtonText={isFirstStep && !isFirstModule ? "Previous Module" : "Previous"}
+          isCompleted={isStepCompleted}
         />
         {mode === "expert" && step.expert_tips && (
           <ExpertTips 

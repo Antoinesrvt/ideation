@@ -73,14 +73,14 @@ export function IdeationLayout({
           </div>
         </div>
 
-        {mode === "guided" && (
+        {/* {mode === "guided" && (
           <Card className="p-3 bg-primary/5 border-primary/10">
             <p className="text-xs text-muted-foreground leading-relaxed">
               Complete each step to build your startup plan. We'll guide you
               through the process.
             </p>
           </Card>
-        )}
+        )} */}
 
         <ModuleNavigation
           steps={steps}
