@@ -235,6 +235,49 @@ export default function IdeationPage() {
     }
   }, [project, updateProject, ensureModule, toast])
 
+  // Memoize handlers
+  const handleBack = useCallback(async () => {
+    if (currentStep === 'selection') return
+
+    try {
+      const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
+      if (currentIndex > 0) {
+        const prevModule = Object.keys(MODULE_STEP_ICONS)[currentIndex - 1] as ModuleType
+        await handleModuleSelect(prevModule)
+      } else {
+        setCurrentStep("selection")
+      }
+    } catch (err) {
+      console.error('Error navigating back:', err)
+      toast({
+        title: "Error",
+        description: "Failed to navigate back. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }, [currentStep, handleModuleSelect, toast])
+
+  const handleComplete = useCallback(async () => {
+    if (currentStep === 'selection') return
+
+    try {
+      const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
+      if (currentIndex < Object.keys(MODULE_STEP_ICONS).length - 1) {
+        const nextModule = Object.keys(MODULE_STEP_ICONS)[currentIndex + 1] as ModuleType
+        await handleModuleSelect(nextModule)
+      } else {
+        router.push('/dashboard/projects')
+      }
+    } catch (err) {
+      console.error('Error completing module:', err)
+      toast({
+        title: "Error",
+        description: "Failed to complete module. Please try again.",
+        variant: "destructive"
+      })
+    }
+  }, [currentStep, handleModuleSelect, router, toast])
+
   // Memoize module data calculations
   const { currentModules, overallProgress, moduleRecaps } = useMemo(() => {
     const modules = (project as ProjectRow & { modules: ModuleRow[] })?.modules || []
@@ -257,29 +300,6 @@ export default function IdeationPage() {
 
     return { currentModules, overallProgress, moduleRecaps }
   }, [(project as ProjectRow & { modules: ModuleRow[] })?.modules])
-
-  // Memoize handlers
-  const handleBack = useCallback(() => {
-    if (currentStep === 'selection') return
-
-    const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
-    if (currentIndex > 0) {
-      handleModuleSelect(Object.keys(MODULE_STEP_ICONS)[currentIndex - 1] as ModuleType)
-    } else {
-      setCurrentStep("selection")
-    }
-  }, [currentStep, handleModuleSelect])
-
-  const handleComplete = useCallback(() => {
-    if (currentStep === 'selection') return
-
-    const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
-    if (currentIndex < Object.keys(MODULE_STEP_ICONS).length - 1) {
-      handleModuleSelect(Object.keys(MODULE_STEP_ICONS)[currentIndex + 1] as ModuleType)
-    } else {
-      router.push('/dashboard/projects')
-    }
-  }, [currentStep, handleModuleSelect, router])
 
   // Handle loading state - return null to prevent layout shift
   if (loading) {

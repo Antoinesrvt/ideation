@@ -2,15 +2,19 @@ import { Database } from '@/types/database'
 import { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { ModuleType } from '@/types/project'
 import { MODULE_CONFIG } from '@/config/modules'
+import { ModuleResponse, prepareModuleResponse } from '@/types/module'
 
 export type Tables = Database['public']['Tables']
 export type ProjectRow = Tables['projects']['Row']
 export type ModuleRow = Tables['modules']['Row']
+export type ModuleResponseRow = Tables['module_responses']['Row']
 export type StepRow = Tables['steps']['Row']
 export type AIInteractionRow = Tables['ai_interactions']['Row']
 
 export type ProjectWithModules = ProjectRow & {
-  modules: ModuleRow[]
+  modules: (ModuleRow & {
+    responses?: ModuleResponseRow[]
+  })[]
 }
 
 export class ProjectService {
@@ -47,7 +51,13 @@ export class ProjectService {
 
     const { data, error } = await this.supabase
       .from('projects')
-      .select('*, modules(*)')
+      .select(`
+        *,
+        modules(
+          *,
+          responses:module_responses(*)
+        )
+      `)
       .eq('id', id)
       .single()
 
@@ -74,7 +84,6 @@ export class ProjectService {
       timestamp: new Date().toISOString()
     })
 
-    // Ensure modules is an array even if no modules exist
     return {
       ...data,
       modules: data.modules || []
@@ -142,7 +151,10 @@ export class ProjectService {
       .from('modules')
       .update(data)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        responses:module_responses(*)
+      `)
       .single()
 
     if (error) this.handleError(error)
@@ -194,6 +206,64 @@ export class ProjectService {
     return interaction
   }
 
+  async getModuleResponses(moduleId: string): Promise<ModuleResponseRow[]> {
+    const { data, error } = await this.supabase
+      .from('module_responses')
+      .select('*')
+      .eq('module_id', moduleId)
+
+    if (error) this.handleError(error, `getModuleResponses(${moduleId})`)
+    return data || []
+  }
+
+  async saveModuleResponse(
+    moduleId: string,
+    stepId: string,
+    response: ModuleResponse
+  ): Promise<ModuleResponseRow> {
+    console.log('Saving module response:', {
+      moduleId,
+      stepId,
+      timestamp: new Date().toISOString()
+    })
+
+    const { data, error } = await this.supabase
+      .from('module_responses')
+      .upsert({
+        module_id: moduleId,
+        step_id: stepId,
+        content: response.content,
+        last_updated: response.lastUpdated
+      }, {
+        onConflict: 'module_id,step_id',
+        ignoreDuplicates: false
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error in saveModuleResponse:', {
+        error,
+        moduleId,
+        stepId,
+        timestamp: new Date().toISOString()
+      })
+      this.handleError(error, `saveModuleResponse(${moduleId}, ${stepId})`)
+    }
+
+    if (!data) {
+      throw new Error('Failed to save module response')
+    }
+
+    console.log('Module response saved successfully:', {
+      moduleId,
+      stepId,
+      timestamp: new Date().toISOString()
+    })
+
+    return data
+  }
+
   async ensureModuleExists(projectId: string, moduleType: ModuleType): Promise<ModuleRow> {
     console.log('Ensuring module exists:', {
       projectId,
@@ -204,7 +274,10 @@ export class ProjectService {
     // First try to find existing module
     const { data: existingModules, error: findError } = await this.supabase
       .from('modules')
-      .select('*')
+      .select(`
+        *,
+        responses:module_responses(*)
+      `)
       .eq('project_id', projectId)
       .eq('type', moduleType)
       .limit(1)
@@ -218,23 +291,22 @@ export class ProjectService {
       return existingModules[0]
     }
 
-    // Create new module with minimal metadata structure
-    // Only store essential backend data, frontend config stays in the frontend
+    // Create new module
     const { data: newModule, error: createError } = await this.supabase
       .from('modules')
       .insert({
         project_id: projectId,
         type: moduleType,
-        title: moduleType, // Use the type as title, frontend will display proper title from config
+        title: moduleType,
         completed: false,
-        metadata: {
-          responses: {},
-          currentStepId: null, // Don't set initial step, let frontend handle it
-          completedStepIds: [],
-          lastUpdated: new Date().toISOString()
-        }
+        current_step_id: null,
+        completed_step_ids: [],
+        metadata: {} // Keep metadata for additional flexible data
       })
-      .select()
+      .select(`
+        *,
+        responses:module_responses(*)
+      `)
       .single()
 
     if (createError) {

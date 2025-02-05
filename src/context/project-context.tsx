@@ -2,19 +2,13 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import type { Module, ModuleMetadata, ModuleUpdateData } from '@/types/module'
-import type { Json } from '@/types/supabase'
+import type { Module, ModuleResponse, ModuleUpdateData } from '@/types/module'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { ProjectRow, ProjectService } from '@/lib/services/project-service'
+import { ProjectService, ProjectRow, ModuleResponseRow } from '@/lib/services/project-service'
 import { useSupabase } from './supabase-context'
 import { ModuleType } from '@/config/modules'
-
-
-interface ProjectData {
-  project: ProjectRow
-  modules: Module[]
-}
+import { Json } from '@/types/supabase'
 
 interface ProjectState {
   project: ProjectRow | null
@@ -26,7 +20,8 @@ interface ProjectState {
 interface ProjectContextType extends ProjectState {
   refreshProject: () => Promise<void>
   updateProject: (updates: Partial<ProjectRow>) => Promise<void>
-  updateModule: (moduleId: string, updates: ModuleUpdateData) => Promise<void>
+  updateModule: (moduleId: string, updates: ModuleUpdateData) => Promise<Module>
+  saveModuleResponse: (moduleId: string, stepId: string, response: ModuleResponse) => Promise<ModuleResponseRow>
   createModule: (data: Omit<Module, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
   ensureModule: (moduleType: ModuleType) => Promise<Module>
 }
@@ -50,7 +45,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   // Memoize project service instance
   const projectService = useMemo(() => new ProjectService(supabase), [supabase])
 
-  // Memoize fetch project function
+  // Fetch project with optimistic error handling
   const fetchProject = useCallback(async () => {
     if (!projectId) {
       setState(prev => ({ ...prev, loading: false }))
@@ -65,22 +60,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const rawData = await projectService.getProject(projectId)
-      const projectData: ProjectData = {
-        project: {
-          ...rawData,
-          metadata: rawData.metadata || {}
-        },
-        modules: rawData.modules.map(module => ({
-          ...module,
-          metadata: module.metadata as unknown as ModuleMetadata
-        }))
-      }
-      
+      const data = await projectService.getProject(projectId)
       setState(prev => ({
         ...prev,
-        project: projectData.project,
-        modules: projectData.modules
+        project: data,
+        modules: data.modules
       }))
     } catch (err) {
       console.error('Error in project context:', err)
@@ -110,12 +94,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      toast({
-        title: 'Error Loading Project',
-        description: 'There was an error loading your project.',
-        variant: 'destructive'
-      })
-      
       setState(prev => ({
         ...prev,
         error: err instanceof Error ? err : new Error('An unexpected error occurred')
@@ -125,112 +103,126 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, [projectId, user, router, projectService, toast])
 
-  // Memoize project operations
   const refreshProject = useCallback(async () => {
     await fetchProject()
   }, [fetchProject])
 
+  // Project update
   const updateProject = useCallback(async (updates: Partial<ProjectRow>) => {
     if (!state.project?.id) return
 
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-      await projectService.updateProject(state.project.id, updates)
-      await refreshProject()
+      const updated = await projectService.updateProject(state.project.id, updates)
+      setState(prev => ({
+        ...prev,
+        project: updated
+      }))
     } catch (err) {
       console.error('Error updating project:', err)
-      setState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err : new Error('Failed to update project')
-      }))
+      toast({
+        title: "Error",
+        description: "Failed to update project. Please try again.",
+        variant: "destructive"
+      })
       throw err
-    } finally {
-      setState(prev => ({ ...prev, loading: false }))
     }
-  }, [state.project?.id, projectService, refreshProject])
+  }, [state.project?.id, projectService, toast])
 
+  // Module update
   const updateModule = useCallback(async (moduleId: string, updates: ModuleUpdateData) => {
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-      const moduleData = {
-        ...updates,
-        metadata: updates.metadata ? JSON.parse(JSON.stringify(updates.metadata)) : undefined
-      }
-      await projectService.updateModule(moduleId, moduleData)
-      await refreshProject()
+      const updated = await projectService.updateModule(moduleId, updates)
+      setState(prev => ({
+        ...prev,
+        modules: prev.modules.map(m => m.id === moduleId ? updated : m)
+      }))
+      return updated
     } catch (err) {
       console.error('Error updating module:', err)
-      setState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err : new Error('Failed to update module')
-      }))
+      toast({
+        title: "Error",
+        description: "Failed to update module. Please try again.",
+        variant: "destructive"
+      })
       throw err
-    } finally {
-      setState(prev => ({ ...prev, loading: false }))
     }
-  }, [projectService, refreshProject])
+  }, [projectService, toast])
 
+  // Module creation
   const createModule = useCallback(async (data: Omit<Module, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-      const moduleData = {
-        ...data,
-        metadata: data.metadata ? JSON.parse(JSON.stringify(data.metadata)) : undefined
-      }
-      await projectService.createModule(moduleData)
-      await refreshProject()
-    } catch (err) {
-      console.error('Error creating module:', err)
+      const created = await projectService.createModule(data)
       setState(prev => ({
         ...prev,
-        error: err instanceof Error ? err : new Error('Failed to create module')
+        modules: [...prev.modules, created]
       }))
+    } catch (err) {
+      console.error('Error creating module:', err)
+      toast({
+        title: "Error",
+        description: "Failed to create module. Please try again.",
+        variant: "destructive"
+      })
       throw err
-    } finally {
-      setState(prev => ({ ...prev, loading: false }))
     }
-  }, [projectService, refreshProject])
+  }, [projectService, toast])
 
+  // Module response update
+  const saveModuleResponse = useCallback(async (
+    moduleId: string,
+    stepId: string,
+    response: ModuleResponse
+  ): Promise<ModuleResponseRow> => {
+    try {
+      const savedResponse = await projectService.saveModuleResponse(moduleId, stepId, response)
+      setState(prev => ({
+        ...prev,
+        modules: prev.modules.map(m => 
+          m.id === moduleId ? {
+            ...m,
+            responses: [
+              ...(m.responses || []).filter(r => r.step_id !== stepId),
+              savedResponse
+            ]
+          } : m
+        )
+      }))
+      return savedResponse
+    } catch (err) {
+      console.error('Error saving module response:', err)
+      toast({
+        title: "Error",
+        description: "Failed to save response. Please try again.",
+        variant: "destructive"
+      })
+      throw err
+    }
+  }, [projectService, toast])
+
+  // Ensure module exists
   const ensureModule = useCallback(async (moduleType: ModuleType): Promise<Module> => {
     if (!state.project?.id) throw new Error('No project selected')
 
+    const existingModule = state.modules.find(m => m.type === moduleType)
+    if (existingModule) return existingModule
+
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-      
-      // First check if module already exists in state
-      const existingModule = state.modules.find(m => m.type === moduleType)
-      if (existingModule) {
-        return existingModule
-      }
-
-      // Create or get module from database
-      const rawModule = await projectService.ensureModuleExists(state.project.id, moduleType)
-      const module: Module = {
-        ...rawModule,
-        metadata: rawModule.metadata as unknown as ModuleMetadata
-      }
-
-      // Update local state immediately
+      const module = await projectService.ensureModuleExists(state.project.id, moduleType)
       setState(prev => ({
         ...prev,
         modules: [...prev.modules, module]
       }))
-
-      // Refresh project in background
-      refreshProject().catch(console.error)
-
       return module
     } catch (err) {
       console.error('Error ensuring module exists:', err)
-      const error = err instanceof Error ? err : new Error('Failed to ensure module exists')
-      setState(prev => ({
-        ...prev,
-        error,
-        loading: false
-      }))
-      throw error
+      toast({
+        title: "Error",
+        description: "Failed to create module. Please try again.",
+        variant: "destructive"
+      })
+      throw err
     }
-  }, [state.project?.id, state.modules, projectService, refreshProject])
+  }, [state.project?.id, state.modules, projectService, toast])
 
   useEffect(() => {
     if (!authLoading) {
@@ -238,15 +230,15 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchProject, authLoading])
 
-  // Memoize context value
   const value = useMemo(() => ({
     ...state,
     refreshProject,
     updateProject,
     updateModule,
     createModule,
-    ensureModule
-  }), [state, refreshProject, updateProject, updateModule, createModule, ensureModule])
+    ensureModule,
+    saveModuleResponse
+  }), [state, refreshProject, updateProject, updateModule, createModule, ensureModule, saveModuleResponse])
 
   return (
     <ProjectContext.Provider value={value}>

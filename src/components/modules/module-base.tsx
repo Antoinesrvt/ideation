@@ -13,7 +13,7 @@ import { ModuleErrorBoundary } from "./module-error-boundary"
 import { useProject } from "@/context/project-context"
 import { useToast } from "@/hooks/use-toast"
 import { useAI } from "@/context/ai-context"
-import { ModuleMetadata, ModuleResponse } from "@/types/module"
+import { ModuleResponse } from "@/types/module"
 import { MODULE_CONFIG } from "@/config/modules"
 import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 
@@ -58,19 +58,17 @@ const ModuleBase = memo(function ModuleBase({
 
   const { toast } = useToast()
   const [previousContent, setPreviousContent] = useState<{
-    metadata: ModuleMetadata | undefined
     stepId: string | undefined
   } | null>(null)
 
   // Store previous content when transitioning
   useEffect(() => {
-    if (module?.metadata && currentStep) {
+    if (module && currentStep) {
       setPreviousContent({
-        metadata: module.metadata,
         stepId: currentStep
       })
     }
-  }, [module?.metadata, currentStep])
+  }, [module, currentStep])
 
   const handleNext = async () => {
     if (!currentStep || !config.steps) return
@@ -140,8 +138,8 @@ const ModuleBase = memo(function ModuleBase({
   }
 
   // Use previous content during transitions or while waiting for initialization
-  if (!module?.metadata || !currentStep || !config.steps) {
-    if (previousContent?.metadata && previousContent.stepId) {
+  if (!module || !currentStep || !config.steps) {
+    if (previousContent?.stepId) {
       return (
         <ModuleErrorBoundary>
           <ModuleLayout

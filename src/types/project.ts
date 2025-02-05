@@ -1,6 +1,5 @@
 import type { Database } from './database'
 import type { Json } from './database'
-import type { ModuleMetadata, ModuleResponse } from './module'
 
 // Type helper for JSON metadata that ensures compatibility with Supabase's Json type
 export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[]
@@ -49,26 +48,4 @@ export interface ProjectMetadataContent {
 // Type-safe metadata type for database storage
 export type ProjectMetadata = JsonCompatible<ProjectMetadataContent>
 
-// Extended types with relationships
-export interface Project extends Omit<ProjectRow, 'metadata'> {
-  metadata: ProjectMetadata
-  modules: Module[]
-}
 
-export interface Module extends Omit<ModuleRow, 'metadata'> {
-  metadata: ModuleMetadata
-}
-
-// Type guard for project metadata
-export function isProjectMetadata(metadata: unknown): metadata is ProjectMetadataContent {
-  if (!metadata || typeof metadata !== 'object') return false
-  
-  const m = metadata as ProjectMetadataContent
-  return (
-    (m.path === 'guided' || m.path === 'expert' || m.path === null) &&
-    (typeof m.currentStep === 'string' || m.currentStep === null) &&
-    (typeof m.completedAt === 'string' || m.completedAt === null) &&
-    (m.stage === 'idea' || m.stage === 'mvp' || m.stage === 'growth' || m.stage === null) &&
-    (typeof m.industry === 'string' || m.industry === null)
-  )
-}

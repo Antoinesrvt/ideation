@@ -75,6 +75,58 @@ export interface Database {
           metadata?: Json
         }
       }
+      modules: {
+        Row: {
+          id: string
+          project_id: string
+          type: ModuleType
+          title: string
+          completed: boolean
+          current_step_id: string | null
+          completed_step_ids: string[]
+          last_updated: string
+          created_at: string
+          updated_at: string
+          metadata: Json // For additional flexible data
+        }
+        Insert: {
+          project_id: string
+          type: ModuleType
+          title: string
+          completed?: boolean
+          current_step_id?: string | null
+          completed_step_ids?: string[]
+          metadata?: Json
+        }
+        Update: {
+          type?: ModuleType
+          title?: string
+          completed?: boolean
+          current_step_id?: string | null
+          completed_step_ids?: string[]
+          metadata?: Json
+        }
+      }
+      module_responses: {
+        Row: {
+          id: string
+          module_id: string
+          step_id: string
+          content: string
+          last_updated: string
+          created_at: string
+        }
+        Insert: {
+          module_id: string
+          step_id: string
+          content: string
+          last_updated?: string
+        }
+        Update: {
+          content?: string
+          last_updated?: string
+        }
+      }
       module_step_templates: {
         Row: {
           id: string
@@ -104,31 +156,6 @@ export interface Database {
           expert_tips?: string[]
         }
       }
-      modules: {
-        Row: {
-          id: string
-          project_id: string
-          type: ModuleType
-          title: string
-          completed: boolean
-          created_at: string
-          updated_at: string
-          metadata: Json
-        }
-        Insert: {
-          project_id: string
-          type: ModuleType
-          title: string
-          completed?: boolean
-          metadata?: Json
-        }
-        Update: {
-          type?: ModuleType
-          title?: string
-          completed?: boolean
-          metadata?: Json
-        }
-      }
       steps: {
         Row: {
           id: string
@@ -140,10 +167,6 @@ export interface Database {
           completed: boolean
           created_at: string
           updated_at: string
-          response: {
-            content: string
-            lastUpdated: string | null
-          } | null
           metadata: Json
         }
         Insert: {
@@ -153,7 +176,6 @@ export interface Database {
           content?: string | null
           order_index: number
           completed?: boolean
-          response?: Json | null
           metadata?: Json
         }
         Update: {
@@ -161,7 +183,6 @@ export interface Database {
           content?: string | null
           order_index?: number
           completed?: boolean
-          response?: Json | null
           metadata?: Json
         }
       }

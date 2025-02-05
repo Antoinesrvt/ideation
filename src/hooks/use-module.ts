@@ -1,9 +1,10 @@
 import { useCallback, useState, useEffect, useMemo } from 'react'
 import { useProject } from '@/context/project-context'
 import { ModuleType, MODULE_CONFIG } from '@/config/modules'
-import { Module, ModuleMetadata, ModuleResponse } from '@/types/module'
+import { Module, ModuleResponse } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
 import { useAI } from '@/context/ai-context'
+import { ModuleResponseRow } from '@/lib/services/project-service'
 
 interface UseModuleOptions {
   onComplete?: () => void
@@ -11,132 +12,191 @@ interface UseModuleOptions {
 }
 
 export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}) {
-  const { modules, updateModule } = useProject()
+  const { modules, updateModule, saveModuleResponse } = useProject()
   const { getQuickActionsForModule, generateSuggestion } = useAI()
   const { toast } = useToast()
+  
+  // Loading states
+  const [isInitializing, setIsInitializing] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false)
-  const [isInitializing, setIsInitializing] = useState(false)
+  
+  // Local state management
+  const [localResponses, setLocalResponses] = useState<Record<string, ModuleResponse>>({})
+  const [unsavedChanges, setUnsavedChanges] = useState<Record<string, boolean>>({})
+  const [currentStepId, setCurrentStepId] = useState<string>(() => {
+    const firstStepId = MODULE_CONFIG[moduleType].steps[0]?.id
+    if (!firstStepId) throw new Error('Module must have at least one step')
+    return firstStepId
+  })
+  const [completedStepIds, setCompletedStepIds] = useState<string[]>([])
 
   // Memoize module and config
   const module = useMemo(() => modules.find(m => m.type === moduleType), [modules, moduleType])
   const config = useMemo(() => MODULE_CONFIG[moduleType], [moduleType])
 
-  // Get current metadata safely
-  const metadata = useMemo((): ModuleMetadata | null => {
-    if (!module?.metadata) return null
-    return module.metadata as ModuleMetadata
-  }, [module?.metadata])
-
-  // Initialize module if needed
+  // Initialize local state from module data
   useEffect(() => {
-    if (module && metadata && !metadata.currentStepId && config.steps.length > 0) {
-      // New module, initialize with first step
-      updateModuleState({
-        currentStepId: config.steps[0].id,
-        completedStepIds: []
-      }).catch(error => {
-        console.error('Failed to initialize module:', error)
-        options.onError?.(error instanceof Error ? error : new Error('Failed to initialize module'))
-      })
+    if (module) {
+      // Convert module responses to local format
+      const responses = module.responses?.reduce<Record<string, ModuleResponse>>((acc, response) => {
+        acc[response.step_id] = {
+          content: response.content,
+          lastUpdated: response.last_updated
+        }
+        return acc
+      }, {}) || {}
+
+      setLocalResponses(responses)
+      setUnsavedChanges({})
+      if (module.current_step_id) {
+        setCurrentStepId(module.current_step_id)
+      }
+      setCompletedStepIds(module.completed_step_ids || [])
+      setIsInitializing(false)
     }
-  }, [module, metadata, config.steps])
+  }, [module])
 
-  // Memoize derived state
-  const currentStep = useMemo(() => metadata?.currentStepId || (config.steps[0]?.id), [metadata?.currentStepId, config.steps])
+  // Calculate progress
   const progress = useMemo(() => {
-    if (!metadata?.completedStepIds || !config.steps) return 0
-    return (metadata.completedStepIds.length / config.steps.length) * 100
-  }, [metadata?.completedStepIds, config.steps])
+    if (!completedStepIds || !config.steps) return 0
+    return (completedStepIds.length / config.steps.length) * 100
+  }, [completedStepIds, config.steps])
 
-  // Memoize update functions
-  const updateModuleState = useCallback(async (updates: {
-    completed?: boolean
-    responses?: Record<string, ModuleResponse>
-    currentStepId?: string
-    completedStepIds?: string[]
-  }) => {
-    if (!module?.id || !metadata) return
+  // Save response - only updates local state
+  const saveResponse = useCallback((stepId: string, content: string) => {
+    const response: ModuleResponse = {
+      content,
+      lastUpdated: new Date().toISOString()
+    }
+
+    setLocalResponses(prev => ({
+      ...prev,
+      [stepId]: response
+    }))
+    setUnsavedChanges(prev => ({
+      ...prev,
+      [stepId]: true
+    }))
+  }, [])
+
+  // Sync with backend - called when changing steps or completing module
+  const syncStepWithBackend = useCallback(async (stepId: string) => {
+    if (!module?.id || !unsavedChanges[stepId]) return
+
+    const response = localResponses[stepId]
+    if (!response) return
 
     try {
-      const updatedMetadata: ModuleMetadata = {
-        ...metadata,
-        responses: {
-          ...metadata.responses,
-          ...(updates.responses || {})
-        },
-        currentStepId: updates.currentStepId ?? metadata.currentStepId,
-        completedStepIds: updates.completedStepIds ?? metadata.completedStepIds,
-        lastUpdated: new Date().toISOString()
+      await saveModuleResponse(module.id, stepId, response)
+      setUnsavedChanges(prev => ({
+        ...prev,
+        [stepId]: false
+      }))
+    } catch (err) {
+      console.error('Error saving response:', err)
+      toast({
+        title: "Error",
+        description: "Failed to save your response. Please try again.",
+        variant: "destructive"
+      })
+      throw err
+    }
+  }, [module?.id, localResponses, unsavedChanges, saveModuleResponse, toast])
+
+  // Handle step changes
+  const setCurrentStep = useCallback(async (stepId: string) => {
+    if (!module?.id || stepId === currentStepId) return
+
+    setIsSyncing(true)
+
+    try {
+      // First, sync current step if there are unsaved changes
+      if (unsavedChanges[currentStepId]) {
+        await syncStepWithBackend(currentStepId)
       }
 
+      // Then update current step
       await updateModule(module.id, {
-        completed: updates.completed ?? module.completed,
-        metadata: updatedMetadata
+        current_step_id: stepId
+      })
+      
+      // Update local state
+      setCurrentStepId(stepId)
+    } catch (err) {
+      console.error('Error changing step:', err)
+      toast({
+        title: "Error",
+        description: "Failed to change step. Please try again.",
+        variant: "destructive"
+      })
+      throw err
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [module?.id, currentStepId, unsavedChanges, syncStepWithBackend, updateModule, toast])
+
+  // Handle step completion
+  const completeStep = useCallback(async (stepId: string) => {
+    if (!module?.id || !config.steps) return
+
+    const currentIndex = config.steps.findIndex(step => step.id === stepId)
+    const nextStep = currentIndex < config.steps.length - 1 ? config.steps[currentIndex + 1] : null
+    const nextStepId = nextStep?.id || currentStepId
+
+    // Prepare new state
+    const newCompletedStepIds = Array.from(new Set([...completedStepIds, stepId]))
+    const isModuleCompleted = newCompletedStepIds.length === config.steps.length
+
+    setIsSyncing(true)
+
+    try {
+      // First, sync current step if there are unsaved changes
+      if (unsavedChanges[stepId]) {
+        await syncStepWithBackend(stepId)
+      }
+
+      // Then update module state
+      await updateModule(module.id, {
+        completed: isModuleCompleted,
+        current_step_id: nextStepId,
+        completed_step_ids: newCompletedStepIds
       })
 
-      if (updates.completed && options.onComplete) {
+      // Update local state
+      setCompletedStepIds(newCompletedStepIds)
+      if (nextStepId !== currentStepId) {
+        setCurrentStepId(nextStepId)
+      }
+
+      // Trigger completion callback if module is complete
+      if (isModuleCompleted && options.onComplete) {
         options.onComplete()
       }
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to update module')
+      console.error('Error completing step:', err)
       toast({
         title: "Error",
-        description: error.message,
+        description: "Failed to complete step. Please try again.",
         variant: "destructive"
       })
-      if (options.onError) {
-        options.onError(error)
-      }
+      throw err
+    } finally {
+      setIsSyncing(false)
     }
-  }, [module, metadata, updateModule, options, toast])
+  }, [module?.id, config.steps, currentStepId, completedStepIds, unsavedChanges, syncStepWithBackend, updateModule, options, toast])
 
-  const saveResponse = useCallback(async (stepId: string, content: string) => {
-    await updateModuleState({
-      responses: {
-        [stepId]: {
-          content,
-          lastUpdated: new Date().toISOString()
-        }
-      }
-    })
-  }, [updateModuleState])
-
-  const completeStep = useCallback(async (stepId: string) => {
-    if (!metadata || !config.steps) return
-
-    const completedStepIds = [...metadata.completedStepIds, stepId]
-    const allCompleted = completedStepIds.length === config.steps.length
-    const nextIncompleteStep = config.steps.find(step => !completedStepIds.includes(step.id))
-
-    await updateModuleState({
-      completed: allCompleted,
-      completedStepIds,
-      currentStepId: allCompleted ? undefined : nextIncompleteStep?.id
-    })
-  }, [metadata, config.steps, updateModuleState])
-
-  const setCurrentStep = useCallback(async (stepId: string) => {
-    await updateModuleState({
-      currentStepId: stepId
-    })
-  }, [updateModuleState])
-
+  // AI suggestion generation
   const generateAISuggestion = useCallback(async (stepId: string, context: string) => {
-    if (!metadata || isGeneratingSuggestion) return
+    if (!module?.id || isGeneratingSuggestion) return
 
     try {
       setIsGeneratingSuggestion(true)
       const suggestion = await generateSuggestion(context)
 
       if (suggestion) {
-        await updateModuleState({
-          responses: {
-            [stepId]: {
-              content: suggestion,
-              lastUpdated: new Date().toISOString()
-            }
-          }
-        })
+        // Only update local state, don't sync with backend
+        saveResponse(stepId, suggestion)
       }
     } catch (err) {
       toast({
@@ -144,42 +204,25 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
         description: "Failed to generate AI suggestion",
         variant: "destructive"
       })
+      throw err
     } finally {
       setIsGeneratingSuggestion(false)
     }
-  }, [metadata, generateSuggestion, updateModuleState, toast, isGeneratingSuggestion])
+  }, [module?.id, isGeneratingSuggestion, generateSuggestion, saveResponse, toast])
 
-  // Memoize return value
-  return useMemo(() => ({
+  return {
     module,
     config,
-    updateModuleState,
+    responses: localResponses,
+    currentStep: currentStepId,
+    progress,
+    isLoading: isSyncing,
+    isInitializing,
+    isGeneratingSuggestion,
     saveResponse,
     completeStep,
     setCurrentStep,
     generateAISuggestion,
-    isGeneratingSuggestion,
-    isInitializing,
-    responses: metadata?.responses || {},
-    currentStep,
-    progress,
-    completed: module?.completed || false,
-    quickActions: getQuickActionsForModule(moduleType)?.actions || [],
     quickActionGroups: getQuickActionsForModule(moduleType) ? [getQuickActionsForModule(moduleType)] : []
-  }), [
-    module,
-    config,
-    updateModuleState,
-    saveResponse,
-    completeStep,
-    setCurrentStep,
-    generateAISuggestion,
-    isGeneratingSuggestion,
-    isInitializing,
-    metadata?.responses,
-    currentStep,
-    progress,
-    moduleType,
-    getQuickActionsForModule
-  ])
+  }
 } 

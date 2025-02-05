@@ -27,6 +27,8 @@ interface ModuleLayoutProps {
   onSuggestionApply: (suggestion: string) => void
   isGeneratingSuggestion: boolean
   quickActionGroups?: QuickActionGroup[]
+  isLoading?: boolean
+  error?: Error | null
 }
 
 export function ModuleLayout({ 
@@ -41,13 +43,27 @@ export function ModuleLayout({
   onSuggestionRequest,
   onSuggestionApply,
   isGeneratingSuggestion,
-  quickActionGroups = []
+  quickActionGroups = [],
+  isLoading = false,
+  error = null
 }: ModuleLayoutProps) {
   const [activeTab, setActiveTab] = useState<"content" | "ai" | "history">("content")
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false)
 
   const handleQuickActionSelect = (action: { content: string }) => {
     onSuggestionApply(action.content)
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6">
+        <div className="text-center space-y-4">
+          <h3 className="text-lg font-semibold text-destructive">Error</h3>
+          <p className="text-sm text-muted-foreground">{error.message}</p>
+          <Button variant="outline" onClick={onBack}>Go Back</Button>
+        </div>
+      </Card>
+    )
   }
 
   return (
@@ -111,6 +127,7 @@ export function ModuleLayout({
           size="icon"
           onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
           className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 rounded-full bg-background shadow-md border h-6 w-6"
+          disabled={isLoading}
         >
           <ChevronRight className={cn(
             "h-4 w-4 transition-transform",
@@ -131,6 +148,7 @@ export function ModuleLayout({
               <TabsTrigger 
                 value="ai" 
                 className="flex-1 data-[state=active]:bg-background"
+                disabled={isLoading}
               >
                 <Lightbulb className="h-4 w-4 mr-2" />
                 AI Assistant
@@ -138,6 +156,7 @@ export function ModuleLayout({
               <TabsTrigger 
                 value="history" 
                 className="flex-1 data-[state=active]:bg-background"
+                disabled={isLoading}
               >
                 <History className="h-4 w-4 mr-2" />
                 History
@@ -150,6 +169,7 @@ export function ModuleLayout({
                 onSuggestionRequest={onSuggestionRequest}
                 onSuggestionApply={onSuggestionApply}
                 isGenerating={isGeneratingSuggestion}
+                isDisabled={isLoading}
               />
             </TabsContent>
 

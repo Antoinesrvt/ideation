@@ -13,18 +13,20 @@ interface AIAssistantProps {
   onSuggestionRequest: (context: string) => Promise<void>
   onSuggestionApply: (suggestion: string) => void
   isGenerating: boolean
+  isDisabled?: boolean
 }
 
 export function AIAssistant({
   currentResponse,
   onSuggestionRequest,
   onSuggestionApply,
-  isGenerating
+  isGenerating,
+  isDisabled = false
 }: AIAssistantProps) {
   const [prompt, setPrompt] = useState("")
 
   const handleSend = async () => {
-    if (!prompt.trim() || isGenerating) return
+    if (!prompt.trim() || isGenerating || isDisabled) return
     await onSuggestionRequest(prompt)
     setPrompt("")
   }
@@ -57,6 +59,7 @@ export function AIAssistant({
                   variant="ghost"
                   size="sm"
                   onClick={() => onSuggestionApply(currentResponse.aiSuggestion!)}
+                  disabled={isDisabled}
                 >
                   Apply
                 </Button>
@@ -79,11 +82,12 @@ export function AIAssistant({
               handleSend()
             }
           }}
+          disabled={isDisabled || isGenerating}
         />
         <Button
           size="icon"
           onClick={handleSend}
-          disabled={isGenerating || !prompt.trim()}
+          disabled={isGenerating || !prompt.trim() || isDisabled}
         >
           <Send className="h-4 w-4" />
         </Button>
