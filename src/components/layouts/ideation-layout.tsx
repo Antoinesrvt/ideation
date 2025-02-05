@@ -10,13 +10,21 @@ import {
 } from "@/components/modules/module-navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
+import { ModuleType } from "@/types/project"
+
+interface ModuleRecap {
+  id: string
+  title: string
+  completed: boolean
+  summary?: string
+}
 
 interface IdeationLayoutProps {
   steps: ModuleStep[]
-  currentStepId: string
-  onStepSelect: (stepId: string) => void
+  currentStepId: ModuleType
+  onStepSelect: (stepId: ModuleType) => void
   progress: number
-  moduleRecaps: any[] // We'll type this properly
+  moduleRecaps: ModuleRecap[]
   children: React.ReactNode
 }
 

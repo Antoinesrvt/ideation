@@ -1,5 +1,11 @@
 import { Database } from '@/types/database'
 import { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
+import { 
+  ModuleType, 
+  MODULE_CONFIG, 
+  ModuleStepTemplate,
+  BaseModuleStep
+} from '@/types/project'
 
 export type Tables = Database['public']['Tables']
 export type ProjectRow = Tables['projects']['Row']
@@ -14,31 +20,69 @@ export type ProjectWithModules = ProjectRow & {
 export class ProjectService {
   constructor(private supabase: SupabaseClient<Database>) {}
 
-  private handleError(error: PostgrestError) {
-    console.error('Database error:', error)
+  private handleError(error: PostgrestError, context: string = '') {
+    console.error('Database error:', {
+      error,
+      context,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      timestamp: new Date().toISOString()
+    })
     throw new Error(`Database error: ${error.message}`)
   }
 
   async getProjects() {
     const { data, error } = await this.supabase
       .from('projects')
-      .select('*, modules(*)')
+      .select('*')
       .order('created_at', { ascending: false })
 
-    if (error) this.handleError(error)
-    return (data ?? []) as ProjectWithModules[]
+    if (error) this.handleError(error, 'getProjects')
+    return (data ?? []) as ProjectRow[]
   }
 
   async getProject(id: string) {
+    console.log('Fetching project from database:', {
+      id,
+      timestamp: new Date().toISOString()
+    })
+
     const { data, error } = await this.supabase
       .from('projects')
       .select('*, modules(*)')
       .eq('id', id)
       .single()
 
-    if (error) this.handleError(error)
-    if (!data) throw new Error(`Project not found: ${id}`)
-    return data as ProjectWithModules
+    if (error) {
+      console.error('Error fetching project:', {
+        id,
+        error,
+        timestamp: new Date().toISOString()
+      })
+      this.handleError(error, `getProject(${id})`)
+    }
+
+    if (!data) {
+      console.error('Project not found:', {
+        id,
+        timestamp: new Date().toISOString()
+      })
+      throw new Error(`Project not found: ${id}`)
+    }
+
+    console.log('Project data retrieved:', {
+      id,
+      hasModules: data.modules ? data.modules.length > 0 : false,
+      timestamp: new Date().toISOString()
+    })
+
+    // Ensure modules is an array even if no modules exist
+    return {
+      ...data,
+      modules: data.modules || []
+    } as ProjectWithModules
   }
 
   async createProject(
@@ -152,5 +196,92 @@ export class ProjectService {
     if (error) this.handleError(error)
     if (!interaction) throw new Error('Failed to log AI interaction')
     return interaction
+  }
+
+  async ensureModuleExists(projectId: string, moduleType: ModuleType): Promise<ModuleRow> {
+    console.log('Ensuring module exists:', {
+      projectId,
+      moduleType,
+      timestamp: new Date().toISOString()
+    })
+
+    // First try to find existing module
+    const { data: existingModules, error: findError } = await this.supabase
+      .from('modules')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('type', moduleType)
+      .limit(1)
+
+    if (findError) {
+      this.handleError(findError, `ensureModuleExists.find(${projectId}, ${moduleType})`)
+    }
+
+    // If module exists, return it
+    if (existingModules && existingModules.length > 0) {
+      return existingModules[0]
+    }
+
+    // Get steps from MODULE_CONFIG
+    const moduleConfig = MODULE_CONFIG[moduleType]
+    const steps = moduleConfig.steps.map((step: ModuleStepTemplate): BaseModuleStep => ({
+      id: step.id,
+      module_type: moduleType,
+      step_id: step.step_id,
+      title: step.title,
+      description: step.description,
+      placeholder: step.placeholder || null,
+      order_index: step.order_index,
+      expert_tips: step.expert_tips,
+      completed: false,
+      lastUpdated: new Date().toISOString()
+    }))
+
+    // Create new module if it doesn't exist
+    const { data: newModule, error: createError } = await this.supabase
+      .from('modules')
+      .insert({
+        project_id: projectId,
+        type: moduleType,
+        title: moduleConfig.title,
+        completed: false,
+        metadata: {
+          description: moduleConfig.description,
+          currentStep: steps[0].step_id,
+          progress: 0,
+          summary: null,
+          steps: steps,
+          responses: {},
+          lastUpdated: new Date().toISOString(),
+          files: []
+        }
+      })
+      .select()
+      .single()
+
+    if (createError) {
+      console.error('Error creating module:', {
+        error: createError,
+        projectId,
+        moduleType,
+        moduleConfig,
+        steps,
+        timestamp: new Date().toISOString()
+      })
+      this.handleError(createError, `ensureModuleExists.create(${projectId}, ${moduleType})`)
+    }
+
+    if (!newModule) {
+      throw new Error('Failed to create module')
+    }
+
+    console.log('Created new module:', {
+      moduleId: newModule.id,
+      type: moduleType,
+      steps: steps.length,
+      timestamp: new Date().toISOString()
+    })
+
+    return newModule
   }
 } 

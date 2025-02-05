@@ -2,17 +2,18 @@
 
 import { Check, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ModuleType } from "@/types/project"
 
 export type ModuleStep = {
-  id: string
+  id: ModuleType
   title: string
   completed?: boolean
 }
 
 interface ModuleNavigationProps {
   steps: ModuleStep[]
-  currentStepId: string
-  onStepSelect: (stepId: string) => void
+  currentStepId: ModuleType
+  onStepSelect: (stepId: ModuleType) => void
   className?: string
 }
 

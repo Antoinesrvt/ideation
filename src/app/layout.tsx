@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AIProvider } from "@/context/ai-context";
 import { GeistSans } from "geist/font/sans";
 import { Toaster } from '@/components/ui/toaster'
+import { ProjectProvider } from '@/context/project-context'
 
 
 export const metadata: Metadata = {
@@ -34,7 +35,9 @@ export default async function RootLayout({
         >
           <AIProvider>
             <SupabaseProvider initialSession={session?.user ?? null}>
-              {children}
+              <ProjectProvider>
+                {children}
+              </ProjectProvider>
             </SupabaseProvider>
           </AIProvider>
         </ThemeProvider>

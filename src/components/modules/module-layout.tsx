@@ -1,28 +1,31 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, MessageSquare, Lightbulb, History, ChevronRight } from "lucide-react"
+import { ArrowLeft, MessageSquare, Lightbulb, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { AIAssistant } from "@/components/ai/ai-assistant"
+import { AIAssistant } from "./ai-assistant"
+import { StepResponse } from "@/types/project"
 import { QuickActions } from "@/components/ai/quick-actions"
-import { useAI } from "@/context/ai-context"
+import type { QuickActionGroup } from "@/types/ai"
 
 interface ModuleLayoutProps {
   title: string
-  description?: string
+  description: string
   progress: number
   onBack: () => void
   children: React.ReactNode
-  moduleId: string
-  stepId: string
-  currentText?: string
-  previousResponses?: Record<string, string>
-  onSuggestionApply?: (suggestion: string) => void
+  currentStep: string
+  currentResponse?: StepResponse
+  previousResponses?: Record<string, StepResponse>
+  onSuggestionRequest: (context: string) => Promise<void>
+  onSuggestionApply: (suggestion: string) => void
+  isGeneratingSuggestion: boolean
+  quickActionGroups?: QuickActionGroup[]
 }
 
 export function ModuleLayout({ 
@@ -31,15 +34,19 @@ export function ModuleLayout({
   progress, 
   onBack, 
   children,
-  moduleId,
-  stepId,
-  currentText = "",
+  currentStep,
+  currentResponse,
   previousResponses,
-  onSuggestionApply = () => {}
+  onSuggestionRequest,
+  onSuggestionApply,
+  isGeneratingSuggestion,
+  quickActionGroups = []
 }: ModuleLayoutProps) {
-  const [activePanel, setActivePanel] = useState<"content" | "ai" | "history">("content")
-  const { getQuickActionsForModule } = useAI();
+  const [activeTab, setActiveTab] = useState<"content" | "ai" | "history">("content")
 
+  const handleQuickActionSelect = (action: { content: string }) => {
+    onSuggestionApply(action.content)
+  }
 
   return (
     <div className="flex h-[calc(100vh-12rem)] gap-4">
@@ -53,12 +60,12 @@ export function ModuleLayout({
               <p className="text-muted-foreground">{description}</p>
             )}
           </div>
-         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <QuickActions
-              moduleId={moduleId}
-              stepId={stepId}
-              onActionSelect={(action) => onSuggestionApply(action.content)}
-              contextualActions={getQuickActionsForModule(moduleId)}
+              moduleId={currentStep}
+              stepId={currentStep}
+              onActionSelect={handleQuickActionSelect}
+              contextualActions={quickActionGroups}
             />
             <Progress value={progress} className="w-32" />
           </div>
@@ -78,7 +85,7 @@ export function ModuleLayout({
 
       {/* Right Panel */}
       <Card className="w-[400px] flex flex-col">
-        <Tabs defaultValue="ai" className="flex-1">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="flex-1">
           <TabsList className="w-full p-0 bg-muted/50">
             <TabsTrigger 
               value="ai" 
@@ -98,11 +105,10 @@ export function ModuleLayout({
 
           <TabsContent value="ai" className="flex-1 m-0">
             <AIAssistant
-              currentText={currentText}
-              moduleId={moduleId}
-              stepId={stepId}
-              previousResponses={previousResponses}
+              currentResponse={currentResponse}
+              onSuggestionRequest={onSuggestionRequest}
               onSuggestionApply={onSuggestionApply}
+              isGenerating={isGeneratingSuggestion}
             />
           </TabsContent>
 
@@ -110,10 +116,16 @@ export function ModuleLayout({
             <ScrollArea className="h-full p-4">
               <div className="space-y-4">
                 <h3 className="font-semibold">Previous Responses</h3>
-                {previousResponses && Object.entries(previousResponses).map(([key, value]) => (
+                {previousResponses && Object.entries(previousResponses).map(([key, response]) => (
                   <Card key={key} className="p-4">
                     <h4 className="text-sm font-medium mb-2">{key}</h4>
-                    <p className="text-sm text-muted-foreground">{value}</p>
+                    <p className="text-sm text-muted-foreground">{response.content}</p>
+                    {response.aiSuggestion && (
+                      <div className="mt-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">AI Suggestion</p>
+                        <p className="text-sm">{response.aiSuggestion}</p>
+                      </div>
+                    )}
                   </Card>
                 ))}
               </div>

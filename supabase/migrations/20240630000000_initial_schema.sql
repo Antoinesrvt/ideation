@@ -4,13 +4,16 @@ create extension if not exists "pgcrypto";
 
 -- Create custom types
 DO $$ BEGIN
+    DROP TYPE IF EXISTS module_type;
     CREATE TYPE module_type AS ENUM (
-        'business_model',
-        'market_analysis',
-        'financial_projections',
-        'risk_assessment',
-        'implementation_timeline',
-        'pitch_deck'
+        'vision-problem',
+        'market-analysis',
+        'business-model',
+        'go-to-market',
+        'financial-projections',
+        'risk-assessment',
+        'implementation-timeline',
+        'pitch-deck'
     );
 EXCEPTION
     WHEN duplicate_object THEN null;
@@ -66,7 +69,11 @@ create table if not exists public.projects (
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
     is_archived boolean default false,
-    metadata jsonb default '{}'::jsonb
+    metadata jsonb default jsonb_build_object(
+        'path', null,
+        'currentStep', null,
+        'completedAt', null
+    )
 );
 
 -- Create modules table
@@ -75,13 +82,21 @@ create table if not exists public.modules (
     project_id uuid references public.projects(id) on delete cascade not null,
     type module_type not null,
     title text not null,
-    description text,
-    order_index integer not null,
     completed boolean default false,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    metadata jsonb default '{}'::jsonb
+    metadata jsonb default jsonb_build_object(
+        'description', '',
+        'currentStep', null,
+        'progress', 0,
+        'summary', null,
+        'steps', '[]'::jsonb,
+        'responses', '{}'::jsonb,
+        'lastUpdated', timezone('utc'::text, now()),
+        'files', '[]'::jsonb
+    )
 );
+
 
 -- Create steps table
 create table if not exists public.steps (
@@ -96,12 +111,13 @@ create table if not exists public.steps (
     metadata jsonb default '{}'::jsonb
 );
 
+
 -- Create AI interactions table
 create table if not exists public.ai_interactions (
     id uuid default uuid_generate_v4() primary key,
     project_id uuid references public.projects(id) on delete cascade not null,
     module_id uuid references public.modules(id) on delete cascade,
-    step_id uuid references public.steps(id) on delete cascade,
+    step_id text,
     type ai_analysis_type not null,
     prompt text not null,
     response jsonb not null,
@@ -112,7 +128,6 @@ create table if not exists public.ai_interactions (
 alter table public.profiles enable row level security;
 alter table public.projects enable row level security;
 alter table public.modules enable row level security;
-alter table public.steps enable row level security;
 alter table public.ai_interactions enable row level security;
 
 -- Create RLS Policies
@@ -156,28 +171,6 @@ create policy "Users can manage project modules"
         exists (
             select 1 from public.projects
             where projects.id = project_id
-            and projects.owner_id = auth.uid()
-        )
-    );
-
-create policy "Users can view module steps"
-    on public.steps for select
-    using (
-        exists (
-            select 1 from public.modules
-            join public.projects on modules.project_id = projects.id
-            where modules.id = module_id
-            and projects.owner_id = auth.uid()
-        )
-    );
-
-create policy "Users can manage module steps"
-    on public.steps for all
-    using (
-        exists (
-            select 1 from public.modules
-            join public.projects on modules.project_id = projects.id
-            where modules.id = module_id
             and projects.owner_id = auth.uid()
         )
     );
@@ -237,8 +230,4 @@ create trigger handle_updated_at
 
 create trigger handle_updated_at
     before update on public.modules
-    for each row execute procedure public.handle_updated_at();
-
-create trigger handle_updated_at
-    before update on public.steps
     for each row execute procedure public.handle_updated_at(); 

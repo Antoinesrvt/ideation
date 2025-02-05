@@ -19,7 +19,8 @@ interface AIContextType {
   // Methods
   updateModuleContext: (moduleId: string, stepId: string) => void
   addModuleResponse: (moduleId: string, stepId: string, response: string) => void
-  getQuickActionsForModule: (moduleId: string) => QuickActionGroup[]
+  getQuickActionsForModule: (moduleId: string) => QuickActionGroup
+  generateSuggestion: (context: string) => Promise<string | null>
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined)
@@ -75,22 +76,15 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
     // Add examples for other modules
   }
 
-  const getQuickActionsForModule = (moduleId: string): QuickActionGroup[] => {
+  const getQuickActionsForModule = (moduleId: string): QuickActionGroup => {
     const templates = moduleTemplates[moduleId] || []
     const examples = moduleExamples[moduleId] || []
 
-    return [
-      {
-        id: 'templates',
-        label: 'Templates',
-        actions: templates
-      },
-      {
-        id: 'examples',
-        label: 'Examples',
-        actions: examples
-      }
-    ]
+    return {
+      id: 'module-actions',
+      label: 'Available Actions',
+      actions: [...templates, ...examples]
+    }
   }
 
   const value: AIContextType = {
@@ -114,7 +108,11 @@ export function AIProvider({ children }: { children: React.ReactNode }) {
     },
     getQuickActionsForModule,
     availableTemplates: moduleTemplates,
-    availableExamples: moduleExamples
+    availableExamples: moduleExamples,
+    generateSuggestion: async (context: string) => {
+      // TODO: Implement actual AI suggestion generation
+      return "Sample suggestion based on context"
+    }
   }
 
   return (

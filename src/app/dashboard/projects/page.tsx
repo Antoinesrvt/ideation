@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
 import { useSupabase } from '@/context/supabase-context'
-import { ProjectService, ProjectWithModules } from '@/lib/services/project-service'
+import { ProjectService, ProjectWithModules, ProjectRow, ModuleRow } from '@/lib/services/project-service'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
@@ -15,23 +15,22 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
+import { useRouter } from 'next/navigation'
 
 export default function ProjectsPage() {
   const { supabase } = useSupabase()
-  const [projects, setProjects] = useState<ProjectWithModules[]>([])
+  const [projects, setProjects] = useState<(ProjectRow & { modules?: ModuleRow[] })[]>([])
   const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
   const projectService = new ProjectService(supabase)
+  const { toast } = useToast()
 
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  async function loadProjects() {
+  const loadProjects = async () => {
     try {
+      setLoading(true)
       const data = await projectService.getProjects()
       setProjects(data)
     } catch (error) {
+      console.error('Error loading projects:', error)
       toast({
         title: 'Error',
         description: 'Failed to load projects',
@@ -41,6 +40,10 @@ export default function ProjectsPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    loadProjects()
+  }, [])
 
   if (loading) {
     return (
@@ -110,17 +113,21 @@ export default function ProjectsPage() {
 }
 
 interface ProjectCardProps {
-  project: ProjectWithModules
+  project: ProjectRow & { modules?: ModuleRow[] }
   onDeleted?: () => void
 }
 
 function ProjectCard({ project, onDeleted }: ProjectCardProps) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
+  const router = useRouter()
   const [deleting, setDeleting] = useState(false)
   const projectService = new ProjectService(supabase)
-  const completedModules = project.modules.filter((m) => m.completed).length
-  const totalModules = project.modules.length
+  
+  // Initialize modules data to empty array if not present
+  const modules = project.modules || []
+  const completedModules = modules.filter((m: ModuleRow) => m.completed).length
+  const totalModules = modules.length
   const progress = totalModules > 0 ? (completedModules / totalModules) * 100 : 0
 
   async function handleDelete() {
@@ -143,14 +150,29 @@ function ProjectCard({ project, onDeleted }: ProjectCardProps) {
     }
   }
 
+  const handleContinue = () => {
+    router.push(`/ideation?project=${project.id}`)
+  }
+
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 group">
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
-            <h3 className="font-semibold text-xl tracking-tight group-hover:text-primary transition-colors">
-              {project.title}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-xl tracking-tight group-hover:text-primary transition-colors">
+                {project.title}
+              </h3>
+              <span className={`capitalize px-3 py-1 rounded-full text-xs font-medium ${
+                project.stage === 'idea'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                  : project.stage === 'mvp'
+                  ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                  : 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
+              }`}>
+                {project.stage}
+              </span>
+            </div>
             <p className="text-muted-foreground text-sm line-clamp-2">
               {project.description || 'No description'}
             </p>
@@ -177,17 +199,11 @@ function ProjectCard({ project, onDeleted }: ProjectCardProps) {
             <DropdownMenuContent align="end" className="w-[160px]">
               <DropdownMenuItem
                 className="cursor-pointer"
-                onClick={() => window.location.href = `/dashboard/projects/${project.id}`}
+                onClick={handleContinue}
               >
-                View Details
+                Continue Project
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="cursor-pointer"
-                onClick={() => window.location.href = `/dashboard/projects/${project.id}/edit`}
-              >
-                Edit Project
-              </DropdownMenuItem>
-              <DropdownMenuItem 
                 className="cursor-pointer text-destructive focus:text-destructive"
                 onClick={handleDelete}
                 disabled={deleting}
@@ -218,21 +234,14 @@ function ProjectCard({ project, onDeleted }: ProjectCardProps) {
           </div>
         </div>
 
-        <div className="flex justify-between items-center text-sm">
-          <div className="text-muted-foreground">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">
             {completedModules} of {totalModules} modules
           </div>
-          <div className="flex items-center">
-            <span className={`capitalize px-3 py-1 rounded-full text-xs font-medium ${
-              project.stage === 'idea'
-                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                : project.stage === 'mvp'
-                ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                : 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-            }`}>
-              {project.stage}
-            </span>
-          </div>
+          
+          <Button onClick={handleContinue} size="sm">
+            Continue
+          </Button>
         </div>
       </div>
     </Card>

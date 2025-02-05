@@ -19,6 +19,8 @@ export interface ProfileMetadata {
   }
 }
 
+export type ModuleType = 'vision-problem' | 'market-analysis' | 'business-model' | 'go-to-market' | 'financial-projections' | 'risk-assessment' | 'implementation-timeline' | 'pitch-deck'
+
 export interface Database {
   public: {
     Tables: {
@@ -49,7 +51,7 @@ export interface Database {
           title: string
           description: string | null
           industry: string | null
-          stage: 'idea' | 'mvp' | 'growth'
+          stage: 'idea' | 'mvp' | 'growth' | null
           owner_id: string
           created_at: string
           updated_at: string
@@ -60,7 +62,7 @@ export interface Database {
           title: string
           description?: string | null
           industry?: string | null
-          stage?: 'idea' | 'mvp' | 'growth'
+          stage?: 'idea' | 'mvp' | 'growth' | null
           owner_id: string
           metadata?: Json
         }
@@ -68,19 +70,46 @@ export interface Database {
           title?: string
           description?: string | null
           industry?: string | null
-          stage?: 'idea' | 'mvp' | 'growth'
+          stage?: 'idea' | 'mvp' | 'growth' | null
           is_archived?: boolean
           metadata?: Json
+        }
+      }
+      module_step_templates: {
+        Row: {
+          id: string
+          module_type: ModuleType
+          step_id: string
+          title: string
+          description: string
+          placeholder: string | null
+          order_index: number
+          expert_tips: string[]
+          created_at: string
+        }
+        Insert: {
+          module_type: ModuleType
+          step_id: string
+          title: string
+          description: string
+          placeholder?: string | null
+          order_index: number
+          expert_tips?: string[]
+        }
+        Update: {
+          title?: string
+          description?: string
+          placeholder?: string | null
+          order_index?: number
+          expert_tips?: string[]
         }
       }
       modules: {
         Row: {
           id: string
           project_id: string
-          type: 'business_model' | 'market_analysis' | 'financial_projections' | 'risk_assessment' | 'implementation_timeline' | 'pitch_deck'
+          type: ModuleType
           title: string
-          description: string | null
-          order_index: number
           completed: boolean
           created_at: string
           updated_at: string
@@ -88,16 +117,14 @@ export interface Database {
         }
         Insert: {
           project_id: string
-          type: 'business_model' | 'market_analysis' | 'financial_projections' | 'risk_assessment' | 'implementation_timeline' | 'pitch_deck'
+          type: ModuleType
           title: string
-          description?: string | null
-          order_index: number
+          completed?: boolean
           metadata?: Json
         }
         Update: {
+          type?: ModuleType
           title?: string
-          description?: string | null
-          order_index?: number
           completed?: boolean
           metadata?: Json
         }
@@ -106,19 +133,27 @@ export interface Database {
         Row: {
           id: string
           module_id: string
+          template_id: string
           title: string
           content: string | null
           order_index: number
           completed: boolean
           created_at: string
           updated_at: string
+          response: {
+            content: string
+            lastUpdated: string | null
+          } | null
           metadata: Json
         }
         Insert: {
           module_id: string
+          template_id: string
           title: string
           content?: string | null
           order_index: number
+          completed?: boolean
+          response?: Json | null
           metadata?: Json
         }
         Update: {
@@ -126,6 +161,7 @@ export interface Database {
           content?: string | null
           order_index?: number
           completed?: boolean
+          response?: Json | null
           metadata?: Json
         }
       }
@@ -162,7 +198,7 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      module_type: 'business_model' | 'market_analysis' | 'financial_projections' | 'risk_assessment' | 'implementation_timeline' | 'pitch_deck'
+      module_type: ModuleType
       ai_analysis_type: 'content' | 'context' | 'research'
     }
   }

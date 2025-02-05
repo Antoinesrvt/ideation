@@ -10,7 +10,25 @@ export async function middleware(request: NextRequest) {
   })
 
   try {
-    // Initialize Supabase with cookie handling
+    const { pathname } = request.nextUrl
+
+    // Define auth-related routes - matching the @(auth) group structure
+    const isAuthRoute = pathname === '/signin' || 
+                       pathname === '/signup' || 
+                       pathname === '/verify-email' ||
+                       pathname.startsWith('/auth/')
+
+    // Skip auth check for public routes and static assets
+    const isPublicRoute = pathname === '/' || 
+                         pathname.startsWith('/api/public') ||
+                         pathname.startsWith('/_next') ||
+                         pathname.match(/\.(ico|png|jpg|jpeg|gif|svg)$/)
+
+    if (isPublicRoute) {
+      return response
+    }
+
+    // Initialize Supabase client
     const supabase = createServerClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -63,71 +81,43 @@ export async function middleware(request: NextRequest) {
       }
     )
 
-    // Get user data - this is secure as it validates with Supabase server
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    // Get session instead of user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-    if (userError) {
-      throw userError
-    }
-
-    const { pathname } = request.nextUrl
-
-    // Auth routes handling (signin, signup, auth callbacks)
-    const isAuthRoute = pathname.startsWith('/signin') || 
-                       pathname.startsWith('/signup') || 
-                       pathname.startsWith('/auth/') ||
-                       pathname.startsWith('/verify-email')
-
+    // Handle auth routes
     if (isAuthRoute) {
-      if (user) {
-        // If email is not verified, redirect to verification page
-        if (!user.email_confirmed_at) {
-          return NextResponse.redirect(new URL('/verify-email', request.url))
-        }
-        // If user is signed in and verified, redirect to dashboard
+      if (session) {
+        // Redirect authenticated users away from auth pages
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
-      // Allow access to auth routes for non-authenticated users
       return response
     }
 
-    // Protected routes handling
-    const isProtectedRoute = pathname.startsWith('/dashboard')
-    if (isProtectedRoute) {
-      if (!user) {
-        // If user is not signed in and tries to access protected routes
-        return NextResponse.redirect(new URL('/signin', request.url))
-      }
-      
-      // Check if email needs verification
-      if (!user.email_confirmed_at) {
-        return NextResponse.redirect(new URL('/verify-email', request.url))
-      }
-      
-      // User is authenticated and verified, allow access
-      return response
+    // Handle protected routes
+    if (!session) {
+      // Store the original URL to redirect back after login
+      const redirectUrl = new URL('/signin', request.url)
+      redirectUrl.searchParams.set('redirect', request.url)
+      return NextResponse.redirect(redirectUrl)
     }
 
-    // Handle root path redirect for authenticated users
-    if (pathname === '/' && user) {
-      if (!user.email_confirmed_at) {
-        return NextResponse.redirect(new URL('/verify-email', request.url))
-      }
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-
+    // User is authenticated, allow access
     return response
   } catch (error) {
     console.error('Middleware error:', error)
     
-    // On error, clear any invalid session cookies
-    response = NextResponse.redirect(new URL('/signin', request.url))
-    response.cookies.set({
-      name: 'sb-auth-token',
-      value: '',
-      path: '/',
-      maxAge: 0,
-    })
+    // Only redirect to login if not already on an auth route
+    const { pathname } = request.nextUrl
+    const isAuthRoute = pathname === '/signin' || 
+                       pathname === '/signup' || 
+                       pathname === '/verify-email' ||
+                       pathname.startsWith('/auth/')
+    
+    if (!isAuthRoute) {
+      const redirectUrl = new URL('/signin', request.url)
+      redirectUrl.searchParams.set('error', 'session_error')
+      return NextResponse.redirect(redirectUrl)
+    }
     
     return response
   }
@@ -142,6 +132,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 } 

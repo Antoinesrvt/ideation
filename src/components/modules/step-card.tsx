@@ -4,6 +4,7 @@ import { LucideIcon } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { memo } from "react"
 
 interface StepCardProps {
   icon: LucideIcon
@@ -18,7 +19,7 @@ interface StepCardProps {
   showNext?: boolean
 }
 
-export function StepCard({
+export const StepCard = memo(function StepCard({
   icon: Icon,
   title,
   description,
@@ -70,4 +71,13 @@ export function StepCard({
       </CardContent>
     </Card>
   )
-} 
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.title === nextProps.title &&
+    prevProps.description === nextProps.description &&
+    prevProps.placeholder === nextProps.placeholder &&
+    prevProps.value === nextProps.value &&
+    prevProps.showNext === nextProps.showNext &&
+    prevProps.showPrevious === nextProps.showPrevious
+  )
+}) 
