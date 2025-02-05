@@ -36,7 +36,8 @@ const ModuleBase = memo(function ModuleBase({
     config,
     responses,
     currentStep,
-    progress,
+    isStepCompleted,
+    isModuleCompleted,
     saveResponse,
     markStepAsCompleted,
     navigateToStep,
@@ -86,12 +87,13 @@ const ModuleBase = memo(function ModuleBase({
 
     try {
       // First mark the current step as completed
-      const isModuleCompleted = await markStepAsCompleted(currentStep)
+      await markStepAsCompleted(currentStep)
 
       if (isLastStep) {
-        // If it's the last step and all steps are completed, complete the module
-        if (isModuleCompleted) {
-          await completeModule()
+        // If it's the last step, try to complete the module
+        const success = await completeModule()
+        if (success) {
+          onComplete?.()
         }
       } else {
         // Always move to the next step in sequence
@@ -148,7 +150,6 @@ const ModuleBase = memo(function ModuleBase({
     const stepProgress = `Step ${currentIndex + 1} of ${steps.length}`
     const firstModuleId = MODULES_CONFIG[0]?.id
     const isFirstModule = moduleType === firstModuleId
-    const isStepCompleted = module?.completed_step_ids?.includes(currentStepId) || false
 
     return (
       <div className="space-y-6">
@@ -171,7 +172,7 @@ const ModuleBase = memo(function ModuleBase({
           showPrevious={!(isFirstStep && isFirstModule)}
           nextButtonText={isLastStep ? "Finish Module" : "Next"}
           previousButtonText={isFirstStep && !isFirstModule ? "Previous Module" : "Previous"}
-          isCompleted={isStepCompleted}
+          isCompleted={isStepCompleted(step.id)}
         />
         {mode === "expert" && step.expert_tips && (
           <ExpertTips 

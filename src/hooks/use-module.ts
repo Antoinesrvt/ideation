@@ -21,7 +21,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
   const [isSyncing, setIsSyncing] = useState(false)
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false)
   
-  // Local state management
+  // Local state management - only for current view
   const [localResponses, setLocalResponses] = useState<Record<string, ModuleResponse>>({})
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, boolean>>({})
   const [currentStepId, setCurrentStepId] = useState<string>(() => {
@@ -29,7 +29,6 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     if (!firstStepId) throw new Error('Module must have at least one step')
     return firstStepId
   })
-  const [completedStepIds, setCompletedStepIds] = useState<string[]>([])
 
   // Memoize module and config
   const module = useMemo(() => modules.find(m => m.type === moduleType), [modules, moduleType])
@@ -52,16 +51,18 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       if (module.current_step_id) {
         setCurrentStepId(module.current_step_id)
       }
-      setCompletedStepIds(module.completed_step_ids || [])
       setIsInitializing(false)
     }
   }, [module])
 
-  // Calculate progress
-  const progress = useMemo(() => {
-    if (!completedStepIds || !config.steps) return 0
-    return (completedStepIds.length / config.steps.length) * 100
-  }, [completedStepIds, config.steps])
+  // Helper functions for completion status
+  const isStepCompleted = useCallback((stepId: string) => 
+    module?.completed_step_ids?.includes(stepId) || false
+  , [module?.completed_step_ids])
+
+  const isModuleCompleted = useCallback(() => 
+    config.steps.every(step => isStepCompleted(step.id))
+  , [config.steps, isStepCompleted])
 
   // Save response - only updates local state
   const saveResponse = useCallback((stepId: string, content: string) => {
@@ -106,11 +107,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
   // Handle step completion
   const markStepAsCompleted = useCallback(async (stepId: string) => {
-    if (!module?.id || !config.steps) return
-
-    // Prepare new state
-    const newCompletedStepIds = Array.from(new Set([...completedStepIds, stepId]))
-    const isModuleCompleted = newCompletedStepIds.length === config.steps.length
+    if (!module?.id) return false
 
     setIsSyncing(true)
 
@@ -120,16 +117,14 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
         await syncStepWithBackend(stepId)
       }
 
-      // Then update module state
+      // Update completed steps in backend
+      const newCompletedStepIds = Array.from(new Set([...(module.completed_step_ids || []), stepId]))
       await updateModule(module.id, {
-        completed: isModuleCompleted,
         completed_step_ids: newCompletedStepIds
       })
 
-      // Update local state
-      setCompletedStepIds(newCompletedStepIds)
-
-      return isModuleCompleted
+      // Return whether all steps are now completed
+      return config.steps.every(step => newCompletedStepIds.includes(step.id))
     } catch (err) {
       console.error('Error completing step:', err)
       toast({
@@ -141,7 +136,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     } finally {
       setIsSyncing(false)
     }
-  }, [module?.id, config.steps, completedStepIds, unsavedChanges, syncStepWithBackend, updateModule, toast])
+  }, [module?.id, module?.completed_step_ids, config.steps, unsavedChanges, syncStepWithBackend, updateModule, toast])
 
   // Handle navigation between steps
   const navigateToStep = useCallback(async (stepId: string) => {
@@ -155,12 +150,12 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
         await syncStepWithBackend(currentStepId)
       }
 
-      // Then update current step
+      // Update current step in backend
       await updateModule(module.id, {
         current_step_id: stepId
       })
       
-      // Update local state
+      // Update local navigation state
       setCurrentStepId(stepId)
     } catch (err) {
       console.error('Error changing step:', err)
@@ -175,17 +170,13 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     }
   }, [module?.id, currentStepId, unsavedChanges, syncStepWithBackend, updateModule, toast])
 
-  // Handle module completion and transition
+  // Handle module completion
   const completeModule = useCallback(async () => {
-    if (!module?.id || !config.steps) return
+    if (!module?.id) return false
 
     try {
-      // Ensure all steps are completed
-      const allStepsCompleted = config.steps.every(step => 
-        completedStepIds.includes(step.id)
-      )
-
-      if (!allStepsCompleted) {
+      // Verify all steps are completed
+      if (!isModuleCompleted()) {
         toast({
           title: "Incomplete Steps",
           description: "Please complete all steps before finishing the module.",
@@ -194,7 +185,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
         return false
       }
 
-      // Update module state
+      // Mark module as completed
       await updateModule(module.id, {
         completed: true
       })
@@ -214,7 +205,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       })
       throw err
     }
-  }, [module?.id, config.steps, completedStepIds, updateModule, options, toast])
+  }, [module?.id, isModuleCompleted, updateModule, options, toast])
 
   // AI suggestion generation
   const generateAISuggestion = useCallback(async (stepId: string, context: string) => {
@@ -225,7 +216,6 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       const suggestion = await generateSuggestion(context)
 
       if (suggestion) {
-        // Only update local state, don't sync with backend
         saveResponse(stepId, suggestion)
       }
     } catch (err) {
@@ -245,7 +235,8 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     config,
     responses: localResponses,
     currentStep: currentStepId,
-    progress,
+    isStepCompleted,
+    isModuleCompleted: isModuleCompleted(),
     isLoading: isSyncing,
     isInitializing,
     isGeneratingSuggestion,
