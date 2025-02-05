@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { ArrowLeft, MessageSquare, Lightbulb, History, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 interface ModuleLayoutProps {
   title: string
   description: string
-  stepProgress: string
+  stepProgress?: string
   onBack: () => void
   children: React.ReactNode
   currentStep: string
@@ -47,8 +47,15 @@ export function ModuleLayout({
   isLoading = false,
   error = null
 }: ModuleLayoutProps) {
-  const [activeTab, setActiveTab] = useState<"content" | "ai" | "history">("content")
+  const [activeTab, setActiveTab] = useState<"ai" | "history">("ai")
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false)
+
+  // Calculate progress value
+  const progress = useMemo(() => {
+    if (!stepProgress) return 0
+    const [_, current, __, total] = stepProgress.split(' ')
+    return (Number(current) / Number(total)) * 100
+  }, [stepProgress])
 
   const handleQuickActionSelect = (action: { content: string }) => {
     onSuggestionApply(action.content)
@@ -67,47 +74,56 @@ export function ModuleLayout({
   }
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-6 min-h-screen">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        {/* Module Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-6 bg-background/80 backdrop-blur-sm sticky top-0 z-10 py-4"
-        >
-          <div className="flex items-center gap-4">
-            <div className="space-y-1">
-              <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
-              {description && (
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container flex h-14 items-center">
+            <div className="flex items-center space-x-4 md:space-x-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="h-8 w-8"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="sr-only">Back</span>
+              </Button>
+              <div className="hidden md:block">
+                <h1 className="text-lg font-semibold">{title}</h1>
                 <p className="text-sm text-muted-foreground">{description}</p>
-              )}
+              </div>
             </div>
+            {stepProgress && (
+              <div className="ml-auto flex items-center space-x-4">
+                <span className="text-sm font-medium">{stepProgress}</span>
+                <motion.div 
+                  className="w-32 h-1 bg-muted rounded-full overflow-hidden"
+                  initial={false}
+                >
+                  <motion.div
+                    className="h-full bg-primary origin-left"
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: progress / 100 }}
+                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                  />
+                </motion.div>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-4">
-            <QuickActions
-              moduleId={currentStep}
-              stepId={currentStep}
-              onActionSelect={handleQuickActionSelect}
-              contextualActions={quickActionGroups}
-            />
-          </div>
-        </motion.div>
+        </header>
 
-        {/* Module Content */}
-        <ScrollArea className="flex-1 pr-6">
-          <AnimatePresence mode="wait">
+        <main className="flex-1 container py-6">
+          <div className="mx-auto space-y-8">
             <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
             >
               {children}
             </motion.div>
-          </AnimatePresence>
-        </ScrollArea>
+          </div>
+        </main>
       </div>
 
       {/* Right Panel */}
@@ -117,7 +133,8 @@ export function ModuleLayout({
           width: isRightPanelCollapsed ? "40px" : "400px",
           opacity: isRightPanelCollapsed ? 0.5 : 1
         }}
-        className="relative"
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="relative top-0 h-screen"
       >
         <Button
           variant="ghost"
@@ -126,14 +143,16 @@ export function ModuleLayout({
           className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 rounded-full bg-background shadow-md border h-6 w-6"
           disabled={isLoading}
         >
-          <ChevronRight className={cn(
-            "h-4 w-4 transition-transform",
-            isRightPanelCollapsed && "rotate-180"
-          )} />
+          <motion.div
+            animate={{ rotate: isRightPanelCollapsed ? 180 : 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 30 }}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </motion.div>
         </Button>
 
         <Card className={cn(
-          "h-full transition-opacity",
+          "h-full transition-all",
           isRightPanelCollapsed && "opacity-0 pointer-events-none"
         )}>
           <Tabs 
@@ -160,41 +179,49 @@ export function ModuleLayout({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ai" className="flex-1 m-0">
-              <AIAssistant
-                currentResponse={currentResponse}
-                onSuggestionRequest={onSuggestionRequest}
-                onSuggestionApply={onSuggestionApply}
-                isGenerating={isGeneratingSuggestion}
-                isDisabled={isLoading}
-              />
-            </TabsContent>
+            <AnimatePresence mode="wait">
+              <TabsContent value="ai" className="flex-1 m-0">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <AIAssistant
+                    currentResponse={currentResponse}
+                    onSuggestionRequest={onSuggestionRequest}
+                    onSuggestionApply={onSuggestionApply}
+                    isGenerating={isGeneratingSuggestion}
+                    isDisabled={isLoading}
+                  />
+                </motion.div>
+              </TabsContent>
 
-            <TabsContent value="history" className="flex-1 m-0">
-              <ScrollArea className="h-full">
-                <div className="space-y-4 p-4">
-                  <h3 className="font-semibold">Previous Responses</h3>
-                  <AnimatePresence>
-                    {previousResponses && Object.entries(previousResponses).map(([key, response], index) => (
-                      <motion.div
-                        key={key}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                        <Card className="p-4">
-                          <h4 className="text-sm font-medium mb-2">{key}</h4>
-                          <p className="text-sm text-muted-foreground">{response.content}</p>
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Last updated: {new Date(response.lastUpdated).toLocaleString()}
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </ScrollArea>
-            </TabsContent>
+              <TabsContent value="history" className="flex-1 m-0">
+                <ScrollArea className="h-full">
+                  <div className="space-y-4 p-4">
+                    <h3 className="font-semibold">Previous Responses</h3>
+                    <AnimatePresence>
+                      {previousResponses && Object.entries(previousResponses).map(([key, response], index) => (
+                        <motion.div
+                          key={key}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <Card className="p-4">
+                            <h4 className="text-sm font-medium mb-2">{key}</h4>
+                            <p className="text-sm text-muted-foreground">{response.content}</p>
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              Last updated: {new Date(response.lastUpdated).toLocaleString()}
+                            </div>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </AnimatePresence>
           </Tabs>
         </Card>
       </motion.div>

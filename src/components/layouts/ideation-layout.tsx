@@ -94,7 +94,7 @@ export function IdeationLayout({
 
   return (
     <div className="relative min-h-screen bg-background">
-      <div className="container flex-1 items-start lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10 p-4">
+      <div className="container flex-1 items-start lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:gap-10 p-4">
         {/* Mobile Menu */}
         {isMobile ? (
           <Sheet>
@@ -115,7 +115,7 @@ export function IdeationLayout({
 
         {/* Main Content */}
         <main className="lg:px-8">
-          <div className="mx-auto space-y-8 pb-[200px]">
+          <div className="mx-auto space-y-8 ">
             {children}
           </div>
         </main>

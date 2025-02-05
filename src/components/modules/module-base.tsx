@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, memo } from "react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
 import { ExpertTips } from "./expert-tips"
+import { ModuleCompletionOverlay } from "./module-completion-overlay"
 import { useModule } from "@/hooks/use-module"
 import { ModuleType, MODULES_CONFIG } from "@/config/modules"
 import { LucideIcon } from "lucide-react"
@@ -15,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useAI } from "@/context/ai-context"
 import { ModuleResponse } from "@/types/module"
 import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
+import { motion, AnimatePresence } from "framer-motion"
 
 interface ModuleBaseProps {
   moduleType: ModuleType
@@ -58,6 +60,7 @@ const ModuleBase = memo(function ModuleBase({
   })
 
   const { toast } = useToast()
+  const [showCompletion, setShowCompletion] = useState(false)
   const [previousContent, setPreviousContent] = useState<{
     stepId: string | undefined
   } | null>(null)
@@ -93,7 +96,7 @@ const ModuleBase = memo(function ModuleBase({
         // If it's the last step, try to complete the module
         const success = await completeModule()
         if (success) {
-          onComplete?.()
+          setShowCompletion(true)
         }
       } else {
         // Always move to the next step in sequence
@@ -147,17 +150,11 @@ const ModuleBase = memo(function ModuleBase({
     const currentIndex = steps.findIndex(s => s.id === currentStepId)
     const isLastStep = currentIndex === steps.length - 1
     const isFirstStep = currentIndex === 0
-    const stepProgress = `Step ${currentIndex + 1} of ${steps.length}`
     const firstModuleId = MODULES_CONFIG[0]?.id
     const isFirstModule = moduleType === firstModuleId
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">
-            {stepProgress}
-          </span>
-        </div>
         <StepCard
           key={step.id}
           title={step.title}
@@ -184,71 +181,72 @@ const ModuleBase = memo(function ModuleBase({
     )
   }
 
+  // Get next module name for completion overlay
+  const getNextModuleName = () => {
+    const currentModuleIndex = Object.keys(MODULES_CONFIG).indexOf(moduleType)
+    const nextModule = Object.values(MODULES_CONFIG)[currentModuleIndex + 1]
+    return nextModule?.title
+  }
+
   // Show loading skeleton during initialization or when module is not yet available
   if (isInitializing || (!module && !previousContent)) {
     return <ModuleLoadingSkeleton />
   }
 
-  // Calculate step progress
-  const getStepProgress = (stepId: string, steps: typeof config.steps) => {
-    const currentIndex = steps.findIndex(s => s.id === stepId)
-    return ((currentIndex + 1) / steps.length) * 100
-  }
-
-  // Use previous content during transitions or while waiting for initialization
-  if (!module || !currentStep || !config.steps) {
-    if (previousContent?.stepId) {
-      return (
-        <ModuleErrorBoundary>
-          <ModuleLayout
-            title={config.title}
-            description={config.description}
-            onBack={onBack}
-            currentStep={previousContent.stepId}
-            currentResponse={responses[previousContent.stepId]}
-            previousResponses={responses}
-            onSuggestionRequest={handleGenerateSuggestion}
-            onSuggestionApply={(suggestion) => {
-              if (previousContent.stepId) {
-                saveResponse(previousContent.stepId, suggestion)
-              }
-            }}
-            isGeneratingSuggestion={isGeneratingSuggestion}
-            quickActionGroups={quickActionGroups}
-            stepProgress={`Step ${config.steps.findIndex(s => s.id === previousContent.stepId) + 1} of ${config.steps.length}`}
-          >
-            {renderModuleContent(previousContent.stepId, config.steps)}
-          </ModuleLayout>
-        </ModuleErrorBoundary>
-      )
-    }
-    return <ModuleLoadingSkeleton />
-  }
-
   return (
     <ModuleErrorBoundary>
-      <ModuleLayout
-        title={config.title}
-        description={config.description}
-        onBack={onBack}
-        currentStep={currentStep}
-        currentResponse={responses[currentStep]}
-        previousResponses={responses}
-        onSuggestionRequest={handleGenerateSuggestion}
-        onSuggestionApply={(suggestion) => saveResponse(currentStep, suggestion)}
-        isGeneratingSuggestion={isGeneratingSuggestion}
-        quickActionGroups={quickActionGroups}
-        stepProgress={`Step ${config.steps.findIndex(s => s.id === currentStep) + 1} of ${config.steps.length}`}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
       >
-        {renderModuleContent(currentStep, config.steps)}
-      </ModuleLayout>
+        <ModuleLayout
+          title={config.title}
+          description={config.description}
+          onBack={onBack}
+          currentStep={currentStep}
+          currentResponse={responses[currentStep]}
+          previousResponses={responses}
+          onSuggestionRequest={handleGenerateSuggestion}
+          onSuggestionApply={(suggestion) => currentStep && saveResponse(currentStep, suggestion)}
+          isGeneratingSuggestion={isGeneratingSuggestion}
+          quickActionGroups={quickActionGroups}
+          stepProgress={currentStep && config.steps ? 
+            `Step ${config.steps.findIndex(s => s.id === currentStep) + 1} of ${config.steps.length}` : 
+            undefined}
+        >
+          <AnimatePresence mode="wait">
+            {currentStep && config.steps && (
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderModuleContent(currentStep, config.steps)}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </ModuleLayout>
+
+        <ModuleCompletionOverlay
+          isVisible={showCompletion}
+          onNext={() => {
+            setShowCompletion(false)
+            onComplete()
+          }}
+          nextModuleName={getNextModuleName()}
+          onClose={() => setShowCompletion(false)}
+        />
+      </motion.div>
     </ModuleErrorBoundary>
   )
 }, (prevProps, nextProps) => {
   return (
     prevProps.moduleType === nextProps.moduleType &&
-    prevProps.mode === nextProps.mode &&
-    prevProps.stepIcons === nextProps.stepIcons
+    prevProps.mode === nextProps.mode
   )
 })
 
