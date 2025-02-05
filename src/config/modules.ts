@@ -1,4 +1,4 @@
-import { LucideIcon, Target, Users, Lightbulb, TrendingUp, Search, DollarSign, Building, BarChart2, Calendar, Shield, Presentation } from 'lucide-react'
+import { LucideIcon, Target, Users, Lightbulb, TrendingUp, Search, DollarSign, Building, Rocket, Megaphone, BarChart2, Calendar, Shield, Presentation, Brain, ChartBar, LineChart, AlertTriangle, Clock, Flag } from 'lucide-react'
 
 export type ModuleType = 
   | 'vision-problem'
@@ -19,19 +19,26 @@ export interface ModuleStep {
   placeholder?: string
   order_index: number
   expert_tips: string[]
+  icon: LucideIcon
 }
 
 export interface ModuleConfig {
+  id: ModuleType
   title: string
   description: string
+  order_index: number
+  icon: LucideIcon
   steps: ModuleStep[]
 }
 
-// This is a frontend-only configuration object
-export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
-  'vision-problem': {
+// Convert to array for explicit ordering
+export const MODULES_CONFIG: ModuleConfig[] = [
+  {
+    id: 'vision-problem',
     title: 'Vision & Problem',
     description: 'Define your vision and identify the problem you\'re solving',
+    order_index: 0,
+    icon: Brain,
     steps: [
       {
         id: 'vision',
@@ -41,6 +48,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What future do you want to create?',
         placeholder: 'In 5 years, we envision a world where...',
         order_index: 0,
+        icon: Target,
         expert_tips: [
           'Consider market trends in your vision',
           'Validate assumptions with data',
@@ -55,6 +63,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What significant problem are you solving?',
         placeholder: 'Today, people struggle with...',
         order_index: 1,
+        icon: AlertTriangle,
         expert_tips: [
           'Quantify the problem\'s impact',
           'Identify key stakeholders',
@@ -69,6 +78,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'How will you solve this problem?',
         placeholder: 'We will create...',
         order_index: 2,
+        icon: Lightbulb,
         expert_tips: [
           'Focus on unique value proposition',
           'Consider technical feasibility',
@@ -77,9 +87,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'market-analysis': {
+  {
+    id: 'market-analysis',
     title: 'Market Analysis',
     description: 'Analyze your target market and competition',
+    order_index: 1,
+    icon: ChartBar,
     steps: [
       {
         id: 'target-market',
@@ -89,6 +102,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'Who are your ideal customers?',
         placeholder: 'Our target market consists of...',
         order_index: 0,
+        icon: Target,
         expert_tips: [
           'Define demographics clearly',
           'Consider psychographic factors',
@@ -103,6 +117,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What is your total addressable market (TAM)?',
         placeholder: 'The total market size is...',
         order_index: 1,
+        icon: TrendingUp,
         expert_tips: [
           'Break down TAM, SAM, and SOM',
           'Use credible market research',
@@ -117,6 +132,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'Who are your main competitors?',
         placeholder: 'Our main competitors are...',
         order_index: 2,
+        icon: Users,
         expert_tips: [
           'Analyze direct and indirect competitors',
           'Identify competitive advantages',
@@ -131,6 +147,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are the key market trends?',
         placeholder: 'The key trends shaping our market are...',
         order_index: 3,
+        icon: LineChart,
         expert_tips: [
           'Consider technological trends',
           'Analyze regulatory changes',
@@ -139,9 +156,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'business-model': {
+  {
+    id: 'business-model',
     title: 'Business Model',
     description: 'Define how your business will create and capture value',
+    order_index: 2,
+    icon: Building,
     steps: [
       {
         id: 'revenue-model',
@@ -151,6 +171,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'How will you generate revenue?',
         placeholder: 'Our revenue model consists of...',
         order_index: 0,
+        icon: DollarSign,
         expert_tips: [
           'Consider multiple revenue streams',
           'Analyze pricing strategies',
@@ -165,6 +186,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'Who are your key customer segments?',
         placeholder: 'Our key customer segments are...',
         order_index: 1,
+        icon: Users,
         expert_tips: [
           'Define clear segments',
           'Consider segment size',
@@ -179,6 +201,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What unique value do you offer?',
         placeholder: 'Our unique value proposition is...',
         order_index: 2,
+        icon: Lightbulb,
         expert_tips: [
           'Focus on customer benefits',
           'Differentiate from competitors',
@@ -193,6 +216,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'How will you reach your customers?',
         placeholder: 'We will reach our customers through...',
         order_index: 3,
+        icon: Building,
         expert_tips: [
           'Consider direct and indirect channels',
           'Analyze channel costs',
@@ -201,9 +225,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'go-to-market': {
+  {
+    id: 'go-to-market',
     title: 'Go-to-Market Strategy',
     description: 'Plan how you\'ll reach and acquire customers',
+    order_index: 3,
+    icon: Rocket,
     steps: [
       {
         id: 'target-audience',
@@ -213,6 +240,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'Who are your early adopters?',
         placeholder: 'Our initial target audience is...',
         order_index: 0,
+        icon: Target,
         expert_tips: [
           'Define early adopter characteristics',
           'Identify pain points',
@@ -227,6 +255,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'How will you position your product?',
         placeholder: 'Our market positioning is...',
         order_index: 1,
+        icon: Target,
         expert_tips: [
           'Define unique selling points',
           'Analyze competitor positioning',
@@ -241,6 +270,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'How will you acquire customers?',
         placeholder: 'Our customer acquisition strategy includes...',
         order_index: 2,
+        icon: Users,
         expert_tips: [
           'Calculate acquisition costs',
           'Define marketing channels',
@@ -249,9 +279,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'financial-projections': {
+  {
+    id: 'financial-projections',
     title: 'Financial Projections',
     description: 'Forecast your financial performance and requirements',
+    order_index: 4,
+    icon: BarChart2,
     steps: [
       {
         id: 'revenue',
@@ -261,6 +294,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are your revenue projections?',
         placeholder: 'Our projected revenue growth is...',
         order_index: 0,
+        icon: TrendingUp,
         expert_tips: [
           'Use realistic growth rates',
           'Consider market size',
@@ -275,6 +309,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are your main costs?',
         placeholder: 'Our main cost categories are...',
         order_index: 1,
+        icon: DollarSign,
         expert_tips: [
           'Include fixed and variable costs',
           'Consider scaling costs',
@@ -289,6 +324,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What funding do you need?',
         placeholder: 'Our funding requirements are...',
         order_index: 2,
+        icon: DollarSign,
         expert_tips: [
           'Calculate runway needed',
           'Consider funding sources',
@@ -297,9 +333,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'risk-assessment': {
+  {
+    id: 'risk-assessment',
     title: 'Risk Assessment',
     description: 'Identify and plan for potential risks and challenges',
+    order_index: 5,
+    icon: Shield,
     steps: [
       {
         id: 'market-risks',
@@ -309,6 +348,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What market risks do you face?',
         placeholder: 'The key market risks are...',
         order_index: 0,
+        icon: AlertTriangle,
         expert_tips: [
           'Consider market changes',
           'Analyze competition risks',
@@ -323,6 +363,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What operational challenges might you face?',
         placeholder: 'Our operational risks include...',
         order_index: 1,
+        icon: AlertTriangle,
         expert_tips: [
           'Assess supply chain risks',
           'Consider scaling challenges',
@@ -337,6 +378,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'How will you address these risks?',
         placeholder: 'Our risk mitigation strategies are...',
         order_index: 2,
+        icon: Shield,
         expert_tips: [
           'Develop contingency plans',
           'Consider insurance options',
@@ -345,9 +387,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'implementation-timeline': {
+  {
+    id: 'implementation-timeline',
     title: 'Implementation Timeline',
     description: 'Create a roadmap for executing your plan',
+    order_index: 6,
+    icon: Clock,
     steps: [
       {
         id: 'milestones',
@@ -357,6 +402,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are your key milestones?',
         placeholder: 'Our key milestones are...',
         order_index: 0,
+        icon: Flag,
         expert_tips: [
           'Set realistic timelines',
           'Define clear objectives',
@@ -371,6 +417,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What resources will you need?',
         placeholder: 'The resources we need include...',
         order_index: 1,
+        icon: Building,
         expert_tips: [
           'Consider human resources',
           'Plan for equipment needs',
@@ -385,6 +432,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are the critical dependencies?',
         placeholder: 'Our critical dependencies are...',
         order_index: 2,
+        icon: Clock,
         expert_tips: [
           'Identify critical path',
           'Plan for bottlenecks',
@@ -393,9 +441,12 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   },
-  'pitch-deck': {
+  {
+    id: 'pitch-deck',
     title: 'Pitch Deck',
     description: 'Create a compelling presentation of your business',
+    order_index: 7,
+    icon: Presentation,
     steps: [
       {
         id: 'story',
@@ -405,6 +456,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What\'s your compelling story?',
         placeholder: 'Our story begins with...',
         order_index: 0,
+        icon: Brain,
         expert_tips: [
           'Make it memorable',
           'Focus on the problem',
@@ -419,6 +471,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are your key achievements and metrics?',
         placeholder: 'Our key highlights include...',
         order_index: 1,
+        icon: ChartBar,
         expert_tips: [
           'Focus on traction',
           'Show key metrics',
@@ -433,6 +486,7 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
         description: 'What are you asking for?',
         placeholder: 'We are seeking...',
         order_index: 2,
+        icon: Target,
         expert_tips: [
           'Be specific about needs',
           'Show use of funds',
@@ -441,4 +495,40 @@ export const MODULE_CONFIG: Record<ModuleType, ModuleConfig> = {
       }
     ]
   }
+]
+
+// Helper functions for module operations
+export const getModuleConfig = (moduleType: ModuleType): ModuleConfig => {
+  const config = MODULES_CONFIG.find(m => m.id === moduleType)
+  if (!config) throw new Error(`Module config not found: ${moduleType}`)
+  return config
 }
+
+export const getNextModule = (currentType: ModuleType): ModuleConfig | null => {
+  const currentIndex = MODULES_CONFIG.findIndex(m => m.id === currentType)
+  return MODULES_CONFIG[currentIndex + 1] || null
+}
+
+export const getPreviousModule = (currentType: ModuleType): ModuleConfig | null => {
+  const currentIndex = MODULES_CONFIG.findIndex(m => m.id === currentType)
+  return currentIndex > 0 ? MODULES_CONFIG[currentIndex - 1] : null
+}
+
+// Helper to get step config
+export const getStepConfig = (moduleType: ModuleType, stepId: string): ModuleStep => {
+  const moduleConfig = getModuleConfig(moduleType)
+  const step = moduleConfig.steps.find(s => s.id === stepId)
+  if (!step) throw new Error(`Step config not found: ${stepId} in module ${moduleType}`)
+  return step
+}
+
+// Convert old format to new for backward compatibility
+export const MODULE_CONFIG: Record<ModuleType, Omit<ModuleConfig, 'id' | 'order_index' | 'icon'>> = 
+  MODULES_CONFIG.reduce((acc, module) => ({
+    ...acc,
+    [module.id]: {
+      title: module.title,
+      description: module.description,
+      steps: module.steps
+    }
+  }), {} as Record<ModuleType, Omit<ModuleConfig, 'id' | 'order_index' | 'icon'>>)

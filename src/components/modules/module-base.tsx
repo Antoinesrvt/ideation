@@ -5,7 +5,7 @@ import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
 import { ExpertTips } from "./expert-tips"
 import { useModule } from "@/hooks/use-module"
-import { ModuleType } from "@/config/modules"
+import { ModuleType, MODULES_CONFIG } from "@/config/modules"
 import { LucideIcon } from "lucide-react"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -14,7 +14,6 @@ import { useProject } from "@/context/project-context"
 import { useToast } from "@/hooks/use-toast"
 import { useAI } from "@/context/ai-context"
 import { ModuleResponse } from "@/types/module"
-import { MODULE_CONFIG } from "@/config/modules"
 import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 
 interface ModuleBaseProps {
@@ -70,6 +69,14 @@ const ModuleBase = memo(function ModuleBase({
     }
   }, [module, currentStep])
 
+  // Always start from first step when entering a module
+  useEffect(() => {
+    if (module && config.steps && (!currentStep || !config.steps.find(s => s.id === currentStep))) {
+      const firstStep = config.steps[0]
+      setCurrentStep(firstStep.id)
+    }
+  }, [module, config.steps, currentStep, setCurrentStep])
+
   const handleNext = async () => {
     if (!currentStep || !config.steps) return
 
@@ -103,12 +110,24 @@ const ModuleBase = memo(function ModuleBase({
   }
 
   // Helper function to render module content
-  function renderModuleContent(currentStepId: string, steps: typeof MODULE_CONFIG[ModuleType]['steps']) {
+  function renderModuleContent(currentStepId: string, steps: typeof config.steps) {
     const step = steps.find((s) => s.id === currentStepId)
     if (!step) return null
 
+    const currentIndex = steps.findIndex(s => s.id === currentStepId)
+    const isLastStep = currentIndex === steps.length - 1
+    const isFirstStep = currentIndex === 0
+    const stepProgress = `Step ${currentIndex + 1} of ${steps.length}`
+    const firstModuleId = MODULES_CONFIG[0]?.id
+    const isFirstModule = moduleType === firstModuleId
+
     return (
-      <div className="grid md:grid-cols-[2fr,1fr] gap-6">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">
+            {stepProgress}
+          </span>
+        </div>
         <StepCard
           key={step.id}
           title={step.title}
@@ -120,7 +139,9 @@ const ModuleBase = memo(function ModuleBase({
           onPrevious={handlePrevious}
           onNext={handleNext}
           showNext={true}
-          showPrevious={true}
+          showPrevious={!(isFirstStep && isFirstModule)}
+          nextButtonText={isLastStep ? "Finish Module" : "Next"}
+          previousButtonText={isFirstStep && !isFirstModule ? "Previous Module" : "Previous"}
         />
         {mode === "expert" && step.expert_tips && (
           <ExpertTips 
@@ -137,6 +158,12 @@ const ModuleBase = memo(function ModuleBase({
     return <ModuleLoadingSkeleton />
   }
 
+  // Calculate step progress
+  const getStepProgress = (stepId: string, steps: typeof config.steps) => {
+    const currentIndex = steps.findIndex(s => s.id === stepId)
+    return ((currentIndex + 1) / steps.length) * 100
+  }
+
   // Use previous content during transitions or while waiting for initialization
   if (!module || !currentStep || !config.steps) {
     if (previousContent?.stepId) {
@@ -145,7 +172,6 @@ const ModuleBase = memo(function ModuleBase({
           <ModuleLayout
             title={config.title}
             description={config.description}
-            progress={progress}
             onBack={onBack}
             currentStep={previousContent.stepId}
             currentResponse={responses[previousContent.stepId]}
@@ -158,6 +184,7 @@ const ModuleBase = memo(function ModuleBase({
             }}
             isGeneratingSuggestion={isGeneratingSuggestion}
             quickActionGroups={quickActionGroups}
+            stepProgress={`Step ${config.steps.findIndex(s => s.id === previousContent.stepId) + 1} of ${config.steps.length}`}
           >
             {renderModuleContent(previousContent.stepId, config.steps)}
           </ModuleLayout>
@@ -172,7 +199,6 @@ const ModuleBase = memo(function ModuleBase({
       <ModuleLayout
         title={config.title}
         description={config.description}
-        progress={progress}
         onBack={onBack}
         currentStep={currentStep}
         currentResponse={responses[currentStep]}
@@ -181,6 +207,7 @@ const ModuleBase = memo(function ModuleBase({
         onSuggestionApply={(suggestion) => saveResponse(currentStep, suggestion)}
         isGeneratingSuggestion={isGeneratingSuggestion}
         quickActionGroups={quickActionGroups}
+        stepProgress={`Step ${config.steps.findIndex(s => s.id === currentStep) + 1} of ${config.steps.length}`}
       >
         {renderModuleContent(currentStep, config.steps)}
       </ModuleLayout>

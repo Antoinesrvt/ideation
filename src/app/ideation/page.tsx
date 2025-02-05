@@ -16,62 +16,12 @@ import { ModuleStep } from "@/components/modules/module-navigation"
 import { IdeationLayout } from "@/components/layouts/ideation-layout"
 import { useProject } from "@/context/project-context"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ModuleType } from "@/config/modules"
+import { ModuleType, MODULES_CONFIG, getNextModule, getPreviousModule } from "@/config/modules"
 import { useToast } from "@/hooks/use-toast"
 import { Database } from "@/types/database"
 
 type ProjectRow = Database["public"]["Tables"]["projects"]["Row"]
 type ModuleRow = Database["public"]["Tables"]["modules"]["Row"]
-
-// Map of icons for each module's steps
-const MODULE_STEP_ICONS = {
-  'vision-problem': {
-    vision: Target,
-    problem: Users,
-    solution: Lightbulb
-  },
-  'market-analysis': {
-    'target-market': Target,
-    'market-size': TrendingUp,
-    'competitors': Users,
-    'market-trends': Search
-  },
-  'business-model': {
-    'revenue-model': DollarSign,
-    'customer-segments': Users,
-    'value-proposition': Rocket,
-    'channels': Building
-  },
-  'go-to-market': {
-    'launch-strategy': Rocket,
-    'marketing-plan': Megaphone,
-    'growth-metrics': BarChart2,
-    'partnerships': Users
-  },
-  'financial-projections': {
-    'revenue-projections': TrendingUp,
-    'cost-structure': DollarSign,
-    'funding-requirements': Building
-  },
-  'risk-assessment': {
-    'market-risks': Target,
-    'operational-risks': Building,
-    'risk-mitigation': Shield
-  },
-  'implementation-timeline': {
-    'milestones': Flag,
-    'timeline': Calendar,
-    'resources': Clock,
-    'success-metrics': Target
-  },
-  'pitch-deck': {
-    'problem-solution': Target,
-    'market-opportunity': TrendingUp,
-    'business-model': DollarSign,
-    'team': Users,
-    'ask': Presentation
-  }
-} as const
 
 interface PathOption {
   id: "guided" | "expert"
@@ -111,28 +61,43 @@ const pathOptions: PathOption[] = [
   }
 ]
 
-// Add type guard
+interface ModuleBaseProps {
+  moduleType: ModuleType
+  mode: "guided" | "expert"
+  onBack: () => void
+  onComplete: () => void
+  stepIcons?: Record<string, LucideIcon>
+}
+
+// Type guard for ModuleType
 function isModuleType(step: StepState): step is ModuleType {
   return step !== 'selection'
 }
 
-// Add type for step state
+// Type for step state
 type StepState = ModuleType | 'selection'
 
-// Memoize the module component wrapper to prevent re-renders
 const ModuleWrapper = memo(function ModuleWrapper({
   currentStep,
   selectedPath,
   onBack,
-  onComplete,
-  stepIcons
+  onComplete
 }: {
   currentStep: ModuleType
   selectedPath: "guided" | "expert"
   onBack: () => void
   onComplete: () => void
-  stepIcons: Record<string, LucideIcon>
 }) {
+  const moduleConfig = useMemo(() => MODULES_CONFIG.find(m => m.id === currentStep), [currentStep])
+  
+  if (!moduleConfig) return null
+
+  const stepIcons = useMemo(() => 
+    moduleConfig.steps.reduce((acc, step) => ({
+      ...acc,
+      [step.id]: step.icon
+    }), {}), [moduleConfig.steps])
+
   return (
     <motion.div
       key={currentStep}
@@ -150,7 +115,7 @@ const ModuleWrapper = memo(function ModuleWrapper({
         mode={selectedPath}
         onBack={onBack}
         onComplete={onComplete}
-        stepIcons={MODULE_STEP_ICONS[currentStep]}
+        stepIcons={stepIcons}
       />
     </motion.div>
   )
@@ -165,65 +130,38 @@ export default function IdeationPage() {
 
   const [currentStep, setCurrentStep] = useState<StepState>('selection')
   const [selectedPath, setSelectedPath] = useState<"guided" | "expert" | null>(null)
+  const [isNavigating, setIsNavigating] = useState(false)
 
-  // Update state when project changes
-  useEffect(() => {
-    if (project?.metadata) {
-      const metadata = project.metadata as { path?: "guided" | "expert", currentStep?: ModuleType }
-      setSelectedPath(metadata.path || null)
-      setCurrentStep(metadata.currentStep || 'selection')
-    }
-  }, [project?.metadata])
+  // Memoize module data calculations first
+  const { currentModules, overallProgress, moduleRecaps } = useMemo(() => {
+    const modules = (project as ProjectRow & { modules: ModuleRow[] })?.modules || []
+    const completedModules = modules.filter(m => m.completed)
+    const overallProgress = (completedModules.length / MODULES_CONFIG.length) * 100
 
-  const handleStartJourney = useCallback(async () => {
-    if (!project || !selectedPath) return
+    const currentModules = MODULES_CONFIG.map(config => ({
+      id: config.id,
+      title: modules.find(m => m.type === config.id)?.title || config.title,
+      completed: modules.find(m => m.type === config.id)?.completed ?? false,
+      icon: config.icon
+    }))
 
-    try {
-      // First ensure the module exists
-      const module = await ensureModule('vision-problem')
-      
-      // Only update project metadata if module was created successfully
-      if (module) {
-        await updateProject({
-          metadata: {
-            ...project.metadata as Record<string, unknown>,
-            path: selectedPath,
-            currentStep: 'vision-problem'
-          }
-        })
+    const moduleRecaps = modules.map(m => ({
+      id: m.type,
+      title: m.title,
+      completed: m.completed,
+      summary: (m.metadata as { summary?: string })?.summary
+    }))
 
-        // Update state after both operations succeed
-        setCurrentStep('vision-problem')
-      }
-    } catch (err) {
-      console.error('Error starting journey:', err)
-      toast({
-        title: "Error",
-        description: "Failed to start journey. Please try again.",
-        variant: "destructive"
-      })
-      // Reset loading state in case of error
-      setCurrentStep('selection')
-    }
-  }, [project, selectedPath, updateProject, ensureModule, toast])
+    return { currentModules, overallProgress, moduleRecaps }
+  }, [(project as ProjectRow & { modules: ModuleRow[] })?.modules])
 
-  // Memoize handlers to prevent unnecessary re-renders
+  // Handle module selection
   const handleModuleSelect = useCallback(async (moduleId: ModuleType) => {
     if (!project) return
 
+    setIsNavigating(true)
     try {
-      // First ensure module exists before switching to it
       await ensureModule(moduleId)
-
-      // Then update project metadata
-      await updateProject({
-        metadata: {
-          currentStep: moduleId,
-          ...(project.metadata as Record<string, unknown>)
-        }
-      })
-      
-      // Update state after successful API calls
       setCurrentStep(moduleId)
     } catch (err) {
       console.error('Error selecting module:', err)
@@ -232,20 +170,49 @@ export default function IdeationPage() {
         description: "Failed to select module. Please try again.",
         variant: "destructive"
       })
+    } finally {
+      setIsNavigating(false)
     }
-  }, [project, updateProject, ensureModule, toast])
+  }, [project, ensureModule, toast])
 
-  // Memoize handlers
+  // Handle journey start
+  const handleStartJourney = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    if (!project || !selectedPath) return
+
+    try {
+      await handleModuleSelect('vision-problem')
+      
+      // Update project metadata
+      await updateProject({
+        metadata: {
+          ...project.metadata as Record<string, unknown>,
+          path: selectedPath,
+          currentStep: 'vision-problem'
+        }
+      })
+    } catch (err) {
+      console.error('Error starting journey:', err)
+      toast({
+        title: "Error",
+        description: "Failed to start journey. Please try again.",
+        variant: "destructive"
+      })
+      setCurrentStep('selection')
+    }
+  }, [project, selectedPath, handleModuleSelect, updateProject, toast])
+
   const handleBack = useCallback(async () => {
     if (currentStep === 'selection') return
 
     try {
-      const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
-      if (currentIndex > 0) {
-        const prevModule = Object.keys(MODULE_STEP_ICONS)[currentIndex - 1] as ModuleType
-        await handleModuleSelect(prevModule)
-      } else {
-        setCurrentStep("selection")
+      if (isModuleType(currentStep)) {
+        const prevModule = getPreviousModule(currentStep)
+        if (prevModule) {
+          await handleModuleSelect(prevModule.id)
+        } else {
+          setCurrentStep('selection')
+        }
       }
     } catch (err) {
       console.error('Error navigating back:', err)
@@ -261,47 +228,44 @@ export default function IdeationPage() {
     if (currentStep === 'selection') return
 
     try {
-      const currentIndex = Object.keys(MODULE_STEP_ICONS).indexOf(currentStep)
-      if (currentIndex < Object.keys(MODULE_STEP_ICONS).length - 1) {
-        const nextModule = Object.keys(MODULE_STEP_ICONS)[currentIndex + 1] as ModuleType
-        await handleModuleSelect(nextModule)
-      } else {
-        router.push('/dashboard/projects')
+      const currentModule = currentModules.find(m => m.id === currentStep)
+      if (!currentModule?.completed) {
+        toast({
+          title: "Module Incomplete",
+          description: "Please complete all steps before proceeding.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      if (isModuleType(currentStep)) {
+        const nextModule = getNextModule(currentStep)
+        if (nextModule) {
+          await handleModuleSelect(nextModule.id)
+        } else {
+          router.push('/dashboard/projects')
+        }
       }
     } catch (err) {
       console.error('Error completing module:', err)
       toast({
         title: "Error",
-        description: "Failed to complete module. Please try again.",
+        description: "Failed to proceed to next module. Please try again.",
         variant: "destructive"
       })
     }
-  }, [currentStep, handleModuleSelect, router, toast])
+  }, [currentStep, currentModules, handleModuleSelect, router, toast])
 
-  // Memoize module data calculations
-  const { currentModules, overallProgress, moduleRecaps } = useMemo(() => {
-    const modules = (project as ProjectRow & { modules: ModuleRow[] })?.modules || []
-    const completedModules = modules.filter(m => m.completed)
-    const overallProgress = (completedModules.length / Object.keys(MODULE_STEP_ICONS).length) * 100
+  // Update state when project changes
+  useEffect(() => {
+    if (project?.metadata) {
+      const metadata = project.metadata as { path?: "guided" | "expert", currentStep?: ModuleType }
+      setSelectedPath(metadata.path || null)
+      setCurrentStep(metadata.currentStep || 'selection')
+    }
+  }, [project?.metadata])
 
-    const currentModules = Object.keys(MODULE_STEP_ICONS).map(type => ({
-      id: type as ModuleType,
-      title: modules.find(m => m.type === type)?.title || 
-        type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-      completed: modules.find(m => m.type === type)?.completed ?? false
-    }))
-
-    const moduleRecaps = modules.map(m => ({
-      id: m.type,
-      title: m.title,
-      completed: m.completed,
-      summary: (m.metadata as { summary?: string })?.summary
-    }))
-
-    return { currentModules, overallProgress, moduleRecaps }
-  }, [(project as ProjectRow & { modules: ModuleRow[] })?.modules])
-
-  // Handle loading state - return null to prevent layout shift
+  // Handle loading state
   if (loading) {
     return null
   }
@@ -399,23 +363,19 @@ export default function IdeationPage() {
           </div>
 
           {/* Start Button */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: selectedPath ? 1 : 0, y: selectedPath ? 0 : 20 }}
-            transition={{ duration: 0.3 }}
-            className="flex justify-center mt-8"
-          >
+          <div className="flex justify-center mt-8">
             {selectedPath && (
               <Button
                 size="lg"
                 className="group"
                 onClick={handleStartJourney}
+                disabled={isNavigating}
               >
                 Begin Your Journey
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
             )}
-          </motion.div>
+          </div>
 
           {/* Quick Tips */}
           <motion.div
@@ -444,7 +404,6 @@ export default function IdeationPage() {
                 selectedPath={selectedPath!}
                 onBack={handleBack}
                 onComplete={handleComplete}
-                stepIcons={MODULE_STEP_ICONS[currentStep]}
               />
             )}
           </AnimatePresence>

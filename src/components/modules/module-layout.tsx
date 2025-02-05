@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 interface ModuleLayoutProps {
   title: string
   description: string
-  progress: number
+  stepProgress: string
   onBack: () => void
   children: React.ReactNode
   currentStep: string
@@ -34,7 +34,7 @@ interface ModuleLayoutProps {
 export function ModuleLayout({ 
   title, 
   description,
-  progress, 
+  stepProgress, 
   onBack, 
   children,
   currentStep,
@@ -91,9 +91,6 @@ export function ModuleLayout({
               onActionSelect={handleQuickActionSelect}
               contextualActions={quickActionGroups}
             />
-            <div className="flex flex-col gap-1 items-end">
-              <Progress value={progress} className="w-32" />
-            </div>
           </div>
         </motion.div>
 
