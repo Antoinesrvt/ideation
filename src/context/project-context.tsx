@@ -1,15 +1,11 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import type { Database } from '@/types/database'
 import type { 
-  Project, 
-  ProjectMetadata, 
-  ModuleMetadata,
+  ModuleType, 
   ProjectMetadataContent,
   ModuleMetadataContent,
-  ModuleType,
   ProjectRow,
   ModuleRow,
   JsonCompatible
@@ -43,10 +39,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast()
   const { supabase, user, loading: authLoading } = useSupabase()
 
-  // Use the supabase instance from context
-  const projectService = new ProjectService(supabase)
+  // Memoize project service instance
+  const projectService = useMemo(() => new ProjectService(supabase), [supabase])
 
-  const fetchProject = async () => {
+  // Memoize fetch project function
+  const fetchProject = useCallback(async () => {
     if (!projectId) {
       setLoading(false)
       return
@@ -56,7 +53,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
 
-      // Check auth status
       if (!user) {
         console.warn('No authenticated user found, redirecting to login', {
           currentPath: window.location.pathname,
@@ -75,12 +71,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
       const projectData = await projectService.getProject(projectId)
       
-      console.log('Project data received:', {
-        projectId,
-        hasModules: projectData.modules?.length > 0,
-        timestamp: new Date().toISOString()
-      })
-
       setProject(projectData)
     } catch (err) {
       console.error('Error in project context:', {
@@ -91,7 +81,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         timestamp: new Date().toISOString()
       })
 
-      // Handle auth errors
       if (err instanceof Error && (
         err.message.includes('Authentication error') || 
         err.message.includes('JWT expired') ||
@@ -106,7 +95,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Handle project not found
       if (err instanceof Error && err.message.includes('Project not found')) {
         setProject(null)
         router.push('/dashboard/projects')
@@ -124,17 +112,20 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         variant: 'destructive'
       })
       
-      setError(err instanceof Error ? err : new Error('An unexpected error occurred while loading the project'))
+      setError(err instanceof Error ? err : new Error('An unexpected error occurred'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectId, user, router, projectService, toast])
 
-  const refreshProject = async () => {
+  // Memoize project operations
+  const refreshProject = useCallback(async () => {
     await fetchProject()
-  }
+  }, [fetchProject])
 
-  const updateProject = async (updates: Partial<Omit<ProjectRow, 'metadata'>> & { metadata?: ProjectMetadataContent }) => {
+  const updateProject = useCallback(async (
+    updates: Partial<Omit<ProjectRow, 'metadata'>> & { metadata?: ProjectMetadataContent }
+  ) => {
     if (!project?.id) return
 
     try {
@@ -160,9 +151,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [project?.id, projectService, refreshProject])
 
-  const updateModule = async (moduleId: string, updates: Partial<Omit<ModuleRow, 'metadata'>> & { metadata?: ModuleMetadataContent }) => {
+  const updateModule = useCallback(async (
+    moduleId: string,
+    updates: Partial<Omit<ModuleRow, 'metadata'>> & { metadata?: ModuleMetadataContent }
+  ) => {
     try {
       setLoading(true)
       setError(null)
@@ -186,9 +180,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectService, refreshProject])
 
-  const createModule = async (data: Omit<ModuleRow, 'id' | 'created_at' | 'updated_at'> & { metadata?: ModuleMetadataContent }) => {
+  const createModule = useCallback(async (
+    data: Omit<ModuleRow, 'id' | 'created_at' | 'updated_at'> & { metadata?: ModuleMetadataContent }
+  ) => {
     try {
       setLoading(true)
       setError(null)
@@ -211,9 +207,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [projectService, refreshProject])
 
-  const ensureModule = async (moduleType: ModuleType) => {
+  const ensureModule = useCallback(async (moduleType: ModuleType) => {
     if (!project?.id) throw new Error('No project selected')
 
     try {
@@ -235,27 +231,38 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [project?.id, projectService, refreshProject])
 
   useEffect(() => {
     if (!authLoading) {
       fetchProject()
     }
-  }, [projectId, authLoading])
+  }, [fetchProject, authLoading])
+
+  // Memoize context value
+  const value = useMemo(() => ({
+    project,
+    loading: loading || authLoading,
+    error,
+    refreshProject,
+    updateProject,
+    updateModule,
+    createModule,
+    ensureModule
+  }), [
+    project,
+    loading,
+    authLoading,
+    error,
+    refreshProject,
+    updateProject,
+    updateModule,
+    createModule,
+    ensureModule
+  ])
 
   return (
-    <ProjectContext.Provider 
-      value={{ 
-        project, 
-        loading: loading || authLoading,
-        error,
-        refreshProject,
-        updateProject,
-        updateModule,
-        createModule,
-        ensureModule
-      }}
-    >
+    <ProjectContext.Provider value={value}>
       {children}
     </ProjectContext.Provider>
   )
@@ -267,4 +274,4 @@ export function useProject() {
     throw new Error('useProject must be used within a ProjectProvider')
   }
   return context
-} 
+}

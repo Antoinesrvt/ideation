@@ -30,12 +30,13 @@ export interface AIContextSuggestion {
 
 export interface QuickAction {
   id: string
-  type: 'template' | 'example' | 'command'
+  type: 'template' | 'example' | 'command' | 'action'
   label: string
   content: string
   icon?: React.ReactNode
   tags?: string[]  // For filtering/context
   moduleTypes?: string[]  // Which modules this applies to
+  shortcut?: string  // Keyboard shortcut for the action
 }
 
 export interface QuickActionGroup {

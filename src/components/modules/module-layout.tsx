@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, MessageSquare, Lightbulb, History } from "lucide-react"
+import { ArrowLeft, MessageSquare, Lightbulb, History, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -12,6 +12,7 @@ import { AIAssistant } from "./ai-assistant"
 import { StepResponse } from "@/types/project"
 import { QuickActions } from "@/components/ai/quick-actions"
 import type { QuickActionGroup } from "@/types/ai"
+import { cn } from "@/lib/utils"
 
 interface ModuleLayoutProps {
   title: string
@@ -43,22 +44,29 @@ export function ModuleLayout({
   quickActionGroups = []
 }: ModuleLayoutProps) {
   const [activeTab, setActiveTab] = useState<"content" | "ai" | "history">("content")
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false)
 
   const handleQuickActionSelect = (action: { content: string }) => {
     onSuggestionApply(action.content)
   }
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] gap-4">
+    <div className="flex gap-6">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         {/* Module Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold">{title}</h2>
-            {description && (
-              <p className="text-muted-foreground">{description}</p>
-            )}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-6 bg-background/80 backdrop-blur-sm sticky top-0 z-10 py-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
+              {description && (
+                <p className="text-sm text-muted-foreground">{description}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <QuickActions
@@ -67,72 +75,115 @@ export function ModuleLayout({
               onActionSelect={handleQuickActionSelect}
               contextualActions={quickActionGroups}
             />
-            <Progress value={progress} className="w-32" />
+            <div className="flex flex-col gap-1 items-end">
+              <Progress value={progress} className="w-32" />
+            </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Module Content */}
-        <ScrollArea className="flex-1">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {children}
-          </motion.div>
+        <ScrollArea className="flex-1 pr-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </ScrollArea>
       </div>
 
       {/* Right Panel */}
-      <Card className="w-[400px] flex flex-col">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="flex-1">
-          <TabsList className="w-full p-0 bg-muted/50">
-            <TabsTrigger 
-              value="ai" 
-              className="flex-1 data-[state=active]:bg-background"
-            >
-              <Lightbulb className="h-4 w-4 mr-2" />
-              AI Assistant
-            </TabsTrigger>
-            <TabsTrigger 
-              value="history" 
-              className="flex-1 data-[state=active]:bg-background"
-            >
-              <History className="h-4 w-4 mr-2" />
-              History
-            </TabsTrigger>
-          </TabsList>
+      <motion.div
+        initial={false}
+        animate={{ 
+          width: isRightPanelCollapsed ? "40px" : "400px",
+          opacity: isRightPanelCollapsed ? 0.5 : 1
+        }}
+        className="relative"
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+          className="absolute -left-3 top-1/2 -translate-y-1/2 z-20 rounded-full bg-background shadow-md border h-6 w-6"
+        >
+          <ChevronRight className={cn(
+            "h-4 w-4 transition-transform",
+            isRightPanelCollapsed && "rotate-180"
+          )} />
+        </Button>
 
-          <TabsContent value="ai" className="flex-1 m-0">
-            <AIAssistant
-              currentResponse={currentResponse}
-              onSuggestionRequest={onSuggestionRequest}
-              onSuggestionApply={onSuggestionApply}
-              isGenerating={isGeneratingSuggestion}
-            />
-          </TabsContent>
+        <Card className={cn(
+          "h-full transition-opacity",
+          isRightPanelCollapsed && "opacity-0 pointer-events-none"
+        )}>
+          <Tabs 
+            value={activeTab} 
+            onValueChange={(value) => setActiveTab(value as typeof activeTab)} 
+            className="h-full flex flex-col"
+          >
+            <TabsList className="w-full p-0 bg-muted/50">
+              <TabsTrigger 
+                value="ai" 
+                className="flex-1 data-[state=active]:bg-background"
+              >
+                <Lightbulb className="h-4 w-4 mr-2" />
+                AI Assistant
+              </TabsTrigger>
+              <TabsTrigger 
+                value="history" 
+                className="flex-1 data-[state=active]:bg-background"
+              >
+                <History className="h-4 w-4 mr-2" />
+                History
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="history" className="flex-1 m-0">
-            <ScrollArea className="h-full p-4">
-              <div className="space-y-4">
-                <h3 className="font-semibold">Previous Responses</h3>
-                {previousResponses && Object.entries(previousResponses).map(([key, response]) => (
-                  <Card key={key} className="p-4">
-                    <h4 className="text-sm font-medium mb-2">{key}</h4>
-                    <p className="text-sm text-muted-foreground">{response.content}</p>
-                    {response.aiSuggestion && (
-                      <div className="mt-2 pt-2 border-t">
-                        <p className="text-xs font-medium text-muted-foreground">AI Suggestion</p>
-                        <p className="text-sm">{response.aiSuggestion}</p>
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </Card>
+            <TabsContent value="ai" className="flex-1 m-0">
+              <AIAssistant
+                currentResponse={currentResponse}
+                onSuggestionRequest={onSuggestionRequest}
+                onSuggestionApply={onSuggestionApply}
+                isGenerating={isGeneratingSuggestion}
+              />
+            </TabsContent>
+
+            <TabsContent value="history" className="flex-1 m-0">
+              <ScrollArea className="h-full">
+                <div className="space-y-4 p-4">
+                  <h3 className="font-semibold">Previous Responses</h3>
+                  <AnimatePresence>
+                    {previousResponses && Object.entries(previousResponses).map(([key, response], index) => (
+                      <motion.div
+                        key={key}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <Card className="p-4">
+                          <h4 className="text-sm font-medium mb-2">{key}</h4>
+                          <p className="text-sm text-muted-foreground">{response.content}</p>
+                          {response.aiSuggestion && (
+                            <div className="mt-2 pt-2 border-t">
+                              <p className="text-xs font-medium text-muted-foreground">AI Suggestion</p>
+                              <p className="text-sm">{response.aiSuggestion}</p>
+                            </div>
+                          )}
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+        </Card>
+      </motion.div>
     </div>
   )
 } 
