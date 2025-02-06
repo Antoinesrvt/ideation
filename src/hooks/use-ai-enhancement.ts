@@ -1,37 +1,86 @@
 import { useState, useCallback } from 'react'
-import { useSupabase } from '@/context/supabase-context'
+import { useAIService } from '@/context/services/ai-service-context'
 import { ModuleType } from '@/types/project'
-import { AIEnhancementService, EnhancementOptions } from '@/lib/services/ai-enhancement'
 import { useToast } from '@/hooks/use-toast'
 
 export type EnhancementStatus = 'idle' | 'enhancing' | 'completed' | 'failed'
 
-export function useAIEnhancement(moduleType: ModuleType, projectId: string) {
-  const { supabase } = useSupabase()
+export interface EnhancementOptions {
+  includeMarketData?: boolean
+  includeCompetitorData?: boolean
+  tone?: 'professional' | 'technical' | 'conversational'
+  focusAreas?: string[]
+}
+
+export interface EnhancementResult {
+  enhancedContent: string
+  metadata?: {
+    improvements: string[]
+    addedSections: string[]
+    wordCount: number
+    readabilityScore: number
+  }
+}
+
+export function useAIEnhancement(moduleType: ModuleType) {
+  const { service, isConfigured, error: serviceError } = useAIService()
   const { toast } = useToast()
   
   const [status, setStatus] = useState<EnhancementStatus>('idle')
   const [enhancedContent, setEnhancedContent] = useState<string>()
-  const [error, setError] = useState<string>()
-  const [metadata, setMetadata] = useState<any>()
+  const [error, setError] = useState<Error | null>(null)
+  const [metadata, setMetadata] = useState<EnhancementResult['metadata']>()
 
   const enhance = useCallback(async (
     content: string,
-    stepId: string,
     options: EnhancementOptions = {}
-  ) => {
-    const service = new AIEnhancementService(supabase, projectId, moduleType)
+  ): Promise<EnhancementResult | undefined> => {
+    if (!service || !isConfigured) {
+      const error = serviceError || new Error('AI service is not configured')
+      setError(error)
+      setStatus('failed')
+      return
+    }
 
     try {
       setStatus('enhancing')
-      setError(undefined)
+      setError(null)
       setEnhancedContent(undefined)
       setMetadata(undefined)
 
-      const result = await service.enhanceContent(content, stepId, options)
+      const systemPrompt = service.getEnhancementSystemPrompt(moduleType)
+      
+      // Build enhancement prompt
+      const enhancementPrompt = `
+        Please enhance the following content while maintaining its original intent:
+        ${options.focusAreas ? `Focus areas: ${options.focusAreas.join(', ')}` : ''}
+        ${options.includeMarketData ? 'Include relevant market data and trends.' : ''}
+        ${options.includeCompetitorData ? 'Include competitor analysis where relevant.' : ''}
+        Tone: ${options.tone || 'professional'}
 
-      setEnhancedContent(result.enhancedContent)
-      setMetadata(result.metadata)
+        Original content:
+        ${content}
+      `.trim()
+
+      const enhanced = await service.generateContent(enhancementPrompt, systemPrompt)
+
+      // Extract metadata if available (assuming it's in a specific format)
+      const metadataStart = enhanced.lastIndexOf('METADATA:')
+      let metadata: EnhancementResult['metadata'] | undefined
+      let cleanContent = enhanced
+
+      if (metadataStart !== -1) {
+        try {
+          const metadataStr = enhanced.slice(metadataStart + 'METADATA:'.length)
+          metadata = JSON.parse(metadataStr)
+          cleanContent = enhanced.slice(0, metadataStart).trim()
+        } catch (e) {
+          console.warn('Failed to parse enhancement metadata:', e)
+        }
+      }
+
+      setEnhancedContent(cleanContent)
+      setMetadata(metadata)
       setStatus('completed')
 
       toast({
@@ -39,10 +88,14 @@ export function useAIEnhancement(moduleType: ModuleType, projectId: string) {
         description: "Content enhanced successfully",
       })
 
-      return result.enhancedContent
+      return {
+        enhancedContent: cleanContent,
+        metadata
+      }
     } catch (err) {
+      const error = err instanceof Error ? err : new Error('Failed to enhance content')
       console.error('Error enhancing content:', err)
-      setError(err instanceof Error ? err.message : 'Failed to enhance content')
+      setError(error)
       setStatus('failed')
       
       toast({
@@ -51,13 +104,14 @@ export function useAIEnhancement(moduleType: ModuleType, projectId: string) {
         variant: "destructive"
       })
     }
-  }, [supabase, projectId, moduleType, toast])
+  }, [service, isConfigured, moduleType, serviceError, toast])
 
   return {
+    enhance,
     status,
     enhancedContent,
     error,
     metadata,
-    enhance
+    isConfigured
   }
 } 

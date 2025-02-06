@@ -3,12 +3,11 @@ import { useProject } from '@/context/project-context'
 import { ModuleType, MODULE_CONFIG } from '@/config/modules'
 import { Module, DbModuleResponse } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
-import { useAI } from '@/context/ai-context'
+import { useAIService } from '@/context/services/ai-service-context'
 import { ModuleResponseRow } from '@/lib/services/core/project-service'
 import { Database } from '@/types/database'
 import { useSupabase } from '@/context/supabase-context'
 import { ProjectService } from '@/lib/services/core/project-service'
-import { useAIEnhancement } from '@/hooks/use-ai-enhancement'
 
 type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
 
@@ -20,9 +19,8 @@ interface UseModuleOptions {
 export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}) {
   const { supabase } = useSupabase()
   const { project, modules, updateModule } = useProject()
-  const { getQuickActionsForModule, generateSuggestion } = useAI()
+  const { service: aiService, isConfigured: isAIConfigured } = useAIService()
   const { toast } = useToast()
-  const { enhance, status: enhancementStatus } = useAIEnhancement(moduleType, project?.id || '')
   
   // Loading states
   const [isInitializing, setIsInitializing] = useState(true)
@@ -30,7 +28,6 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false)
   const [initializationError, setInitializationError] = useState<Error | null>(null)
   const [lastAIInteraction, setLastAIInteraction] = useState<AIInteraction>()
-  const [isEnhancing, setIsEnhancing] = useState(false)
   
   // Local state management - only for current view
   const [responses, setResponses] = useState<Record<string, DbModuleResponse>>({})
@@ -257,11 +254,12 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
   // AI suggestion generation
   const generateAISuggestion = useCallback(async (stepId: string, context: string) => {
-    if (!module?.id || isGeneratingSuggestion) return
+    if (!module?.id || isGeneratingSuggestion || !aiService || !isAIConfigured) return
 
     try {
       setIsGeneratingSuggestion(true)
-      const suggestion = await generateSuggestion(context)
+      const systemPrompt = aiService.getChatSystemPrompt(moduleType)
+      const suggestion = await aiService.generateContent(context, systemPrompt)
 
       if (suggestion) {
         // Save AI interaction
@@ -293,48 +291,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     } finally {
       setIsGeneratingSuggestion(false)
     }
-  }, [module?.id, module?.project_id, isGeneratingSuggestion, generateSuggestion, supabase, toast])
-
-  // Enhancement functionality
-  const enhanceContent = useCallback(async () => {
-    if (!module?.id || !currentStepId || isEnhancing) return
-
-    const currentResponse = responses[currentStepId]
-    if (!currentResponse?.content) {
-      toast({
-        title: "No Content",
-        description: "Please add some content before enhancing.",
-        variant: "destructive"
-      })
-      return
-    }
-
-    try {
-      setIsEnhancing(true)
-      const enhancedContent = await enhance(
-        currentResponse.content,
-        currentStepId,
-        {
-          useMarketData: true,
-          useCompetitorData: true,
-          useFinancialData: true
-        }
-      )
-
-      if (enhancedContent) {
-        saveResponse(currentStepId, enhancedContent)
-      }
-    } catch (err) {
-      console.error('Error enhancing content:', err)
-      toast({
-        title: "Error",
-        description: "Failed to enhance content. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsEnhancing(false)
-    }
-  }, [module?.id, currentStepId, responses, isEnhancing, enhance, saveResponse, toast])
+  }, [module?.id, module?.project_id, isGeneratingSuggestion, aiService, isAIConfigured, moduleType, supabase, toast])
 
   return {
     module,
@@ -352,10 +309,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     navigateToStep,
     completeModule,
     generateAISuggestion,
-    quickActionGroups: getQuickActionsForModule(moduleType) ? [getQuickActionsForModule(moduleType)] : [],
-    lastAIInteraction,
-    enhanceContent,
-    isEnhancing,
-    enhancementStatus
+    quickActionGroups: [],
+    lastAIInteraction
   }
 } 

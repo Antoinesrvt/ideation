@@ -1,6 +1,4 @@
 import { ModuleType } from '@/types/project'
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database'
 import { APIError, BaseError, NotFoundError, ServiceError, ValidationError } from '../../errors/base-error'
 import { z } from 'zod'
 
@@ -44,6 +42,39 @@ const competitorDataSchema = z.object({
 export type MarketData = z.infer<typeof marketDataSchema>
 export type CompetitorData = z.infer<typeof competitorDataSchema>
 
+export interface ResearchQuery {
+  query: string
+  type: 'market' | 'competitor' | 'trend'
+  filters?: {
+    industry?: string
+    region?: string
+    timeframe?: string
+    dataSource?: string[]
+  }
+}
+
+export interface ResearchResult {
+  data: any
+  source: string
+  confidence: number
+  timestamp: string
+}
+
+interface ResearchOptions {
+  useCache?: boolean
+  cacheExpiry?: number // in minutes
+  enrichment?: {
+    includeNews?: boolean
+    includeSocialMedia?: boolean
+    includePatents?: boolean
+  }
+}
+
+interface CacheConfig {
+  ttl: number
+  storage: 'memory' | 'indexedDB'
+}
+
 interface FinancialData {
   metrics: {
     revenue?: number
@@ -69,16 +100,6 @@ interface FinancialData {
     revenue?: number[]
     growth?: number[]
     margins?: number[]
-  }
-}
-
-interface ResearchOptions {
-  useCache?: boolean
-  cacheExpiry?: number // in minutes
-  enrichment?: {
-    includeNews?: boolean
-    includeSocialMedia?: boolean
-    includePatents?: boolean
   }
 }
 
@@ -115,27 +136,119 @@ export class ResearchService {
     news: process.env.NEXT_PUBLIC_NEWS_API,
     financial: process.env.NEXT_PUBLIC_FINANCIAL_API
   }
+  private cache: Map<string, { data: any, timestamp: number }> = new Map()
 
   constructor(
-    private supabase: SupabaseClient<Database>,
-    private projectId: string,
-    private moduleType: ModuleType,
-    private apiKeys?: {
-      marketResearch?: string
-      financialData?: string
-      newsApi?: string
+    private config: {
+      apiKey: string
+      cacheConfig?: CacheConfig
     }
   ) {
     this.validateConfig()
   }
 
   private validateConfig(): void {
-    if (!this.projectId) {
-      throw new ValidationError('Project ID is required')
+    if (!this.config.apiKey) {
+      throw new ValidationError('API key is required')
     }
-    if (!this.moduleType) {
-      throw new ValidationError('Module type is required')
+  }
+
+  /**
+   * Search for research data
+   */
+  async search(query: ResearchQuery): Promise<ResearchResult[]> {
+    try {
+      // Check cache first
+      const cacheKey = this.getCacheKey(query)
+      const cachedResults = await this.getCachedResults(query.type, cacheKey)
+      if (cachedResults) {
+        return cachedResults
+      }
+
+      // Perform search based on type
+      let results: ResearchResult[] = []
+      switch (query.type) {
+        case 'market':
+          const marketData = await this.getMarketData(query.filters?.industry || '', {
+            useCache: true,
+            enrichment: {
+              includeNews: true
+            }
+          })
+          results = [{
+            data: marketData,
+            source: 'market-research',
+            confidence: 0.9,
+            timestamp: new Date().toISOString()
+          }]
+          break
+
+        case 'competitor':
+          const competitors = await this.getCompetitorData([query.query], {
+            useCache: true,
+            enrichment: {
+              includeSocialMedia: true
+            }
+          })
+          results = competitors.map(comp => ({
+            data: comp,
+            source: 'competitor-analysis',
+            confidence: 0.85,
+            timestamp: new Date().toISOString()
+          }))
+          break
+
+        case 'trend':
+          // Implement trend analysis
+          break
+      }
+
+      // Cache results
+      await this.cacheResults(query.type, cacheKey, results)
+
+      return results
+    } catch (error) {
+      if (error instanceof BaseError) {
+        throw error
+      }
+      throw new ServiceError(
+        'ResearchError',
+        'Error performing research',
+        { originalError: error }
+      )
     }
+  }
+
+  /**
+   * Get cached results
+   */
+  async getCachedResults(type: ResearchQuery['type'], key: string): Promise<ResearchResult[] | null> {
+    const cacheKey = `${type}:${key}`
+    const cached = this.cache.get(cacheKey)
+
+    if (cached && Date.now() - cached.timestamp < (this.config.cacheConfig?.ttl || this.DEFAULT_CACHE_EXPIRY) * 60 * 1000) {
+      return cached.data
+    }
+
+    return null
+  }
+
+  /**
+   * Cache results
+   */
+  private async cacheResults(type: ResearchQuery['type'], key: string, data: ResearchResult[]): Promise<void> {
+    const cacheKey = `${type}:${key}`
+    this.cache.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    })
+  }
+
+  /**
+   * Generate cache key from query
+   */
+  private getCacheKey(query: ResearchQuery): string {
+    return `${query.type}:${query.query}:${JSON.stringify(query.filters)}`
   }
 
   /**
@@ -321,27 +434,14 @@ export class ResearchService {
    * Cache management methods
    */
   private async getCachedData(type: string, key: string): Promise<any | null> {
-    const { data: cacheEntry } = await this.supabase
-      .from('research_cache')
-      .select('data, created_at, expiry')
-      .eq('type', type)
-      .eq('key', key)
-      .single()
+    const cacheKey = `${type}:${key}`
+    const cached = this.cache.get(cacheKey)
 
-    if (!cacheEntry) return null
-
-    // Check if cache is expired
-    const cacheAge = Date.now() - new Date(cacheEntry.created_at).getTime()
-    if (cacheAge > (cacheEntry.expiry * 60 * 1000)) {
-      await this.supabase
-        .from('research_cache')
-        .delete()
-        .eq('type', type)
-        .eq('key', key)
-      return null
+    if (cached && Date.now() - cached.timestamp < (this.config.cacheConfig?.ttl || this.DEFAULT_CACHE_EXPIRY) * 60 * 1000) {
+      return cached.data
     }
 
-    return cacheEntry.data
+    return null
   }
 
   private async cacheData(
@@ -350,15 +450,11 @@ export class ResearchService {
     data: any,
     expiry: number = 60 // default 1 hour
   ): Promise<void> {
-    await this.supabase
-      .from('research_cache')
-      .upsert({
-        type,
-        key,
-        data,
-        expiry,
-        created_at: new Date().toISOString()
-      })
+    const cacheKey = `${type}:${key}`
+    this.cache.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    })
   }
 
   /**
@@ -377,7 +473,7 @@ export class ResearchService {
         `${this.API_ENDPOINTS.marketSize}/size/${encodeURIComponent(industry)}`,
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKeys?.marketResearch}`
+            'Authorization': `Bearer ${this.config.apiKey}`
           }
         }
       )

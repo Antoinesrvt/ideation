@@ -1,28 +1,29 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database'
-import { ModuleType } from '@/types/project'
 import { AIService, AIServiceOptions } from './ai/ai-service'
-import { ResearchService } from './core/research-service'
 import { ServiceError } from '../errors/base-error'
 
 export interface ServiceConfig {
-  supabase: SupabaseClient<Database>
-  projectId: string
-  moduleType: ModuleType
-  apiKeys?: {
+  apiKeys: {
     anthropic?: string
-    marketResearch?: string
-    financialData?: string
-    newsApi?: string
+  }
+  options?: {
+    ai?: Omit<AIServiceOptions, 'apiKey'>
+    cache?: {
+      ttl: number
+      storage: 'memory' | 'indexedDB'
+    }
   }
 }
 
+type ServiceType = 'ai'
+type ServiceInstance = AIService
+
 export class ServiceRegistry {
   private static instance: ServiceRegistry
-  private services: Map<string, any> = new Map()
+  private services: Map<ServiceType, ServiceInstance> = new Map()
   private config: ServiceConfig
 
   private constructor(config: ServiceConfig) {
+    this.validateConfig(config)
     this.config = config
   }
 
@@ -35,14 +36,25 @@ export class ServiceRegistry {
         )
       }
       ServiceRegistry.instance = new ServiceRegistry(config)
+    } else if (config) {
+      // Update config if provided
+      ServiceRegistry.instance.updateConfig(config)
     }
     return ServiceRegistry.instance
   }
 
+  private validateConfig(config: ServiceConfig): void {
+    if (!config.apiKeys) {
+      throw new ServiceError(
+        'ConfigValidationError',
+        'API keys configuration is required'
+      )
+    }
+  }
+
   public getAIService(): AIService {
-    const serviceKey = 'ai'
-    if (!this.services.has(serviceKey)) {
-      if (!this.config.apiKeys?.anthropic) {
+    return this.getOrCreateService('ai', () => {
+      if (!this.config.apiKeys.anthropic) {
         throw new ServiceError(
           'ServiceConfigError',
           'Anthropic API key is required for AI service'
@@ -51,37 +63,33 @@ export class ServiceRegistry {
 
       const aiOptions: AIServiceOptions = {
         apiKey: this.config.apiKeys.anthropic,
-        model: 'claude-3-opus-20240229',
-        maxTokens: 4000,
-        temperature: 0.7
+        ...this.config.options?.ai,
+        // Default values if not provided in options
+        model: this.config.options?.ai?.model || 'claude-3-opus-20240229',
+        maxTokens: this.config.options?.ai?.maxTokens || 4000,
+        temperature: this.config.options?.ai?.temperature || 0.7
       }
 
-      this.services.set(serviceKey, new AIService(aiOptions))
-    }
-    return this.services.get(serviceKey)
+      return new AIService(aiOptions)
+    })
   }
 
-  public getResearchService(): ResearchService {
-    const serviceKey = 'research'
-    if (!this.services.has(serviceKey)) {
-      this.services.set(
-        serviceKey,
-        new ResearchService(
-          this.config.supabase,
-          this.config.projectId,
-          this.config.moduleType
+  private getOrCreateService<T extends ServiceInstance>(
+    key: ServiceType,
+    factory: () => T
+  ): T {
+    if (!this.services.has(key)) {
+      try {
+        const service = factory()
+        this.services.set(key, service)
+      } catch (error) {
+        throw new ServiceError(
+          'ServiceCreationError',
+          `Failed to create ${key} service: ${error instanceof Error ? error.message : 'Unknown error'}`
         )
-      )
+      }
     }
-    return this.services.get(serviceKey)
-  }
-
-  public clearServices(): void {
-    this.services.clear()
-  }
-
-  public getConfig(): ServiceConfig {
-    return { ...this.config }
+    return this.services.get(key) as T
   }
 
   public updateConfig(newConfig: Partial<ServiceConfig>): void {
@@ -91,8 +99,24 @@ export class ServiceRegistry {
       apiKeys: {
         ...this.config.apiKeys,
         ...newConfig.apiKeys
+      },
+      options: {
+        ...this.config.options,
+        ...newConfig.options,
+        ai: {
+          ...this.config.options?.ai,
+          ...newConfig.options?.ai
+        }
       }
     }
     this.clearServices() // Reset services to use new config
+  }
+
+  public clearServices(): void {
+    this.services.clear()
+  }
+
+  public getConfig(): Readonly<ServiceConfig> {
+    return Object.freeze({ ...this.config })
   }
 } 
