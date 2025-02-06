@@ -3,11 +3,9 @@ import './globals.css'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseProvider } from '@/context/supabase-context'
 import { ThemeProvider } from "@/components/theme-provider";
-import { AIProvider } from "@/context/ai-context";
 import { GeistSans } from "geist/font/sans";
 import { Toaster } from '@/components/ui/toaster'
 import { ProjectProvider } from '@/context/project-context'
-
 
 export const metadata: Metadata = {
   title: 'Startup Builder',
@@ -33,13 +31,9 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AIProvider>
-            <SupabaseProvider initialSession={session?.user ?? null}>
-              <ProjectProvider>
-                {children}
-              </ProjectProvider>
-            </SupabaseProvider>
-          </AIProvider>
+          <SupabaseProvider initialSession={session?.user ?? null}>
+              <ProjectProvider>{children}</ProjectProvider>
+          </SupabaseProvider>
         </ThemeProvider>
         <Toaster />
       </body>

@@ -3,7 +3,8 @@ import { useProject } from '@/context/project-context'
 import { ModuleType, MODULE_CONFIG } from '@/config/modules'
 import { Module, DbModuleResponse } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
-import { useAIService } from '@/context/services/ai-service-context'
+import { useAIChat } from '@/lib/hooks/use-ai-chat'
+import { useAIEnhancement } from '@/lib/hooks/use-ai-enhancement'
 import { ModuleResponseRow } from '@/lib/services/core/project-service'
 import { Database } from '@/types/database'
 import { useSupabase } from '@/context/supabase-context'
@@ -19,7 +20,8 @@ interface UseModuleOptions {
 export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}) {
   const { supabase } = useSupabase()
   const { project, modules, updateModule } = useProject()
-  const { service: aiService, isConfigured: isAIConfigured } = useAIService()
+  const { chat, isLoading: isChatLoading } = useAIChat(project?.id || '', moduleType)
+  const { enhance, isLoading: isEnhancing } = useAIEnhancement(project?.id || '', moduleType)
   const { toast } = useToast()
   
   // Loading states
@@ -254,44 +256,31 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
   // AI suggestion generation
   const generateAISuggestion = useCallback(async (stepId: string, context: string) => {
-    if (!module?.id || isGeneratingSuggestion || !aiService || !isAIConfigured) return
+    if (!module?.id || isGeneratingSuggestion || isChatLoading) return
 
     try {
       setIsGeneratingSuggestion(true)
-      const systemPrompt = aiService.getChatSystemPrompt(moduleType)
-      const suggestion = await aiService.generateContent(context, systemPrompt)
 
-      if (suggestion) {
-        // Save AI interaction
-        const { data: interaction, error } = await supabase
-          .from('ai_interactions')
-          .insert({
-            project_id: module.project_id,
-            module_id: module.id,
-            step_id: stepId,
-            type: 'content',
-            prompt: context,
-            response: suggestion
-          })
-          .select()
-          .single()
-
-        if (error) throw error
-        if (interaction) {
-          setLastAIInteraction(interaction)
+      await chat({ 
+        message: context,
+        context: {
+          moduleType,
+          projectId: project?.id || '',
+          stepId
         }
-      }
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "Failed to generate AI suggestion",
-        variant: "destructive"
       })
-      throw err
-    } finally {
+
+      setIsGeneratingSuggestion(false)
+    } catch (error) {
+      console.error('Error generating AI suggestion:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to generate AI suggestion',
+        variant: 'destructive'
+      })
       setIsGeneratingSuggestion(false)
     }
-  }, [module?.id, module?.project_id, isGeneratingSuggestion, aiService, isAIConfigured, moduleType, supabase, toast])
+  }, [module?.id, project?.id, isGeneratingSuggestion, chat, isChatLoading, moduleType, toast])
 
   return {
     module,
