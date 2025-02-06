@@ -1,42 +1,48 @@
 import { ModuleType } from '@/types/project'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
+import { APIError, BaseError, NotFoundError, ServiceError, ValidationError } from '../../errors/base-error'
+import { z } from 'zod'
+
+// Validation schemas
+const marketDataSchema = z.object({
+  marketSize: z.number(),
+  growthRate: z.number(),
+  trends: z.array(z.string()),
+  keyPlayers: z.array(z.string()),
+  segments: z.array(z.object({
+    name: z.string(),
+    size: z.number(),
+    growth: z.number()
+  }))
+})
+
+const competitorDataSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  marketShare: z.number().optional(),
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  products: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    pricing: z.string().optional()
+  })),
+  metrics: z.object({
+    revenue: z.number().optional(),
+    employees: z.number().optional(),
+    funding: z.number().optional(),
+    social: z.object({
+      followers: z.number().optional(),
+      engagement: z.number().optional(),
+      sentiment: z.number().optional()
+    }).optional()
+  })
+})
 
 // API Types
-interface MarketData {
-  marketSize: number
-  growthRate: number
-  trends: string[]
-  keyPlayers: string[]
-  segments: {
-    name: string
-    size: number
-    growth: number
-  }[]
-}
-
-interface CompetitorData {
-  name: string
-  description: string
-  marketShare?: number
-  strengths: string[]
-  weaknesses: string[]
-  products: {
-    name: string
-    description: string
-    pricing?: string
-  }[]
-  metrics: {
-    revenue?: number
-    employees?: number
-    funding?: number
-    social?: {
-      followers?: number
-      engagement?: number
-      sentiment?: number
-    }
-  }
-}
+export type MarketData = z.infer<typeof marketDataSchema>
+export type CompetitorData = z.infer<typeof competitorDataSchema>
 
 interface FinancialData {
   metrics: {
@@ -101,11 +107,36 @@ interface CacheData {
 }
 
 export class ResearchService {
+  private readonly DEFAULT_CACHE_EXPIRY = 60 // 1 hour in minutes
+  private readonly API_ENDPOINTS = {
+    marketSize: process.env.NEXT_PUBLIC_MARKET_SIZE_API,
+    marketTrends: process.env.NEXT_PUBLIC_MARKET_TRENDS_API,
+    competitors: process.env.NEXT_PUBLIC_COMPETITORS_API,
+    news: process.env.NEXT_PUBLIC_NEWS_API,
+    financial: process.env.NEXT_PUBLIC_FINANCIAL_API
+  }
+
   constructor(
     private supabase: SupabaseClient<Database>,
     private projectId: string,
-    private moduleType: ModuleType
-  ) {}
+    private moduleType: ModuleType,
+    private apiKeys?: {
+      marketResearch?: string
+      financialData?: string
+      newsApi?: string
+    }
+  ) {
+    this.validateConfig()
+  }
+
+  private validateConfig(): void {
+    if (!this.projectId) {
+      throw new ValidationError('Project ID is required')
+    }
+    if (!this.moduleType) {
+      throw new ValidationError('Module type is required')
+    }
+  }
 
   /**
    * Get market research data
@@ -115,47 +146,73 @@ export class ResearchService {
     options: ResearchOptions = {}
   ): Promise<MarketData> {
     try {
+      if (!industry) {
+        throw new ValidationError('Industry is required')
+      }
+
       // 1. Check cache if enabled
       if (options.useCache) {
         const cachedData = await this.getCachedData('market', industry)
-        if (cachedData) return cachedData as MarketData
+        if (cachedData) {
+          const validatedData = marketDataSchema.safeParse(cachedData)
+          if (validatedData.success) {
+            return validatedData.data
+          }
+        }
       }
 
       // 2. Fetch data from multiple sources
-      const [
-        marketSize,
-        trends,
-        competitors
-      ] = await Promise.all([
+      const [marketSize, trends, competitors] = await Promise.all([
         this.fetchMarketSize(industry),
         this.fetchMarketTrends(industry),
         this.fetchKeyCompetitors(industry)
       ])
 
       // 3. Enrich with additional data if requested
+      let enrichedTrends = [...trends]
       if (options.enrichment?.includeNews) {
         const newsData = await this.fetchIndustryNews(industry)
-        trends.push(...newsData)
+        enrichedTrends = [...enrichedTrends, ...newsData]
       }
 
-      // 4. Format response
-      const marketData: MarketData = {
+      // 4. Format and validate response
+      const marketData = {
         marketSize: marketSize.total,
         growthRate: marketSize.growth,
-        trends,
+        trends: enrichedTrends,
         keyPlayers: competitors.map(comp => comp.name),
         segments: marketSize.segments
       }
 
-      // 5. Cache results if enabled
-      if (options.useCache) {
-        await this.cacheData('market', industry, marketData, options.cacheExpiry)
+      const validatedData = marketDataSchema.safeParse(marketData)
+      if (!validatedData.success) {
+        throw new ServiceError(
+          'ValidationError',
+          'Invalid market data format',
+          { errors: validatedData.error.errors }
+        )
       }
 
-      return marketData
+      // 5. Cache results if enabled
+      if (options.useCache) {
+        await this.cacheData(
+          'market',
+          industry,
+          validatedData.data,
+          options.cacheExpiry || this.DEFAULT_CACHE_EXPIRY
+        )
+      }
+
+      return validatedData.data
     } catch (error) {
-      console.error('Error fetching market data:', error)
-      throw error
+      if (error instanceof BaseError) {
+        throw error
+      }
+      throw new ServiceError(
+        'MarketDataError',
+        'Error fetching market data',
+        { originalError: error }
+      )
     }
   }
 
@@ -308,11 +365,33 @@ export class ResearchService {
    * API integration methods (to be implemented)
    */
   private async fetchMarketSize(industry: string): Promise<MarketSizeData> {
-    // TODO: Implement market size API integration
-    return {
-      total: 0,
-      growth: 0,
-      segments: []
+    if (!this.API_ENDPOINTS.marketSize) {
+      throw new ServiceError(
+        'ConfigError',
+        'Market size API endpoint not configured'
+      )
+    }
+
+    try {
+      const data = await this.fetchWithRetry<MarketSizeData>(
+        `${this.API_ENDPOINTS.marketSize}/size/${encodeURIComponent(industry)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKeys?.marketResearch}`
+          }
+        }
+      )
+
+      return data
+    } catch (error) {
+      if (error instanceof APIError) {
+        throw error
+      }
+      throw new ServiceError(
+        'MarketSizeError',
+        'Error fetching market size data',
+        { originalError: error }
+      )
     }
   }
 
@@ -374,5 +453,50 @@ export class ResearchService {
   private async fetchIndustryProjections(industry: string): Promise<FinancialData['projections']> {
     // TODO: Implement industry projections API integration
     return {}
+  }
+
+  /**
+   * Enhanced API integration methods
+   */
+  private async fetchWithRetry<T>(
+    url: string,
+    options: RequestInit = {},
+    retries = 3
+  ): Promise<T> {
+    let lastError: Error | null = null
+    
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        })
+
+        if (!response.ok) {
+          throw new APIError(
+            'APIRequestError',
+            response.status,
+            response.statusText,
+            { url, attempt: i + 1 }
+          )
+        }
+
+        return await response.json()
+      } catch (error) {
+        lastError = error as Error
+        if (i === retries - 1) break
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000))
+      }
+    }
+
+    throw new APIError(
+      'APIRequestFailed',
+      500,
+      'Failed after multiple retries',
+      { originalError: lastError }
+    )
   }
 } 

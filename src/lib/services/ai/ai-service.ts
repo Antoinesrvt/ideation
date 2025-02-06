@@ -7,12 +7,13 @@ const anthropic = new Anthropic({
 })
 
 export interface AIServiceOptions {
+  apiKey: string
   temperature?: number
   maxTokens?: number
   model?: string
 }
 
-const DEFAULT_OPTIONS: Required<AIServiceOptions> = {
+const DEFAULT_OPTIONS: Omit<Required<AIServiceOptions>, 'apiKey'> = {
   temperature: 0.7,
   maxTokens: 1000,
   model: 'claude-3-opus-20240229'
@@ -20,9 +21,16 @@ const DEFAULT_OPTIONS: Required<AIServiceOptions> = {
 
 export class AIService {
   private options: Required<AIServiceOptions>
+  private client: Anthropic
 
-  constructor(options: Partial<AIServiceOptions> = {}) {
-    this.options = { ...DEFAULT_OPTIONS, ...options }
+  constructor(options: AIServiceOptions) {
+    this.options = { 
+      ...DEFAULT_OPTIONS, 
+      ...options 
+    }
+    this.client = new Anthropic({
+      apiKey: this.options.apiKey
+    })
   }
 
   /**
@@ -31,15 +39,15 @@ export class AIService {
   async generateContent(
     prompt: string,
     systemPrompt?: string,
-    options: Partial<AIServiceOptions> = {}
+    options: Partial<Omit<AIServiceOptions, 'apiKey'>> = {}
   ): Promise<string> {
     try {
-      const mergedOptions: Required<AIServiceOptions> = { 
+      const mergedOptions = { 
         ...this.options,
         ...options
       }
 
-      const response = await anthropic.messages.create({
+      const response = await this.client.messages.create({
         model: mergedOptions.model,
         max_tokens: mergedOptions.maxTokens,
         temperature: mergedOptions.temperature,

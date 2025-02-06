@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Icons } from '@/components/ui/icons'
 import { useSupabase } from '@/context/supabase-context'
-import { AuthService } from '@/lib/services/auth-service'
+import { AuthService } from '@/lib/services/core/auth-service'
 
 interface AuthFormProps {
   type: 'signin' | 'signup'

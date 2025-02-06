@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import type { Module, DbModuleResponse, ModuleUpdateData } from '@/types/module'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
-import { ProjectService, ProjectRow } from '@/lib/services/project-service'
+import { ProjectService, ProjectRow } from '@/lib/services/core/project-service'
 import { useSupabase } from './supabase-context'
 import { ModuleType } from '@/config/modules'
 

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useSupabase } from "@/context/supabase-context";
-import { DocumentService } from '@/lib/services/document-service'
+import { DocumentService } from '@/lib/services/document/document-service'
 import { ModuleType } from '@/types/project'
 import { useToast } from '@/hooks/use-toast'
 

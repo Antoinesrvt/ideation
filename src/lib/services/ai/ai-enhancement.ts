@@ -1,5 +1,5 @@
 import { ModuleType } from '@/types/project'
-import { AIContextBuilder } from '@/lib/ai/context-builder'
+import { AIContextBuilder } from '@/lib/services/ai/context-builder'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 

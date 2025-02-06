@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Icons } from '@/components/ui/icons'
 import { useSupabase } from '@/context/supabase-context'
-import { AuthService } from '@/lib/services/auth-service'
+import { AuthService } from '@/lib/services/core/auth-service'
 
 export default function VerifyEmailPage() {
   const [isResending, setIsResending] = useState(false)

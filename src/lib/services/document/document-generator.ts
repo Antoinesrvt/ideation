@@ -1,5 +1,5 @@
 import { ModuleType } from '@/types/project'
-import { ContextData } from '@/lib/ai/context-builder'
+import { ContextData } from '@/lib/services/ai/context-builder'
 import { TemplateEngine } from './template-engine'
 import { DocumentService } from './document-service'
 import { SupabaseClient } from '@supabase/supabase-js'

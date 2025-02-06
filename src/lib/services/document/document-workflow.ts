@@ -2,7 +2,7 @@ import { ModuleType } from '@/types/project'
 import { DbModuleResponse } from '@/types/module'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
-import { AIContextBuilder, EnrichmentOptions } from '@/lib/ai/context-builder'
+import { AIContextBuilder, EnrichmentOptions } from '@/lib/services/ai/context-builder'
 import { DocumentGenerator, GenerationOptions, GenerationResult } from './document-generator'
 
 export interface WorkflowOptions {

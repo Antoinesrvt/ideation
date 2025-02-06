@@ -4,10 +4,10 @@ import { ModuleType, MODULE_CONFIG } from '@/config/modules'
 import { Module, DbModuleResponse } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
 import { useAI } from '@/context/ai-context'
-import { ModuleResponseRow } from '@/lib/services/project-service'
+import { ModuleResponseRow } from '@/lib/services/core/project-service'
 import { Database } from '@/types/database'
 import { useSupabase } from '@/context/supabase-context'
-import { ProjectService } from '@/lib/services/project-service'
+import { ProjectService } from '@/lib/services/core/project-service'
 import { useAIEnhancement } from '@/hooks/use-ai-enhancement'
 
 type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']

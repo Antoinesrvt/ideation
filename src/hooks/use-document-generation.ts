@@ -3,7 +3,7 @@ import { useSupabase } from '@/context/supabase-context'
 import { useProject } from '@/context/project-context'
 import { ModuleType } from '@/types/project'
 import { DbModuleResponse } from '@/types/module'
-import { DocumentWorkflow } from '@/lib/services/document-workflow'
+import { DocumentWorkflow } from '@/lib/services/document/document-workflow'
 import { useToast } from '@/hooks/use-toast'
 
 export type GenerationStatus = 'idle' | 'preparing' | 'generating' | 'completed' | 'failed'

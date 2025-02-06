@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
 import { useSupabase } from '@/context/supabase-context'
-import { ProjectService, ProjectWithModules, ProjectRow, ModuleRow } from '@/lib/services/project-service'
+import { ProjectService, ProjectWithModules, ProjectRow, ModuleRow } from '@/lib/services/core/project-service'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
