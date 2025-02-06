@@ -47,7 +47,7 @@ export class DocumentGenerator {
         projectId: this.projectId,
         moduleType: this.moduleType,
         data: {
-          moduleResponses: this.extractModuleResponses(context),
+          stepResponses: this.extractStepResponses(context),
           projectData: templateData
         },
         format: options.format
@@ -63,7 +63,7 @@ export class DocumentGenerator {
         documentId: result.id,
         status: result.status as 'completed' | 'failed',
         url,
-        // TODO: Add error handling
+       // TODO: Add error handling
       }
     } catch (error) {
       console.error('Error generating document:', error)
@@ -91,8 +91,8 @@ export class DocumentGenerator {
     // Process each context source
     for (const source of context.sources) {
       switch (source.type) {
-        case 'module_response':
-          // Module responses are handled separately
+        case 'step_response':
+          // Step responses are handled separately
           break
         
         case 'project_data':
@@ -126,13 +126,13 @@ export class DocumentGenerator {
   }
 
   /**
-   * Extract module responses from context
+   * Extract step responses from context
    */
-  private extractModuleResponses(context: ContextData): Record<string, string> {
+  private extractStepResponses(context: ContextData): Record<string, string> {
     const responses: Record<string, string> = {}
     
     context.sources
-      .filter(source => source.type === 'module_response')
+      .filter(source => source.type === 'step_response')
       .forEach(source => {
         const stepId = source.metadata?.stepId
         if (stepId) {
@@ -147,8 +147,8 @@ export class DocumentGenerator {
    * Format competitor data for template
    */
   private formatCompetitorData(data: any): any[] {
-    // TODO: Implement proper competitor data formatting
-    return Array.isArray(data) ? data : []
+    if (!data) return []
+    return Array.isArray(data) ? data : [data]
   }
 
   /**

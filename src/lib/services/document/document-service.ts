@@ -7,13 +7,38 @@ export type Tables = Database['public']['Tables']
 export type DocumentRow = Tables['documents']['Row']
 export type DocumentTemplateRow = Tables['document_templates']['Row']
 
+export interface GenerateDocumentParams {
+  projectId: string
+  moduleType: ModuleType
+  data: {
+    stepResponses: Record<string, string>
+    projectData: Record<string, any>
+  }
+  format: 'pdf' | 'docx' | 'md'
+  version?: number
+}
 
+export interface DocumentResult {
+  id: string
+  project_id: string
+  module_type: ModuleType
+  name: string
+  type: 'pdf' | 'docx' | 'md'
+  storage_path: string
+  version: number
+  template_version: number
+  status: 'completed' | 'failed' | 'pending' | 'processing'
+  error?: string
+  metadata: Record<string, any>
+  created_at: string
+  updated_at: string
+}
 
 interface GenerateDocumentOptions {
   projectId: string
   moduleType: ModuleType
   data: {
-    moduleResponses: Record<string, string>
+    stepResponses: Record<string, string>
     projectData: Record<string, any>
   }
   format: 'pdf' | 'docx' | 'md'
@@ -40,7 +65,7 @@ export class DocumentService {
           status: 'processing',
           metadata: {
             generated_from: {
-              module_responses: options.data.moduleResponses,
+              step_responses: options.data.stepResponses,
               project_data: options.data.projectData
             }
           }
@@ -76,7 +101,7 @@ export class DocumentService {
         const templateText = await templateContent.text()
         const processedContent = await this.templateEngine.processTemplate(templateText, {
           ...options.data.projectData,
-          ...options.data.moduleResponses
+          ...options.data.stepResponses
         })
 
         // 5. Convert to requested format

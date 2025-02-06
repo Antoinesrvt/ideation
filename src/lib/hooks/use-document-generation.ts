@@ -1,47 +1,90 @@
-import { useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSupabase } from '@/context/supabase-context'
 import { ModuleType } from '@/types/project'
-import { DbModuleResponse } from '@/types/module'
-import { DocumentWorkflow, WorkflowOptions } from '@/lib/services/document/document-workflow'
+import { DbModuleStep, DbStepResponse } from '@/types/module'
+import { DocumentWorkflow, WorkflowOptions, WorkflowResult } from '@/lib/services/document/document-workflow'
 import { useToast } from '@/hooks/use-toast'
 import { z } from 'zod'
 
-export const generationStatusSchema = z.enum([
-  'idle',
-  'preparing',
-  'generating',
-  'completed',
-  'failed'
-])
+const documentSchema = z.object({
+  id: z.string(),
+  version: z.number(),
+  created_at: z.string(),
+  url: z.string().optional(),
+  status: z.enum(['pending', 'processing', 'completed', 'failed'])
+})
 
-export type GenerationStatus = z.infer<typeof generationStatusSchema>
+type Document = z.infer<typeof documentSchema>
 
-interface UseDocumentGenerationOptions {
-  moduleType: ModuleType
+interface UseDocumentsOptions {
   projectId: string
-  onComplete?: () => void
+  moduleType: ModuleType
+  enabled?: boolean
 }
 
-export function useDocumentGeneration({
-  moduleType,
-  projectId,
-  onComplete
-}: UseDocumentGenerationOptions) {
+export function useDocuments({ projectId, moduleType, enabled = true }: UseDocumentsOptions) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const workflow = new DocumentWorkflow(supabase, projectId, moduleType)
 
-  const generationMutation = useMutation({
+  // Query for fetching documents
+  const documentsQuery = useQuery({
+    queryKey: ['documents', projectId, moduleType],
+    queryFn: async () => {
+      const docs = await workflow.getDocuments()
+      
+      // Get signed URLs for all completed documents
+      const docsWithUrls = await Promise.all(
+        docs.map(async (doc) => {
+          if (doc.status === 'completed') {
+            try {
+              const url = await workflow.getDocumentUrl(doc.id)
+              return documentSchema.parse({
+                id: doc.id,
+                version: doc.version || 1,
+                created_at: doc.created_at,
+                url,
+                status: doc.status
+              })
+            } catch (error) {
+              console.error(`Error getting URL for document ${doc.id}:`, error)
+              return documentSchema.parse({
+                id: doc.id,
+                version: doc.version || 1,
+                created_at: doc.created_at,
+                status: 'failed' as const
+              })
+            }
+          }
+          return documentSchema.parse({
+            id: doc.id,
+            version: doc.version || 1,
+            created_at: doc.created_at,
+            status: doc.status
+          })
+        })
+      )
+
+      return docsWithUrls
+    },
+    enabled,
+    staleTime: 1000 * 60, // 1 minute
+    gcTime: 1000 * 60 * 5 // 5 minutes
+  })
+
+  // Mutation for generating documents
+  const generateMutation = useMutation({
     mutationFn: async ({
-      moduleResponses,
+      steps,
       projectData,
       options = {}
     }: {
-      moduleResponses: Record<string, DbModuleResponse>
+      steps: (DbModuleStep & { responses: DbStepResponse[] })[]
       projectData: Record<string, any>
       options?: WorkflowOptions
     }) => {
-      const result = await workflow.execute(moduleResponses, projectData, {
+      return workflow.execute(steps, projectData, {
         generation: { format: 'pdf', ...options.generation },
         enrichment: {
           includeMarketData: true,
@@ -50,29 +93,14 @@ export function useDocumentGeneration({
         },
         customInstructions: options.customInstructions
       })
-
-      if (result.status === 'failed') {
-        throw new Error(result.error || 'Failed to generate document')
-      }
-
-      // Get document URL if generation was successful
-      const url = await workflow.getDocumentUrl(result.documentId)
-      
-      return {
-        documentId: result.documentId,
-        url,
-        status: result.status,
-        contextBuilt: result.contextBuilt,
-        enriched: result.enriched,
-        processingTime: result.processingTime
-      }
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       toast({
         title: "Success",
-        description: "Document generated successfully",
+        description: "Document generation started. It will be available shortly.",
       })
-      onComplete?.()
+      // Invalidate documents query to show the new document
+      queryClient.invalidateQueries({ queryKey: ['documents', projectId, moduleType] })
     },
     onError: (error) => {
       console.error('Error generating document:', error)
@@ -85,18 +113,12 @@ export function useDocumentGeneration({
   })
 
   return {
-    generate: generationMutation.mutate,
-    status: generationStatusSchema.parse(
-      generationMutation.isPending ? 'generating' :
-      generationMutation.isError ? 'failed' :
-      generationMutation.isSuccess ? 'completed' :
-      'idle'
-    ),
-    progress: generationMutation.isPending ? 50 : // Simplified progress tracking
-             generationMutation.isSuccess ? 100 :
-             0,
-    documentUrl: generationMutation.data?.url,
-    error: generationMutation.error instanceof Error ? generationMutation.error.message : undefined,
-    isLoading: generationMutation.isPending
+    documents: documentsQuery.data || [],
+    isLoading: documentsQuery.isLoading,
+    isError: documentsQuery.isError,
+    error: documentsQuery.error,
+    refetch: documentsQuery.refetch,
+    generateDocument: generateMutation.mutate,
+    isGenerating: generateMutation.isPending
   }
 } 

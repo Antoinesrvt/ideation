@@ -1,344 +1,250 @@
-import { Database } from '@/types/database'
-import { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
-import { ModuleType } from '@/types/project'
-import { MODULE_CONFIG } from '@/config/modules'
-import { DbModuleResponse } from '@/types/module'
-import { Module, ModuleUpdateData } from '@/types/module'
+import { BaseSupabaseService } from './base-supabase-service'
+import { ModuleService } from './module-service'
+import { 
+  ProjectRow, 
+  ProjectWithModules,
+  ProjectMember,
+  ProjectInsertData,
+  ProjectUpdateData,
+  MemberRole
+} from '@/types/project'
+import { ModuleInsertData, ModuleUpdateData } from '@/types/module'
+import { PostgrestSingleResponse, PostgrestResponse, PostgrestError } from '@supabase/supabase-js'
 
+export class ProjectService extends BaseSupabaseService {
+  private moduleService: ModuleService
 
-export type Tables = Database['public']['Tables']
-export type ProjectRow = Tables['projects']['Row']
-export type ModuleRow = Tables['modules']['Row']
-export type ModuleResponseRow = Tables['module_responses']['Row']
-export type StepRow = Tables['steps']['Row']
-export type AIInteractionRow = Tables['ai_interactions']['Row']
-
-export type ProjectWithModules = ProjectRow & {
-  modules: (ModuleRow & {
-    responses?: ModuleResponseRow[]
-  })[]
-}
-
-export class ProjectService {
-  constructor(private supabase: SupabaseClient<Database>) {}
-
-  private handleError(error: PostgrestError, context: string = '') {
-    console.error('Database error:', {
-      error,
-      context,
-      message: error.message,
-      code: error.code,
-      details: error.details,
-      hint: error.hint,
-      timestamp: new Date().toISOString()
-    })
-    throw new Error(`Database error: ${error.message}`)
+  constructor(supabase: any) {
+    super(supabase)
+    this.moduleService = new ModuleService(supabase)
   }
 
-  async getProjects() {
-    const { data, error } = await this.supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) this.handleError(error, 'getProjects')
-    return (data ?? []) as ProjectRow[]
+  protected handleError(error: PostgrestError | Error, context: string = ''): never {
+    console.error('Project service error:', error, context)
+    throw error
   }
 
-  async getProject(projectId: string): Promise<ProjectRow & { modules: Module[] }> {
-    const { data: project, error: projectError } = await this.supabase
-      .from('projects')
-      .select(`
-        *,
-        modules (*)
-      `)
-      .eq('id', projectId)
-      .single()
+  /**
+   * Get all projects for current user (including those where they are a member)
+   */
+  async getProjects(): Promise<ProjectRow[]> {
+    return this.handleDatabaseOperation<ProjectRow[]>(
+      async () => {
+        const { data: { user } } = await this.supabase.auth.getUser()
+        if (!user) throw new Error('No authenticated user')
 
-    if (projectError) throw projectError
-    if (!project) throw new Error('Project not found')
+        const result = await this.supabase
+          .from('projects')
+          .select('*')
+          .or(`created_by.eq.${user.id},id.in.(${
+            this.supabase
+              .from('project_members')
+              .select('project_id')
+              .eq('user_id', user.id)
+              .toString()
+          })`)
+          .order('updated_at', { ascending: false })
 
-    return project
+        return result as PostgrestResponse<ProjectRow>
+      },
+      'getProjects'
+    )
   }
 
-  async createProject(
-    data: Tables['projects']['Insert']
-  ): Promise<ProjectRow> {
-    const { data: project, error } = await this.supabase
-      .from('projects')
-      .insert(data)
-      .select()
-      .single()
+  /**
+   * Get a single project with its modules and members
+   */
+  async getProject(projectId: string): Promise<ProjectWithModules> {
+    return this.handleDatabaseOperation<ProjectWithModules>(
+      async () => {
+        const result = await this.supabase
+          .from('projects')
+          .select(`
+            *,
+            modules:modules(
+              *,
+              steps:module_steps(
+                *,
+                responses:step_responses(*)
+              )
+            ),
+            members:project_members(
+              *,
+              profile:profiles(full_name, avatar_url)
+            )
+          `)
+          .eq('id', projectId)
+          .single()
 
-    if (error) this.handleError(error)
-    if (!project) throw new Error('Failed to create project')
-    return project
+        return result as PostgrestSingleResponse<ProjectWithModules>
+      },
+      'getProject'
+    )
   }
 
-  async updateProject(projectId: string, updates: Partial<ProjectRow>): Promise<ProjectRow> {
-    const { data, error } = await this.supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', projectId)
-      .select()
-      .single()
+  /**
+   * Create a new project
+   */
+  async createProject(data: ProjectInsertData): Promise<ProjectRow> {
+    return this.handleDatabaseOperation<ProjectRow>(
+      async () => {
+        const { data: { user } } = await this.supabase.auth.getUser()
+        if (!user) throw new Error('No authenticated user')
 
-    if (error) throw error
-    if (!data) throw new Error('Failed to update project')
-
-    return data
-  }
-
-  async deleteProject(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from('projects')
-      .delete()
-      .eq('id', id)
-
-    if (error) this.handleError(error)
-  }
-
-  async createModule(data: Omit<Module, 'id' | 'created_at' | 'updated_at'>): Promise<Module> {
-
-    const { data: created, error } = await this.supabase
-      .from('modules')
-      .insert(data)
-      .select()
-      .single()
-
-    if (error) throw error
-    if (!created) throw new Error('Failed to create module')
-
-    return created
-  }
-
-  async updateModule(moduleId: string, updates: ModuleUpdateData): Promise<Module> {
-    try {
-      // First verify the module exists
-      const { data: existing, error: checkError } = await this.supabase
-        .from('modules')
-        .select('id')
-        .eq('id', moduleId)
-        .maybeSingle()
-
-      if (checkError) throw checkError
-      if (!existing) throw new Error(`Module with id ${moduleId} not found`)
-
-
-      // Perform the update
-      const { data, error } = await this.supabase
-        .from('modules')
-        .update(updates)
-        .eq('id', moduleId)
-        .select()
-
-      if (error) {
-        console.error('Error updating module:', {
-          moduleId,
-          updates,
-          error,
-          timestamp: new Date().toISOString()
-        })
-        throw error
-      }
-
-      if (!data || data.length === 0) {
-        throw new Error('Failed to update module: No data returned')
-      }
-
-      return data[0]
-    } catch (error) {
-      console.error('Error in updateModule:', error)
-      throw error instanceof Error 
-        ? error 
-        : new Error('An unknown error occurred while updating the module')
-    }
-  }
-
-  async createStep(
-    data: Tables['steps']['Insert']
-  ): Promise<StepRow> {
-    const { data: step, error } = await this.supabase
-      .from('steps')
-      .insert(data)
-      .select()
-      .single()
-
-    if (error) this.handleError(error)
-    if (!step) throw new Error('Failed to create step')
-    return step
-  }
-
-  async updateStep(
-    id: string,
-    data: Tables['steps']['Update']
-  ): Promise<StepRow> {
-    const { data: step, error } = await this.supabase
-      .from('steps')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) this.handleError(error)
-    if (!step) throw new Error(`Step not found: ${id}`)
-    return step
-  }
-
-  async logAIInteraction(
-    data: Tables['ai_interactions']['Insert']
-  ): Promise<AIInteractionRow> {
-    const { data: interaction, error } = await this.supabase
-      .from('ai_interactions')
-      .insert(data)
-      .select()
-      .single()
-
-    if (error) this.handleError(error)
-    if (!interaction) throw new Error('Failed to log AI interaction')
-    return interaction
-  }
-
-  async getModuleResponses(moduleId: string): Promise<ModuleResponseRow[]> {
-    const { data, error } = await this.supabase
-      .from('module_responses')
-      .select('*')
-      .eq('module_id', moduleId)
-
-    if (error) this.handleError(error, `getModuleResponses(${moduleId})`)
-    return data || []
-  }
-
-  async saveModuleResponse(
-    moduleId: string,
-    stepId: string,
-    response: DbModuleResponse
-  ): Promise<ModuleResponseRow> {
-    try {
-      // Verify the module exists
-      const { data: module, error: moduleError } = await this.supabase
-        .from('modules')
-        .select('id')
-        .eq('id', moduleId)
-        .maybeSingle()
-
-      if (moduleError) throw moduleError
-      if (!module) throw new Error(`Module with id ${moduleId} not found`)
-
-      // Prepare the response data
-      const responseData = {
-        module_id: moduleId,
-        step_id: stepId,
-        content: response.content,
-        last_updated: response.last_updated || new Date().toISOString()
-      }
-
-      // Check if a response already exists
-      const { data: existing, error: checkError } = await this.supabase
-        .from('module_responses')
-        .select('id')
-        .eq('module_id', moduleId)
-        .eq('step_id', stepId)
-        .maybeSingle()
-
-      if (checkError) throw checkError
-
-      let result
-      if (existing) {
-        // Update existing response
-        const { data, error } = await this.supabase
-          .from('module_responses')
-          .update(responseData)
-          .eq('id', existing.id)
+        const result = await this.supabase
+          .from('projects')
+          .insert({
+            ...data,
+            created_by: user.id,
+            metadata: data.metadata || {}
+          })
           .select()
           .single()
 
-        if (error) throw error
-        result = data
-      } else {
-        // Insert new response
-        const { data, error } = await this.supabase
-          .from('module_responses')
-          .insert(responseData)
+        return result as PostgrestSingleResponse<ProjectRow>
+      },
+      'createProject'
+    )
+  }
+
+  /**
+   * Update a project
+   */
+  async updateProject(projectId: string, data: ProjectUpdateData): Promise<ProjectRow> {
+    return this.handleDatabaseOperation<ProjectRow>(
+      async () => {
+        const result = await this.supabase
+          .from('projects')
+          .update({
+            ...data,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', projectId)
           .select()
           .single()
 
-        if (error) throw error
-        result = data
-      }
-
-      if (!result) {
-        throw new Error('Failed to save module response: No data returned')
-      }
-
-      return result
-    } catch (error) {
-      console.error('Error in saveModuleResponse:', error)
-      throw error instanceof Error 
-        ? error 
-        : new Error('An unknown error occurred while saving the module response')
-    }
+        return result as PostgrestSingleResponse<ProjectRow>
+      },
+      'updateProject'
+    )
   }
 
-  async getModuleWithResponses(moduleId: string): Promise<Module> {
-    const { data: module, error: moduleError } = await this.supabase
-      .from('modules')
-      .select(`
-        *,
-        responses:module_responses (*)
-      `)
-      .eq('id', moduleId)
-      .single()
-
-    if (moduleError) throw moduleError
-    if (!module) throw new Error('Module not found')
-
-    return module
+  /**
+   * Delete a project and all related data
+   */
+  async deleteProject(projectId: string): Promise<void> {
+    await this.handleDatabaseOperation<void>(
+      async () => {
+        const result = await this.supabase
+          .from('projects')
+          .delete()
+          .eq('id', projectId)
+        return { data: null, error: result.error }
+      },
+      'deleteProject'
+    )
   }
 
-  async ensureModuleExists(projectId: string, moduleType: string): Promise<Module> {
-    console.log('🔍 Checking for existing module:', { projectId, moduleType })
-    
-    // First try to find existing module
-    const { data: existing, error: findError } = await this.supabase
-      .from('modules')
-      .select()
-      .eq('project_id', projectId)
-      .eq('type', moduleType)
-      .single()
+  /**
+   * Get project members
+   */
+  async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    return this.handleDatabaseOperation<ProjectMember[]>(
+      async () => {
+        const result = await this.supabase
+          .from('project_members')
+          .select(`
+            *,
+            profile:profiles(full_name, avatar_url)
+          `)
+          .eq('project_id', projectId)
 
-    if (findError && findError.code !== 'PGRST116') { // Ignore not found error
-      throw findError
-    }
+        return result as PostgrestResponse<ProjectMember>
+      },
+      'getProjectMembers'
+    )
+  }
 
-    if (existing) {
-      console.log('✅ Found existing module:', existing)
-      return existing
-    }
+  /**
+   * Add project member
+   */
+  async addProjectMember(projectId: string, userId: string, role: MemberRole): Promise<ProjectMember> {
+    return this.handleDatabaseOperation<ProjectMember>(
+      async () => {
+        const result = await this.supabase
+          .from('project_members')
+          .insert({
+            project_id: projectId,
+            user_id: userId,
+            role
+          })
+          .select(`
+            *,
+            profile:profiles(full_name, avatar_url)
+          `)
+          .single()
 
-    console.log('🆕 Creating new module...')
-    // Create new module if none exists
-    const { data: created, error: createError } = await this.supabase
-      .from('modules')
-      .insert({
-        project_id: projectId,
-        type: moduleType,
-        title: moduleType.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-        completed: false,
-        current_step_id: null,
-        completed_step_ids: [],
-        metadata: {}
-      })
-      .select()
-      .single()
+        return result as PostgrestSingleResponse<ProjectMember>
+      },
+      'addProjectMember'
+    )
+  }
 
-    if (createError) {
-      console.error('❌ Error creating module:', createError)
-      throw createError
-    }
-    if (!created) throw new Error('Failed to create module')
+  /**
+   * Update project member role
+   */
+  async updateProjectMemberRole(
+    projectId: string,
+    userId: string,
+    role: MemberRole
+  ): Promise<ProjectMember> {
+    return this.handleDatabaseOperation<ProjectMember>(
+      async () => {
+        const result = await this.supabase
+          .from('project_members')
+          .update({ role })
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+          .select(`
+            *,
+            profile:profiles(full_name, avatar_url)
+          `)
+          .single()
 
-    console.log('✅ Created new module:', created)
-    return created
+        return result as PostgrestSingleResponse<ProjectMember>
+      },
+      'updateProjectMemberRole'
+    )
+  }
+
+  /**
+   * Remove project member
+   */
+  async removeProjectMember(projectId: string, userId: string): Promise<void> {
+    await this.handleDatabaseOperation<void>(
+      async () => {
+        const result = await this.supabase
+          .from('project_members')
+          .delete()
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+
+        return { data: null, error: result.error }
+      },
+      'removeProjectMember'
+    )
+  }
+
+  // Module-related methods that use ModuleService
+  async getProjectModules(projectId: string) {
+    return this.moduleService.getModulesByProject(projectId)
+  }
+
+  async createProjectModule(data: ModuleInsertData) {
+    return this.moduleService.createModule(data)
+  }
+
+  async updateProjectModule(moduleId: string, data: ModuleUpdateData) {
+    return this.moduleService.updateModule(moduleId, data)
   }
 } 

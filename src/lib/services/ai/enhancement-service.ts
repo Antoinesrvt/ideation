@@ -1,11 +1,12 @@
 import { BaseAIService, AIServiceOptions, AIRequestContext } from './base-service'
 import { ModuleType } from '@/types/project'
+import { DbModuleStep, DbStepResponse } from '@/types/module'
 import { ContextData } from './context-builder'
 
 export interface EnhancementOptions extends AIServiceOptions {
-  useMarketData?: boolean
-  useCompetitorData?: boolean
-  useFinancialData?: boolean
+  includeMarketData?: boolean
+  includeCompetitorData?: boolean
+  includeFinancialData?: boolean
   customInstructions?: string
 }
 
@@ -16,6 +17,7 @@ export interface EnhancementResult {
     enhancedLength: number
     enhancementType: string[]
     processingTime: number
+    confidence: number
   }
 }
 
@@ -29,40 +31,101 @@ export class EnhancementService extends BaseAIService {
   }
 
   /**
-   * Enhance content using AI and context
+   * Generate an AI suggestion for a step
+   */
+  async generateSuggestion(
+    steps: (DbModuleStep & { responses: DbStepResponse[] })[],
+    projectData: Record<string, any>,
+    currentStepId: string,
+    options: EnhancementOptions = {}
+  ): Promise<string> {
+    try {
+      // 1. Build context from previous steps
+      this.contextBuilder
+        .addStepResponses(steps)
+        .addProjectData(projectData)
+
+      // 2. Enrich context if requested
+      if (options.includeMarketData || options.includeCompetitorData || options.includeFinancialData) {
+        await this.contextBuilder.enrichContext(options)
+      }
+
+      // 3. Get current step configuration
+      const currentStep = steps.find(s => s.id === currentStepId)
+      if (!currentStep) {
+        throw new Error(`Step ${currentStepId} not found`)
+      }
+
+      // 4. Get system prompt
+      const systemPrompt = this.getSystemPrompt('analyze', {
+        moduleType: this.moduleType,
+        stepType: currentStep.step_type,
+        customInstructions: options.customInstructions
+      })
+
+      // 5. Generate suggestion
+      const suggestion = await this.callAI(
+        JSON.stringify(this.contextBuilder.getContext()),
+        systemPrompt,
+        { temperature: 0.7 }
+      )
+
+      // 6. Store interaction
+      await this.storeInteraction(
+        'enhancement',
+        'suggestion',
+        suggestion,
+        currentStepId
+      )
+
+      return suggestion
+    } catch (error) {
+      console.error('Error generating suggestion:', error)
+      throw error instanceof Error ? error : new Error('Failed to generate suggestion')
+    }
+  }
+
+  /**
+   * Enhance existing content with AI
    */
   async enhance(
     content: string,
-    context: AIRequestContext,
+    steps: (DbModuleStep & { responses: DbStepResponse[] })[],
+    projectData: Record<string, any>,
     options: EnhancementOptions = {}
   ): Promise<EnhancementResult> {
     const startTime = Date.now()
 
     try {
-      // Build or use provided context
-      const contextData = await this.buildContext(content, context, options)
+      // 1. Build context
+      this.contextBuilder
+        .addStepResponses(steps)
+        .addProjectData(projectData)
 
-      // Get enhancement prompt
+      // 2. Enrich context if requested
+      if (options.includeMarketData || options.includeCompetitorData || options.includeFinancialData) {
+        await this.contextBuilder.enrichContext(options)
+      }
+
+      // 3. Get system prompt
       const systemPrompt = this.getSystemPrompt('analyze', {
-        moduleId: context.moduleType,
-        stepId: context.stepId,
+        moduleType: this.moduleType,
         content,
-        ...this.extractContextMetadata(contextData)
+        customInstructions: options.customInstructions
       })
 
-      // Get AI response
+      // 4. Generate enhancement
       const enhancedContent = await this.callAI(
-        content,
+        JSON.stringify(this.contextBuilder.getContext()),
         systemPrompt,
-        { temperature: 0.4 } // Lower temperature for more focused improvements
+        { temperature: 0.4 }
       )
 
-      // Store interaction
+      // 5. Store interaction
       await this.storeInteraction(
         'enhancement',
         content,
-        enhancedContent,
-        context.stepId
+        enhancedContent
       )
 
       return {
@@ -71,65 +134,14 @@ export class EnhancementService extends BaseAIService {
           originalLength: content.length,
           enhancedLength: enhancedContent.length,
           enhancementType: this.getEnhancementTypes(options),
-          processingTime: Date.now() - startTime
+          processingTime: Date.now() - startTime,
+          confidence: 0.85 // TODO: Get from AI response
         }
       }
     } catch (error) {
-      console.error('Enhancement error:', error)
-      throw error
+      console.error('Error enhancing content:', error)
+      throw error instanceof Error ? error : new Error('Failed to enhance content')
     }
-  }
-
-  /**
-   * Build context for enhancement
-   */
-  private async buildContext(
-    content: string,
-    context: AIRequestContext,
-    options: EnhancementOptions
-  ): Promise<ContextData> {
-    if (context.contextData) {
-      return context.contextData
-    }
-
-    // Add current content
-    this.contextBuilder.addModuleResponses({
-      [context.stepId || 'current']: {
-        content,
-        step_id: context.stepId || 'current',
-        module_id: context.moduleType,
-        last_updated: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        id: 'temp'
-      }
-    })
-
-    // Enrich context based on options
-    await this.contextBuilder.enrichContext({
-      includeMarketData: options.useMarketData,
-      includeCompetitorData: options.useCompetitorData,
-      includeFinancialData: options.useFinancialData,
-      customInstructions: options.customInstructions
-    })
-
-    return this.contextBuilder.getContext()
-  }
-
-  /**
-   * Extract metadata from context for prompt
-   */
-  private extractContextMetadata(context: ContextData): Record<string, any> {
-    const metadata: Record<string, any> = {}
-
-    context.sources.forEach(source => {
-      if (source.type === 'project_data') {
-        metadata.industry = source.content.industry
-        metadata.businessModel = source.content.businessModel
-        metadata.targetMarket = source.content.targetMarket
-      }
-    })
-
-    return metadata
   }
 
   /**
@@ -137,9 +149,9 @@ export class EnhancementService extends BaseAIService {
    */
   private getEnhancementTypes(options: EnhancementOptions): string[] {
     const types: string[] = ['content']
-    if (options.useMarketData) types.push('market')
-    if (options.useCompetitorData) types.push('competitor')
-    if (options.useFinancialData) types.push('financial')
+    if (options.includeMarketData) types.push('market')
+    if (options.includeCompetitorData) types.push('competitor')
+    if (options.includeFinancialData) types.push('financial')
     return types
   }
 } 

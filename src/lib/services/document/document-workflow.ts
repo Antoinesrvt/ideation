@@ -1,5 +1,5 @@
 import { ModuleType } from '@/types/project'
-import { DbModuleResponse } from '@/types/module'
+import { DbModuleStep, DbStepResponse } from '@/types/module'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 import { AIContextBuilder, EnrichmentOptions } from '@/lib/services/ai/context-builder'
@@ -34,7 +34,7 @@ export class DocumentWorkflow {
    * Execute the document generation workflow
    */
   async execute(
-    moduleResponses: Record<string, DbModuleResponse>,
+    steps: (DbModuleStep & { responses: DbStepResponse[] })[],
     projectData: Record<string, any>,
     options: WorkflowOptions = {}
   ): Promise<WorkflowResult> {
@@ -43,7 +43,7 @@ export class DocumentWorkflow {
     try {
       // 1. Build initial context
       this.contextBuilder
-        .addModuleResponses(moduleResponses)
+        .addStepResponses(steps)
         .addProjectData(projectData)
 
       // 2. Enrich context if requested
@@ -98,26 +98,21 @@ export class DocumentWorkflow {
    * Validate module data before processing
    */
   private validateModuleData(
-    moduleResponses: Record<string, DbModuleResponse>,
+    steps: (DbModuleStep & { responses: DbStepResponse[] })[],
     projectData: Record<string, any>
   ): boolean {
-    // TODO: Implement validation logic
-    // This could check for:
-    // - Required fields
-    // - Data format
-    // - Content quality
-    return true
+    if (!steps?.length) return false
+    if (!projectData) return false
+    
+    // Check if all required steps have responses
+    return steps.every(step => step.responses?.some(r => r.is_latest))
   }
 
   /**
    * Handle errors in the workflow
    */
   private handleError(error: Error, stage: string) {
-    // TODO: Implement error handling
-    // This could:
-    // - Log errors
-    // - Send notifications
-    // - Trigger retries
     console.error(`Error in ${stage}:`, error)
+    // TODO: Add error reporting/monitoring
   }
 } 

@@ -75,56 +75,110 @@ export interface Database {
           metadata?: Json
         }
       }
-      modules: {
+           modules: {
         Row: {
           id: string
           project_id: string
           type: ModuleType
           title: string
-          completed: boolean
+          status: ModuleStatus
           current_step_id: string | null
-          completed_step_ids: string[]
-          last_updated: string
+          metadata: Json
+          created_by: string
           created_at: string
           updated_at: string
-          metadata: Json
+          last_activity_at: string
         }
         Insert: {
           project_id: string
           type: ModuleType
           title: string
-          completed?: boolean
-          current_step_id?: string | null
-          completed_step_ids?: string[]
+          status?: ModuleStatus
           metadata?: Json
+          created_by: string
         }
         Update: {
-          type?: ModuleType
           title?: string
-          completed?: boolean
+          status?: ModuleStatus
           current_step_id?: string | null
-          completed_step_ids?: string[]
           metadata?: Json
+          last_activity_at?: string
         }
       }
-      module_responses: {
+      module_steps: {
         Row: {
           id: string
           module_id: string
-          step_id: string
-          content: string
-          last_updated: string
+          step_type: string
+          order_index: number
+          status: StepStatus
+          metadata: Json
           created_at: string
+          updated_at: string
+          completed_at: string | null
+          completed_by: string | null
         }
         Insert: {
           module_id: string
-          step_id: string
-          content: string
-          last_updated?: string
+          step_type: string
+          order_index: number
+          status?: StepStatus
+          metadata?: Json
         }
         Update: {
-          content?: string
-          last_updated?: string
+          status?: StepStatus
+          metadata?: Json
+          completed_at?: string | null
+          completed_by?: string | null
+        }
+      }
+      step_responses: {
+        Row: {
+          id: string
+          step_id: string
+          content: string
+          version: number
+          is_latest: boolean
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          step_id: string
+          content: string
+          version?: number
+          created_by: string
+        }
+        Update: {
+          is_latest?: boolean
+        }
+      }
+      ai_interactions: {
+        Row: {
+          id: string
+          project_id: string
+          module_id: string | null
+          step_id: string | null
+          type: 'content' | 'context' | 'research'
+          prompt: string
+          response: Json
+          has_been_applied: boolean
+          metadata: Json
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          project_id: string
+          module_id?: string | null
+          step_id?: string | null
+          type: 'content' | 'context' | 'research'
+          prompt: string
+          response: Json
+          created_by: string
+          metadata?: Json
+        }
+        Update: {
+          has_been_applied?: boolean
+          metadata?: Json
         }
       }
       module_step_templates: {
@@ -184,31 +238,6 @@ export interface Database {
           order_index?: number
           completed?: boolean
           metadata?: Json
-        }
-      }
-      ai_interactions: {
-        Row: {
-          id: string
-          project_id: string
-          module_id: string | null
-          step_id: string | null
-          type: 'content' | 'context' | 'research'
-          prompt: string
-          response: Json
-          created_at: string
-        }
-        Insert: {
-          project_id: string
-          module_id?: string | null
-          step_id?: string | null
-          type: 'content' | 'context' | 'research'
-          prompt: string
-          response: Json
-        }
-        Update: {
-          type?: 'content' | 'context' | 'research'
-          prompt?: string
-          response?: Json
         }
       }
       document_templates: {
@@ -302,6 +331,26 @@ export interface Database {
           role?: string
         }
       }
+      research_cache: {
+        Row: {  
+          id: string
+          type: string
+          key: string
+          data: Json
+          expiry: number
+          created_at: string
+        }
+        Insert: {
+          type: string
+          key: string
+          data: Json
+          expiry: number
+        }
+        Update: {
+          data: Json
+          expiry: number
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -315,8 +364,12 @@ export interface Database {
       document_type: 'pdf' | 'docx' | 'md'
       document_status: 'pending' | 'processing' | 'completed' | 'failed'
       member_role: 'admin' | 'member'
+      module_status: ModuleStatus
+      step_status: StepStatus
     }
   }
 }
 
 export type Tables = Database['public']['Tables'] 
+export type ModuleStatus = 'draft' | 'in_progress' | 'completed' | 'archived'
+export type StepStatus = 'not_started' | 'in_progress' | 'completed'

@@ -79,7 +79,7 @@ export function useDocuments({ projectId, moduleType, enabled = true }: UseDocum
       format = 'pdf'
     }: {
       data: {
-        moduleResponses: Record<string, string>
+        stepResponses: Record<string, string>
         projectData: Record<string, any>
       }
       format?: 'pdf' | 'docx' | 'md'
