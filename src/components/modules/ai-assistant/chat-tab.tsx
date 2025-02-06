@@ -1,19 +1,20 @@
 "use client"
 
-import { useState } from "react"
-import { Send } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { Send, Loader2, Bot, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { DbModuleResponse } from "@/types/module"
-import { motion } from "framer-motion"
+import { DbStepResponse } from "@/types/module"
+import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { Database } from "@/types/database"
+
 
 type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
 
 interface ChatTabProps {
-  currentResponse?: DbModuleResponse
+  currentResponse?: DbStepResponse
   lastAIInteraction?: AIInteraction
   onSuggestionRequest: (context: string) => Promise<void>
   onSuggestionApply: (suggestion: string) => void
@@ -21,6 +22,76 @@ interface ChatTabProps {
   isDisabled?: boolean
   className?: string
 }
+
+const TypingIndicator = () => (
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    className="flex space-x-1 items-center p-2"
+  >
+    {[1, 2, 3].map((dot) => (
+      <motion.div
+        key={dot}
+        className="w-1.5 h-1.5 bg-primary/50 rounded-full"
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{
+          duration: 0.6,
+          repeat: Infinity,
+          delay: dot * 0.2,
+          ease: "easeInOut"
+        }}
+      />
+    ))}
+  </motion.div>
+)
+
+const MessageBubble = ({ 
+  isUser, 
+  content, 
+  onApply,
+  isDisabled 
+}: { 
+  isUser: boolean
+  content: string
+  onApply?: () => void
+  isDisabled?: boolean 
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="flex gap-3"
+  >
+    <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+      {isUser ? (
+        <User className="h-4 w-4 text-primary" />
+      ) : (
+        <Bot className="h-4 w-4 text-primary" />
+      )}
+    </div>
+    <div className="flex-1">
+      <div className={cn(
+        "rounded-lg p-4",
+        isUser ? "bg-muted" : "bg-primary/10"
+      )}>
+        {onApply && (
+          <div className="flex justify-between items-start gap-4 mb-2">
+            <p className="text-sm font-medium">AI Suggestion</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onApply}
+              disabled={isDisabled}
+              className="hover:scale-105 transition-transform"
+            >
+              Apply
+            </Button>
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground">{content}</p>
+      </div>
+    </div>
+  </motion.div>
+)
 
 export function ChatTab({
   currentResponse,
@@ -32,6 +103,7 @@ export function ChatTab({
   className
 }: ChatTabProps) {
   const [prompt, setPrompt] = useState("")
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   const handleSend = async () => {
     if (!prompt.trim() || isGenerating || isDisabled) return
@@ -39,52 +111,70 @@ export function ChatTab({
     setPrompt("")
   }
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+    }
+  }, [currentResponse, lastAIInteraction])
+
   return (
     <div className={cn("flex flex-col h-full", className)}>
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <ScrollArea 
+        ref={scrollAreaRef}
+        className="flex-1 pr-4"
+      >
         <div className="p-4 space-y-4">
           {currentResponse?.content && (
-            <div className="bg-muted rounded-lg p-4">
-              <p className="text-sm font-medium mb-2">Current Response</p>
-              <p className="text-sm text-muted-foreground">{currentResponse.content}</p>
-            </div>
+            <MessageBubble
+              isUser={true}
+              content={currentResponse.content}
+            />
           )}
 
           {lastAIInteraction && (
+            <MessageBubble
+              isUser={false}
+              content={typeof lastAIInteraction.response === 'string' 
+                ? lastAIInteraction.response 
+                : JSON.stringify(lastAIInteraction.response)}
+              onApply={() => {
+                const suggestion = typeof lastAIInteraction.response === 'string' 
+                  ? lastAIInteraction.response 
+                  : JSON.stringify(lastAIInteraction.response)
+                onSuggestionApply(suggestion)
+              }}
+              isDisabled={isDisabled}
+            />
+          )}
+
+          {isGenerating && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-primary/10 rounded-lg p-4"
+              className="flex gap-3"
             >
-              <div className="flex justify-between items-start gap-4 mb-2">
-                <p className="text-sm font-medium">AI Suggestion</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const suggestion = typeof lastAIInteraction.response === 'string' 
-                      ? lastAIInteraction.response 
-                      : JSON.stringify(lastAIInteraction.response)
-                    onSuggestionApply(suggestion)
-                  }}
-                  disabled={isDisabled}
-                >
-                  Apply
-                </Button>
+              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-primary" />
               </div>
-              <p className="text-sm">
-                {typeof lastAIInteraction.response === 'string' 
-                  ? lastAIInteraction.response 
-                  : JSON.stringify(lastAIInteraction.response)}
-              </p>
+              <div className="flex-1">
+                <div className="bg-primary/10 rounded-lg p-4">
+                  <TypingIndicator />
+                </div>
+              </div>
             </motion.div>
           )}
         </div>
       </ScrollArea>
 
       {/* Input */}
-      <div className="flex-none p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="flex-none p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      >
         <div className="flex gap-2">
           <Textarea
             value={prompt}
@@ -103,11 +193,16 @@ export function ChatTab({
             size="icon"
             onClick={handleSend}
             disabled={isGenerating || !prompt.trim() || isDisabled}
+            className="transition-transform hover:scale-105"
           >
-            <Send className="h-4 w-4" />
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 } 

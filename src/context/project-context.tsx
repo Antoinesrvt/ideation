@@ -1,269 +1,165 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react'
-import { useSearchParams } from 'next/navigation'
-import type { Module, DbModuleResponse, ModuleUpdateData } from '@/types/module'
-import { useRouter } from 'next/navigation'
-import { useToast } from '@/hooks/use-toast'
-import { ProjectService, ProjectRow } from '@/lib/services/core/project-service'
+import { createContext, useContext, useReducer, useCallback, ReactNode } from 'react'
+import { ProjectService } from '@/lib/services/core/project-service'
 import { useSupabase } from './supabase-context'
-import { ModuleType } from '@/config/modules'
+import { ProjectRow, ProjectUpdateData, ProjectWithModules } from '@/types/project'
 
+// State types
 interface ProjectState {
-  project: ProjectRow | null
-  modules: Module[]
-  loading: boolean
+  currentProject: ProjectWithModules | null
+  projects: ProjectRow[]
+  isLoading: boolean
   error: Error | null
 }
 
-interface ProjectContextType extends ProjectState {
-  refreshProject: () => Promise<void>;
-  updateProject: (updates: Partial<ProjectRow>) => Promise<void>;
-  updateModule: (
-    moduleId: string,
-    updates: ModuleUpdateData
-  ) => Promise<Module>;
-  saveModuleResponse: (
-    moduleId: string,
-    stepId: string,
-    response: DbModuleResponse
-  ) => Promise<void>;
-  createModule: (
-    data: Omit<Module, "id" | "created_at" | "updated_at">
-  ) => Promise<void>;
-  ensureModule: (moduleType: ModuleType) => Promise<Module>;
+// Action types
+type ProjectAction =
+  | { type: 'SET_PROJECT'; payload: ProjectWithModules }
+  | { type: 'SET_PROJECTS'; payload: ProjectRow[] }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: Error | null }
+  | { type: 'CLEAR_STATE' }
+
+// Initial state
+const initialState: ProjectState = {
+  currentProject: null,
+  projects: [],
+  isLoading: false,
+  error: null
 }
 
-const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
+// Context
+const ProjectContext = createContext<{
+  state: ProjectState
+  loadProject: (projectId: string) => Promise<void>
+  loadProjects: () => Promise<void>
+  updateProject: (data: ProjectUpdateData) => Promise<void>
+  deleteProject: (projectId: string) => Promise<void>
+  clearState: () => void
+} | null>(null)
 
+// Reducer
+function projectReducer(state: ProjectState, action: ProjectAction): ProjectState {
+  switch (action.type) {
+    case 'SET_PROJECT':
+      return {
+        ...state,
+        currentProject: action.payload,
+        error: null
+      }
+    case 'SET_PROJECTS':
+      return {
+        ...state,
+        projects: action.payload,
+        error: null
+      }
+    case 'SET_LOADING':
+      return {
+        ...state,
+        isLoading: action.payload
+      }
+    case 'SET_ERROR':
+      return {
+        ...state,
+        error: action.payload
+      }
+    case 'CLEAR_STATE':
+      return initialState
+    default:
+      return state
+  }
+}
+
+// Provider
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<ProjectState>({
-    project: null,
-    modules: [],
-    loading: true,
-    error: null
-  })
-  
-  const searchParams = useSearchParams()
-  const projectId = searchParams.get('project')
-  const router = useRouter()
-  const { toast } = useToast()
-  const { supabase, user, loading: authLoading } = useSupabase()
+  const [state, dispatch] = useReducer(projectReducer, initialState)
+  const { supabase } = useSupabase()
+  const projectService = new ProjectService(supabase)
 
-  // Memoize project service instance
-  const projectService = useMemo(() => new ProjectService(supabase), [supabase])
-
-  // Fetch project with optimistic error handling
-  const fetchProject = useCallback(async () => {
-    if (!projectId) {
-      setState(prev => ({ ...prev, loading: false }))
-      return
-    }
-
+  const loadProject = useCallback(async (projectId: string) => {
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-
-      if (!user) {
-        router.push('/signin')
-        return
-      }
-
-      const data = await projectService.getProject(projectId)
-      setState(prev => ({
-        ...prev,
-        project: data,
-        modules: data.modules
-      }))
-    } catch (err) {
-      console.error('Error in project context:', err)
-
-      if (err instanceof Error && (
-        err.message.includes('Authentication error') || 
-        err.message.includes('JWT expired') ||
-        err.message.includes('Invalid JWT')
-      )) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Please log in again to continue.',
-          variant: 'destructive'
-        })
-        router.push('/signin')
-        return
-      }
-
-      if (err instanceof Error && err.message.includes('Project not found')) {
-        setState(prev => ({ ...prev, project: null, modules: [] }))
-        router.push('/dashboard/projects')
-        toast({
-          title: 'Project Not Found',
-          description: 'The requested project could not be found.',
-          variant: 'destructive'
-        })
-        return
-      }
-
-      setState(prev => ({
-        ...prev,
-        error: err instanceof Error ? err : new Error('An unexpected error occurred')
-      }))
+      dispatch({ type: 'SET_LOADING', payload: true })
+      
+      const project = await projectService.getProject(projectId)
+      dispatch({ type: 'SET_PROJECT', payload: project })
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to load project') })
     } finally {
-      setState(prev => ({ ...prev, loading: false }))
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [projectId, user, router, projectService, toast])
+  }, [projectService])
 
-  const refreshProject = useCallback(async () => {
-    await fetchProject()
-  }, [fetchProject])
-
-  // Project update
-  const updateProject = useCallback(async (updates: Partial<ProjectRow>) => {
-    if (!state.project?.id) return
-
+  const loadProjects = useCallback(async () => {
     try {
-      const updated = await projectService.updateProject(state.project.id, updates)
-      setState(prev => ({
-        ...prev,
-        project: updated
-      }))
-    } catch (err) {
-      console.error('Error updating project:', err)
-      toast({
-        title: "Error",
-        description: "Failed to update project. Please try again.",
-        variant: "destructive"
-      })
-      throw err
+      dispatch({ type: 'SET_LOADING', payload: true })
+      
+      const projects = await projectService.getProjects()
+      dispatch({ type: 'SET_PROJECTS', payload: projects })
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to load projects') })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [state.project?.id, projectService, toast])
+  }, [projectService])
 
-  // Module update
-  const updateModule = useCallback(async (moduleId: string, updates: ModuleUpdateData): Promise<Module> => {
+  const updateProject = useCallback(async (data: ProjectUpdateData) => {
     try {
-      const updated = await projectService.updateModule(moduleId, updates)
-      setState(prev => ({
-        ...prev,
-        modules: prev.modules.map(m => m.id === moduleId ? updated : m)
-      }))
-      return updated
-    } catch (err) {
-      console.error('Error updating module:', err)
-      toast({
-        title: "Error",
-        description: "Failed to update module. Please try again.",
-        variant: "destructive"
-      })
-      throw err
+      if (!state.currentProject?.id) throw new Error('No project loaded')
+      
+      dispatch({ type: 'SET_LOADING', payload: true })
+      const updatedProject = await projectService.updateProject(state.currentProject.id, data)
+      
+      // Reload project to get updated modules
+      const project = await projectService.getProject(updatedProject.id)
+      dispatch({ type: 'SET_PROJECT', payload: project })
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to update project') })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [projectService, toast])
+  }, [state.currentProject?.id, projectService])
 
-  // Module creation
-  const createModule = useCallback(async (data: Omit<Module, 'id' | 'created_at' | 'updated_at'>) => {
+  const deleteProject = useCallback(async (projectId: string) => {
     try {
-      const created = await projectService.createModule(data)
-      setState(prev => ({
-        ...prev,
-        modules: [...prev.modules, created]
-      }))
-    } catch (err) {
-      console.error('Error creating module:', err)
-      toast({
-        title: "Error",
-        description: "Failed to create module. Please try again.",
-        variant: "destructive"
-      })
-      throw err
-    }
-  }, [projectService, toast])
-
-  // Module response update
-  const saveModuleResponse = useCallback(
-    async (moduleId: string, stepId: string, response: DbModuleResponse) => {
-      try {
-        const savedResponse = await projectService.saveModuleResponse(
-          moduleId,
-          stepId,
-          response
-        );
-
-
-        setState((prev) => ({
-          ...prev,
-          modules: prev.modules.map((m) =>
-            m.id === moduleId
-              ? {
-                  ...m,
-                  responses: [
-                    ...(m.responses || []).filter((r) => r.step_id !== stepId),
-                    savedResponse,
-                  ],
-                }
-              : m
-          ),
-        }));
-      } catch (err) {
-        console.error("Error saving module response:", err);
-        toast({
-          title: "Error",
-          description: "Failed to save response. Please try again.",
-          variant: "destructive",
-        });
-        throw err;
+      dispatch({ type: 'SET_LOADING', payload: true })
+      await projectService.deleteProject(projectId)
+      
+      // If the deleted project was the current project, clear it
+      if (state.currentProject?.id === projectId) {
+        dispatch({ type: 'CLEAR_STATE' })
       }
-    },
-    [projectService, toast]
-  );
-
-  // Ensure module exists
-  const ensureModule = useCallback(async (moduleType: ModuleType): Promise<Module> => {
-    if (!state.project?.id) throw new Error('No project selected')
-
-    const existingModule = state.modules.find(m => m.type === moduleType)
-    if (existingModule) return existingModule
-
-    try {
-      const module = await projectService.ensureModuleExists(state.project.id, moduleType)
-      setState(prev => ({
-        ...prev,
-        modules: [...prev.modules, module]
-      }))
-      return module
-    } catch (err) {
-      console.error('Error ensuring module exists:', err)
-      toast({
-        title: "Error",
-        description: "Failed to create module. Please try again.",
-        variant: "destructive"
-      })
-      throw err
+    } catch (error) {
+      dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to delete project') })
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [state.project?.id, state.modules, projectService, toast])
+  }, [projectService, state.currentProject?.id])
 
-  useEffect(() => {
-    if (!authLoading) {
-      fetchProject()
-    }
-  }, [fetchProject, authLoading])
-
-  const value = useMemo(() => ({
-    ...state,
-    refreshProject,
-    updateProject,
-    updateModule,
-    createModule,
-    ensureModule,
-    saveModuleResponse
-  }), [state, refreshProject, updateProject, updateModule, createModule, ensureModule, saveModuleResponse])
+  const clearState = useCallback(() => {
+    dispatch({ type: 'CLEAR_STATE' })
+  }, [])
 
   return (
-    <ProjectContext.Provider value={value}>
+    <ProjectContext.Provider
+      value={{
+        state,
+        loadProject,
+        loadProjects,
+        updateProject,
+        deleteProject,
+        clearState
+      }}
+    >
       {children}
     </ProjectContext.Provider>
   )
 }
 
+// Hook
 export function useProject() {
   const context = useContext(ProjectContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useProject must be used within a ProjectProvider')
   }
   return context

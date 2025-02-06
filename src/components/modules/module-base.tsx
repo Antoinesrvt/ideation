@@ -1,16 +1,16 @@
 "use client"
 
-import { useEffect, useState, useMemo, memo } from "react"
+import { useState, useMemo, memo, useCallback, useEffect } from "react"
 import { ModuleLayout } from "./module-layout"
 import { StepCard } from "./step-card"
 import { ExpertTips } from "./expert-tips"
 import { ModuleCompletionOverlay } from "./module-completion-overlay"
 import { ModuleUpdateOverlay } from "./module-update-overlay"
 import { useModule } from "@/hooks/use-module"
+import { useStep } from "@/hooks/use-step"
 import { ModuleType, MODULES_CONFIG, type ModuleConfig } from "@/config/modules"
 import { LucideIcon, AlertCircle } from "lucide-react"
 import { ModuleErrorBoundary } from "./module-error-boundary"
-import { useProject } from "@/context/project-context"
 import { useToast } from "@/hooks/use-toast"
 import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 import { motion, AnimatePresence } from "framer-motion"
@@ -30,23 +30,29 @@ const ModuleBase = memo(function ModuleBase({
   onComplete,
   stepIcons
 }: ModuleBaseProps) {
+  const { toast } = useToast()
+  const [showCompletion, setShowCompletion] = useState(false)
+  const [showUpdate, setShowUpdate] = useState(false)
+
+  // Use module hook
   const {
     module,
     config,
-    responses,
-    currentStep,
-    isStepCompleted,
-    isModuleCompleted,
-    saveResponse,
-    markStepAsCompleted,
-    navigateToStep,
-    completeModule,
-    generateAISuggestion,
-    isGeneratingSuggestion,
-    isLoading: isInitializing,
-    error
+    isLoading: isLoadingModule,
+    error: moduleError,
+    currentStepId,
+    isCompleted,
+    updateModule,
+    completeModule
   } = useModule(moduleId, {
-    onComplete,
+    onComplete: () => {
+      if (module?.status === 'completed') {
+        setShowUpdate(true)
+      } else {
+        setShowCompletion(true)
+      }
+      onComplete()
+    },
     onError: (error) => {
       toast({
         title: "Error",
@@ -56,13 +62,28 @@ const ModuleBase = memo(function ModuleBase({
     }
   })
 
-  const { project } = useProject()
-  const { toast } = useToast()
-  const [showCompletion, setShowCompletion] = useState(false)
-  const [showUpdate, setShowUpdate] = useState(false)
-  const [previousContent, setPreviousContent] = useState<{
-    stepId: string | undefined
-  } | null>(null)
+  // Use step hook for current step
+  const {
+    step,
+    latestResponse,
+    isLoading: isLoadingStep,
+    isCompleted: currentStepCompleted,
+    markAsCompleted,
+    saveResponse,
+    generateAISuggestion,
+    enhanceStepContent,
+    isGeneratingSuggestion,
+    isEnhancing,
+    isSaving
+  } = useStep(currentStepId, {
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      })
+    }
+  })
 
   // Get the module configuration
   const moduleConfig = useMemo<ModuleConfig>(() => {
@@ -80,52 +101,38 @@ const ModuleBase = memo(function ModuleBase({
     return config
   }, [config])
 
-  // Store previous content when transitioning
-  useEffect(() => {
-    if (module && currentStep) {
-      setPreviousContent({
-        stepId: currentStep
-      })
-    }
-  }, [module, currentStep])
-
   // Always start from first step when entering a module
   useEffect(() => {
-    if (module && moduleConfig.steps && (!currentStep || !moduleConfig.steps.find(s => s.id === currentStep))) {
+    if (module && moduleConfig.steps && (!currentStepId || !moduleConfig.steps.find(s => s.id === currentStepId))) {
       const firstStep = moduleConfig.steps[0]
       if (firstStep) {
-        navigateToStep(firstStep.id)
+        updateModule({ current_step_id: firstStep.id })
       }
     }
-  }, [module, moduleConfig.steps, currentStep, navigateToStep])
+  }, [module, moduleConfig.steps, currentStepId, updateModule])
 
-  const handleNext = async () => {
-    if (!currentStep || !moduleConfig.steps) return
+  // Handle next step
+  const handleNext = useCallback(async () => {
+    if (!config?.steps || !currentStepId) return
 
-    const currentIndex = moduleConfig.steps.findIndex(step => step.id === currentStep)
-    const isLastStep = currentIndex === moduleConfig.steps.length - 1
+    // Get current step index
+    const currentIndex = config.steps.findIndex(s => s.id === currentStepId)
+    if (currentIndex === -1) return
+
+    // Check if this is the last step
+    const isLastStep = currentIndex === config.steps.length - 1
 
     try {
-      // First mark the current step as completed
-      await markStepAsCompleted(currentStep)
+      // Mark current step as completed
+      await markAsCompleted()
 
       if (isLastStep) {
-        // If it's the last step, try to complete the module
-        const success = await completeModule()
-        if (success) {
-          // Check if this is the first completion or an update
-          if (module?.completed) {
-            setShowUpdate(true)
-          } else {
-            setShowCompletion(true)
-          }
-        }
+        // Complete module if all steps are completed
+        await completeModule()
       } else {
-        // Always move to the next step in sequence
-        const nextStep = moduleConfig.steps[currentIndex + 1]
-        if (nextStep) {
-          await navigateToStep(nextStep.id)
-        }
+        // Move to next step
+        const nextStep = config.steps[currentIndex + 1]
+        await updateModule({ current_step_id: nextStep.id })
       }
     } catch (error) {
       console.error('Error handling next step:', error)
@@ -135,24 +142,23 @@ const ModuleBase = memo(function ModuleBase({
         variant: "destructive"
       })
     }
-  }
+  }, [config?.steps, currentStepId, markAsCompleted, completeModule, updateModule, toast])
 
-  const handlePrevious = async () => {
-    if (!currentStep || !moduleConfig.steps) return
+  // Handle previous step
+  const handlePrevious = useCallback(async () => {
+    if (!config?.steps || !currentStepId) return
 
-    const currentIndex = moduleConfig.steps.findIndex(step => step.id === currentStep)
-    
     try {
-      if (currentIndex > 0) {
-        // Move to the previous step in sequence
-        const prevStep = moduleConfig.steps[currentIndex - 1]
-        if (prevStep) {
-          await navigateToStep(prevStep.id)
-        }
-      } else {
-        // If we're at the first step, go back to the previous module
-        onBack?.()
+      // Get current step index
+      const currentIndex = config.steps.findIndex(s => s.id === currentStepId)
+      if (currentIndex <= 0) {
+        onBack()
+        return
       }
+
+      // Move to previous step
+      const previousStep = config.steps[currentIndex - 1]
+      await updateModule({ current_step_id: previousStep.id })
     } catch (error) {
       console.error('Error handling previous step:', error)
       toast({
@@ -161,20 +167,27 @@ const ModuleBase = memo(function ModuleBase({
         variant: "destructive"
       })
     }
-  }
+  }, [config?.steps, currentStepId, updateModule, onBack, toast])
 
-  const handleGenerateSuggestion = async (context: string) => {
-    if (!currentStep) return
+  // Handle AI suggestion generation
+  const handleGenerateSuggestion = useCallback(async (context: string) => {
     await generateAISuggestion(context)
-  }
+  }, [generateAISuggestion])
+
+  // Handle suggestion application
+  const handleSuggestionApply = useCallback(async (suggestion: string) => {
+    await saveResponse(suggestion)
+  }, [saveResponse])
 
   // Helper function to render module content
-  function renderModuleContent(currentStepId: string, steps: typeof moduleConfig.steps) {
-    const step = steps.find((s) => s.id === currentStepId)
+  function renderModuleContent() {
+    if (!moduleConfig.steps || !currentStepId) return null
+
+    const step = moduleConfig.steps.find((s) => s.id === currentStepId)
     if (!step) return null
 
-    const currentIndex = steps.findIndex(s => s.id === currentStepId)
-    const isLastStep = currentIndex === steps.length - 1
+    const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepId)
+    const isLastStep = currentIndex === moduleConfig.steps.length - 1
     const isFirstStep = currentIndex === 0
     const firstModuleId = MODULES_CONFIG[0]?.id
     const isFirstModule = module?.type === firstModuleId
@@ -187,15 +200,15 @@ const ModuleBase = memo(function ModuleBase({
           description={step.description}
           placeholder={step.placeholder || ''}
           icon={stepIcons[step.id] || Object.values(stepIcons)[0]}
-          value={responses[step.id]?.content || ""}
-          onChange={(value) => saveResponse(step.id, value)}
+          value={latestResponse?.content || ""}
+          onChange={(value) => saveResponse(value)}
           onPrevious={handlePrevious}
           onNext={handleNext}
           showNext={true}
           showPrevious={!(isFirstStep && isFirstModule)}
           nextButtonText={isLastStep ? "Finish Module" : "Next"}
           previousButtonText={isFirstStep && !isFirstModule ? "Previous Module" : "Previous"}
-          isCompleted={isStepCompleted(step.id)}
+          isCompleted={currentStepCompleted}
         />
         {mode === "expert" && step.expert_tips && (
           <ExpertTips 
@@ -216,80 +229,73 @@ const ModuleBase = memo(function ModuleBase({
   }
 
   // Show loading skeleton during initialization or when module is not yet available
-  if (isInitializing || (!module && !previousContent)) {
+  if (isLoadingModule || isLoadingStep) {
     return <ModuleLoadingSkeleton />
   }
 
+  // Error state
+  if (moduleError) {
+    return (
+      <ModuleErrorBoundary onBack={onBack} onRetry={() => window.location.reload()}>
+        <div className="text-destructive">Error: {moduleError.message}</div>
+      </ModuleErrorBoundary>
+    )
+  }
+
+  // No module or config
+  if (!module || !moduleConfig) {
+    return <div>Module not found</div>
+  }
+
   return (
-    <ModuleErrorBoundary>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+    <ModuleErrorBoundary onBack={onBack} onRetry={() => window.location.reload()}>
+      <ModuleLayout
+        title={moduleConfig.title}
+        description={moduleConfig.description}
+        stepProgress={`Step ${currentStepId ? moduleConfig.steps.findIndex(s => s.id === currentStepId) + 1 : 1} of ${moduleConfig.steps.length}`}
+        onBack={onBack}
+        currentStep={currentStepId || ''}
+        currentResponse={latestResponse}
+        previousResponses={{}}
+        onSuggestionRequest={handleGenerateSuggestion}
+        onSuggestionApply={handleSuggestionApply}
+        isGeneratingSuggestion={isGeneratingSuggestion}
+        isLoading={isSaving}
+        moduleType={module.type}
+        projectId={moduleId}
       >
-        <ModuleLayout
-          title={moduleConfig.title}
-          description={moduleConfig.description}
-          onBack={onBack}
-          currentStep={currentStep || ''}
-          currentResponse={currentStep ? responses[currentStep] : undefined}
-          previousResponses={responses}
-          onSuggestionRequest={handleGenerateSuggestion}
-          onSuggestionApply={(suggestion) => currentStep && saveResponse(currentStep, suggestion)}
-          isGeneratingSuggestion={isGeneratingSuggestion}
-          stepProgress={currentStep && moduleConfig.steps ? 
-            `Step ${moduleConfig.steps.findIndex(s => s.id === currentStep) + 1} of ${moduleConfig.steps.length}` : 
-            undefined}
-          moduleType={module?.type ?? 'vision-problem'}
-          projectId={project?.id || ''}
-        >
-          <AnimatePresence mode="wait">
-            {currentStep && moduleConfig.steps && (
-              <motion.div
-                key={currentStep}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-              >
-                {renderModuleContent(currentStep, moduleConfig.steps)}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </ModuleLayout>
+        <AnimatePresence mode="wait">
+          {renderModuleContent()}
+        </AnimatePresence>
+      </ModuleLayout>
 
-        {/* Completion Overlay */}
-        <ModuleCompletionOverlay
-          isVisible={showCompletion}
-          onNext={() => {
-            setShowCompletion(false)
-            onComplete()
-          }}
-          nextModuleName={getNextModuleName()}
-        />
-
-        {/* Update Overlay */}
-        <ModuleUpdateOverlay
-          isVisible={showUpdate}
-          onGenerateDocument={() => {
-            setShowUpdate(false)
-            // TODO: Implement document generation
-            onComplete()
-          }}
-          onSkip={() => {
-            setShowUpdate(false)
-            onComplete()
-          }}
-          documentName={moduleConfig.title}
-        />
-      </motion.div>
+      <AnimatePresence>
+        {showCompletion && (
+          <ModuleCompletionOverlay
+            isVisible={showCompletion}
+            onNext={() => {
+              setShowCompletion(false)
+              onComplete()
+            }}
+            nextModuleName={getNextModuleName()}
+          />
+        )}
+        {showUpdate && (
+          <ModuleUpdateOverlay
+            isVisible={showUpdate}
+            onGenerateDocument={() => {
+              setShowUpdate(false)
+              onComplete()
+            }}
+            onSkip={() => {
+              setShowUpdate(false)
+              onComplete()
+            }}
+            documentName={moduleConfig.title}
+          />
+        )}
+      </AnimatePresence>
     </ModuleErrorBoundary>
-  )
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.moduleId === nextProps.moduleId &&
-    prevProps.mode === nextProps.mode
   )
 })
 

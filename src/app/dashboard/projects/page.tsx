@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Plus, Loader2 } from 'lucide-react'
-import { useSupabase } from '@/context/supabase-context'
-import { ProjectService, ProjectWithModules, ProjectRow, ModuleRow } from '@/lib/services/core/project-service'
+import { useProject } from '@/context/project-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import {
@@ -16,36 +15,17 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog'
 import { useRouter } from 'next/navigation'
+import { ProjectRow, ModuleRow } from '@/types/project'
 
 export default function ProjectsPage() {
-  const { supabase } = useSupabase()
-  const [projects, setProjects] = useState<(ProjectRow & { modules?: ModuleRow[] })[]>([])
-  const [loading, setLoading] = useState(true)
-  const projectService = new ProjectService(supabase)
+  const { state: { projects, isLoading }, loadProjects } = useProject()
   const { toast } = useToast()
-
-  const loadProjects = async () => {
-    try {
-      setLoading(true)
-      const data = await projectService.getProjects()
-      setProjects(data)
-    } catch (error) {
-      console.error('Error loading projects:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load projects',
-        variant: 'destructive',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
     loadProjects()
-  }, [])
+  }, [loadProjects])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="h-full flex-1 flex flex-col gap-8 p-8">
         <div className="flex items-center justify-between">
@@ -118,22 +98,22 @@ interface ProjectCardProps {
 }
 
 function ProjectCard({ project, onDeleted }: ProjectCardProps) {
-  const { supabase } = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
   const [deleting, setDeleting] = useState(false)
-  const projectService = new ProjectService(supabase)
+  const { state: { isLoading }, loadProjects, deleteProject } = useProject()
   
-  // Initialize modules data to empty array if not present
+  // Calculate progress based on module status
   const modules = project.modules || []
-  const completedModules = modules.filter((m: ModuleRow) => m.completed).length
+  const completedModules = modules.filter(m => m.status === 'completed').length
   const totalModules = modules.length
   const progress = totalModules > 0 ? (completedModules / totalModules) * 100 : 0
 
   async function handleDelete() {
     try {
       setDeleting(true)
-      await projectService.deleteProject(project.id)
+      await deleteProject(project.id)
+      await loadProjects() // Refresh the projects list
       toast({
         title: 'Success',
         description: 'Project deleted successfully',

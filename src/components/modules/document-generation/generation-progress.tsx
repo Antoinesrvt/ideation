@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect } from "react"
-import { FileText, CheckCircle2, XCircle } from "lucide-react"
+import { FileText, CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { ModuleType } from "@/types/project"
-import { useDocumentGeneration } from "@/hooks/use-document-generation"
-import { motion } from "framer-motion"
+import { useDocuments } from "@/lib/hooks/use-documents"
+import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 interface GenerationProgressProps {
@@ -46,47 +46,73 @@ export function GenerationProgress({
   onComplete
 }: GenerationProgressProps) {
   const {
-    status,
-    progress,
-    documentUrl,
-    error,
-    generateDocument
-  } = useDocumentGeneration(moduleType, projectId)
+    documents,
+    isGenerating,
+    generateDocument,
+    error
+  } = useDocuments({ 
+    projectId, 
+    moduleType,
+    enabled: true
+  })
 
   // Start generation when component mounts
   useEffect(() => {
-    generateDocument(templateId)
+    generateDocument({
+      data: {
+        stepResponses: { templateId },
+        projectData: {}
+      },
+      format: 'pdf'
+    })
   }, [generateDocument, templateId])
 
   // Auto-close on completion
   useEffect(() => {
-    if (status === 'completed') {
+    const latestDoc = documents[0]
+    if (latestDoc?.status === 'completed') {
       const timer = setTimeout(onComplete, 2000)
       return () => clearTimeout(timer)
     }
-  }, [status, onComplete])
+  }, [documents, onComplete])
 
   const currentStepIndex = GENERATION_STEPS.findIndex(step => {
-    if (status === 'preparing') return step.id === 'preparing'
-    if (status === 'generating') {
-      if (progress < 33) return step.id === 'context'
-      if (progress < 66) return step.id === 'generating'
+    const latestDoc = documents[0]
+    if (!latestDoc || latestDoc.status === 'pending') return step.id === 'preparing'
+    if (latestDoc.status === 'processing') {
+      // Since we don't have progress in the document type, we'll use a simpler approach
+      if (step.id === 'preparing') return true
+      if (step.id === 'context') return false
+      if (step.id === 'generating') return false
       return step.id === 'finalizing'
     }
     return false
   })
 
+  const status = documents[0]?.status || 'pending'
+  const documentUrl = documents[0]?.url
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b">
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between p-6 border-b"
+      >
         <div>
           <h2 className="text-lg font-semibold">Generating Document</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Please wait while we generate your document
           </p>
         </div>
-      </div>
+        {isGenerating && (
+          <div className="flex items-center gap-2 text-primary">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm font-medium">Processing...</span>
+          </div>
+        )}
+      </motion.div>
 
       {/* Content */}
       <div className="flex-1 p-6">
@@ -94,109 +120,190 @@ export function GenerationProgress({
           {/* Progress */}
           <div className="space-y-6">
             {/* Progress Bar */}
-            <div className="space-y-2">
-              <Progress value={progress} className="h-2" />
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-2"
+            >
+              <Progress 
+                value={status === 'completed' ? 100 : status === 'processing' ? 50 : 0} 
+                className="h-2" 
+              />
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Progress</span>
-                <span>{Math.round(progress)}%</span>
+                <span>{status === 'completed' ? 100 : status === 'processing' ? 50 : 0}%</span>
               </div>
-            </div>
+            </motion.div>
 
             {/* Steps */}
             <div className="space-y-4">
-              {GENERATION_STEPS.map((step, index) => {
-                const isActive = index === currentStepIndex
-                const isComplete = index < currentStepIndex
-                const isFailed = status === 'failed' && index === currentStepIndex
+              <AnimatePresence mode="wait">
+                {GENERATION_STEPS.map((step, index) => {
+                  const isActive = index === currentStepIndex
+                  const isComplete = index < currentStepIndex
+                  const isFailed = status === 'failed' && index === currentStepIndex
 
-                return (
-                  <motion.div
-                    key={step.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.2 }}
-                    className={cn(
-                      "p-4 rounded-lg border",
-                      isActive && "border-primary bg-primary/5",
-                      isComplete && "border-green-500/20 bg-green-500/5",
-                      isFailed && "border-destructive/20 bg-destructive/5"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1">
-                        {isComplete ? (
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        ) : isFailed ? (
-                          <XCircle className="h-5 w-5 text-destructive" />
-                        ) : (
-                          <div
-                            className={cn(
-                              "h-5 w-5 rounded-full border-2",
-                              isActive ? "border-primary" : "border-muted-foreground/20"
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ 
+                        opacity: 1, 
+                        x: 0,
+                        scale: isActive ? 1.02 : 1
+                      }}
+                      transition={{ 
+                        delay: index * 0.15,
+                        type: "spring",
+                        stiffness: 100,
+                        damping: 20
+                      }}
+                      className={cn(
+                        "p-4 rounded-lg border transition-all duration-300",
+                        isActive && "border-primary bg-primary/5 shadow-sm",
+                        isComplete && "border-green-500/20 bg-green-500/5",
+                        isFailed && "border-destructive/20 bg-destructive/5"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1">
+                          <AnimatePresence mode="wait">
+                            {isComplete ? (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0 }}
+                              >
+                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                              </motion.div>
+                            ) : isFailed ? (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0 }}
+                              >
+                                <XCircle className="h-5 w-5 text-destructive" />
+                              </motion.div>
+                            ) : (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0 }}
+                                className={cn(
+                                  "h-5 w-5 rounded-full border-2 transition-colors",
+                                  isActive ? "border-primary" : "border-muted-foreground/20"
+                                )}
+                              >
+                                {isActive && (
+                                  <motion.div
+                                    className="h-full w-full rounded-full bg-primary/20"
+                                    animate={{
+                                      scale: [1, 1.2, 1],
+                                    }}
+                                    transition={{
+                                      duration: 2,
+                                      repeat: Infinity,
+                                      ease: "easeInOut"
+                                    }}
+                                  />
+                                )}
+                              </motion.div>
                             )}
-                          />
-                        )}
+                          </AnimatePresence>
+                        </div>
+                        <div>
+                          <h3 className={cn(
+                            "font-medium transition-colors",
+                            isActive && "text-primary",
+                            isComplete && "text-green-500",
+                            isFailed && "text-destructive"
+                          )}>
+                            {step.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {step.description}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className={cn(
-                          "font-medium",
-                          isActive && "text-primary",
-                          isComplete && "text-green-500",
-                          isFailed && "text-destructive"
-                        )}>
-                          {step.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {step.description}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )
-              })}
+                    </motion.div>
+                  )
+                })}
+              </AnimatePresence>
             </div>
           </div>
 
           {/* Result */}
-          {status === 'completed' && documentUrl && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8 text-center"
-            >
-              <div className="inline-flex items-center gap-2 text-green-500 mb-4">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="font-medium">Document Generated Successfully</span>
-              </div>
-              <div className="flex justify-center">
-                <Button asChild>
-                  <a href={documentUrl} target="_blank" rel="noopener noreferrer">
-                    View Document
-                  </a>
-                </Button>
-              </div>
-            </motion.div>
-          )}
+          <AnimatePresence mode="wait">
+            {status === 'completed' && documentUrl && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="mt-8 text-center"
+              >
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="inline-flex items-center gap-2 text-green-500 mb-4"
+                >
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="font-medium">Document Generated Successfully</span>
+                </motion.div>
+                <div className="flex justify-center">
+                  <Button 
+                    asChild
+                    className="gap-2 group"
+                  >
+                    <a 
+                      href={documentUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="h-4 w-4 transition-transform group-hover:scale-110" />
+                      View Document
+                    </a>
+                  </Button>
+                </div>
+              </motion.div>
+            )}
 
-          {/* Error */}
-          {status === 'failed' && error && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8 text-center"
-            >
-              <div className="inline-flex items-center gap-2 text-destructive mb-4">
-                <XCircle className="h-5 w-5" />
-                <span className="font-medium">Generation Failed</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                {error}
-              </p>
-              <Button variant="outline" onClick={() => generateDocument(templateId)}>
-                Try Again
-              </Button>
-            </motion.div>
-          )}
+            {/* Error */}
+            {status === 'failed' && error && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="mt-8 text-center"
+              >
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="inline-flex items-center gap-2 text-destructive mb-4"
+                >
+                  <XCircle className="h-5 w-5" />
+                  <span className="font-medium">Generation Failed</span>
+                </motion.div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {error instanceof Error ? error.message : 'An error occurred during document generation'}
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => generateDocument({
+                    data: {
+                      stepResponses: { templateId },
+                      projectData: {}
+                    },
+                    format: 'pdf'
+                  })}
+                  className="gap-2"
+                >
+                  <Loader2 className="h-4 w-4" />
+                  Try Again
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

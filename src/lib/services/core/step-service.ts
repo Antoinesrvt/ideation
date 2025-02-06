@@ -1,5 +1,11 @@
 import { BaseSupabaseService } from './base-supabase-service'
-import { DbModuleStep, DbStepResponse, StepStatus, ModuleStepInsertData, ModuleStepUpdateData } from '@/types/module'
+import { 
+  DbModuleStep, 
+  DbStepResponse, 
+  ModuleStepInsertData, 
+  ModuleStepUpdateData,
+  StepStatus 
+} from '@/types/module'
 import { PostgrestSingleResponse, PostgrestResponse } from '@supabase/supabase-js'
 
 export class StepService extends BaseSupabaseService {
@@ -7,7 +13,7 @@ export class StepService extends BaseSupabaseService {
    * Get all steps for a module
    */
   async getSteps(moduleId: string): Promise<DbModuleStep[]> {
-    return this.handleDatabaseOperation<DbModuleStep[]>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('module_steps')
@@ -24,7 +30,7 @@ export class StepService extends BaseSupabaseService {
    * Get a single step with its responses
    */
   async getStep(stepId: string): Promise<DbModuleStep & { responses: DbStepResponse[] }> {
-    return this.handleDatabaseOperation<DbModuleStep & { responses: DbStepResponse[] }>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('module_steps')
@@ -34,7 +40,9 @@ export class StepService extends BaseSupabaseService {
           `)
           .eq('id', stepId)
           .single()
-        return result as PostgrestSingleResponse<DbModuleStep & { responses: DbStepResponse[] }>
+        return result as PostgrestSingleResponse<DbModuleStep & { 
+          responses: DbStepResponse[] 
+        }>
       },
       'getStep'
     )
@@ -44,11 +52,15 @@ export class StepService extends BaseSupabaseService {
    * Create a new step
    */
   async createStep(data: ModuleStepInsertData): Promise<DbModuleStep> {
-    return this.handleDatabaseOperation<DbModuleStep>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('module_steps')
-          .insert(data)
+          .insert({
+            ...data,
+            status: 'not_started',
+            metadata: data.metadata || {}
+          })
           .select()
           .single()
         return result as PostgrestSingleResponse<DbModuleStep>
@@ -61,7 +73,7 @@ export class StepService extends BaseSupabaseService {
    * Update a step
    */
   async updateStep(stepId: string, data: ModuleStepUpdateData): Promise<DbModuleStep> {
-    return this.handleDatabaseOperation<DbModuleStep>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('module_steps')
@@ -79,20 +91,19 @@ export class StepService extends BaseSupabaseService {
    * Update step status
    */
   async updateStepStatus(stepId: string, status: StepStatus): Promise<DbModuleStep> {
-    return this.updateStep(stepId, { 
+    const data: ModuleStepUpdateData = {
       status,
-      ...(status === 'completed' ? {
-        completed_at: new Date().toISOString(),
-        completed_by: await this.getCurrentUserId()
-      } : {})
-    })
+      completed_at: status === 'completed' ? new Date().toISOString() : null,
+      completed_by: status === 'completed' ? await this.getCurrentUserId() : null
+    }
+    return this.updateStep(stepId, data)
   }
 
   /**
-   * Delete a step
+   * Delete a step and all related data
    */
   async deleteStep(stepId: string): Promise<void> {
-    await this.handleDatabaseOperation<void>(
+    await this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('module_steps')
@@ -105,10 +116,10 @@ export class StepService extends BaseSupabaseService {
   }
 
   /**
-   * Get step responses
+   * Get all responses for a step
    */
   async getStepResponses(stepId: string): Promise<DbStepResponse[]> {
-    return this.handleDatabaseOperation<DbStepResponse[]>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('step_responses')
@@ -122,12 +133,15 @@ export class StepService extends BaseSupabaseService {
   }
 
   /**
-   * Save step response
+   * Save a new response for a step
    */
   async saveStepResponse(stepId: string, content: string): Promise<DbStepResponse> {
-    return this.handleDatabaseOperation<DbStepResponse>(
+    return this.handleDatabaseOperation(
       async () => {
-        // Get current version if exists
+        // Get current user ID
+        const userId = await this.getCurrentUserId()
+
+        // Get current version number
         const { data: currentResponses } = await this.supabase
           .from('step_responses')
           .select('version')
@@ -139,7 +153,7 @@ export class StepService extends BaseSupabaseService {
           ? currentResponses[0].version + 1 
           : 1
 
-        // Mark previous responses as not latest
+        // Mark all previous responses as not latest
         if (nextVersion > 1) {
           await this.supabase
             .from('step_responses')
@@ -155,7 +169,7 @@ export class StepService extends BaseSupabaseService {
             content,
             version: nextVersion,
             is_latest: true,
-            created_by: await this.getCurrentUserId()
+            created_by: userId
           })
           .select()
           .single()
@@ -167,11 +181,11 @@ export class StepService extends BaseSupabaseService {
   }
 
   /**
-   * Get current user ID helper
+   * Get current user ID
    */
   private async getCurrentUserId(): Promise<string> {
-    const { data: { user } } = await this.supabase.auth.getUser()
-    if (!user) throw new Error('No authenticated user')
+    const { data: { user }, error } = await this.supabase.auth.getUser()
+    if (error || !user) throw new Error('No authenticated user')
     return user.id
   }
 } 

@@ -48,7 +48,7 @@ export class ModuleService extends BaseSupabaseService {
    * Get all modules for a project
    */
   async getModulesByProject(projectId: string): Promise<DbModule[]> {
-    return this.handleDatabaseOperation<DbModule[]>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('modules')
@@ -65,7 +65,7 @@ export class ModuleService extends BaseSupabaseService {
    * Create a new module
    */
   async createModule(data: ModuleInsertData): Promise<DbModule> {
-    return this.handleDatabaseOperation<DbModule>(
+    return this.handleDatabaseOperation(
       async () => {
         // Create module
         const result = await this.supabase
@@ -88,7 +88,7 @@ export class ModuleService extends BaseSupabaseService {
    * Update a module
    */
   async updateModule(moduleId: string, data: ModuleUpdateData): Promise<DbModule> {
-    return this.handleDatabaseOperation<DbModule>(
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('modules')
@@ -117,7 +117,7 @@ export class ModuleService extends BaseSupabaseService {
    * Delete a module and all related data
    */
   async deleteModule(moduleId: string): Promise<void> {
-    await this.handleDatabaseOperation<void>(
+    await this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('modules')

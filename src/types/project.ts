@@ -6,7 +6,7 @@ import type { Module } from './module'
 export type JsonValue = string | number | boolean | null | { [key: string]: JsonValue } | JsonValue[]
 
 export type JsonCompatible<T> = {
-  [P in keyof T]: T[P] extends JsonValue ? T[P] : never
+  [P in keyof T]: T[P] extends JsonValue ? T[P] : JsonValue
 }
 
 // Database row types
@@ -58,8 +58,8 @@ export interface ProjectMetadata {
   completedAt: string | null
   stage: 'idea' | 'mvp' | 'growth' | null
   industry: string | null
-  settings?: ProjectSettings
-  customFields?: { [key: string]: Json }
+  settings: ProjectSettings
+  customFields: Record<string, JsonValue>
 }
 
 // Type-safe metadata type for database storage

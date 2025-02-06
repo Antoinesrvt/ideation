@@ -82,7 +82,7 @@ export function IdeationLayout({
         <ModuleNavigation
           steps={steps}
           currentStepId={currentStepId}
-          onStepSelect={onStepSelect}
+          onStepSelect={(stepId: string) => onStepSelect(stepId as ModuleType)}
         />
       </div>
     </div>
@@ -103,23 +103,34 @@ export function IdeationLayout({
           </SheetContent>
         </Sheet>
       ) : (
-        <aside className="hidden lg:block border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <motion.aside
+          initial={{ x: -280 }}
+          animate={{ x: 0 }}
+          transition={{ type: "spring", damping: 20 }}
+          className="hidden lg:block border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        >
           <Sidebar />
-        </aside>
+        </motion.aside>
       )}
 
       {/* Main Content */}
-      <main className="relative bg-background">
+      <motion.main
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ type: "spring", damping: 20 }}
+        className="relative bg-background"
+      >
         {children}
-      </main>
+      </motion.main>
 
       {/* Progress Recap Panel */}
-      {/* <motion.div
+      <motion.div
         initial={false}
         animate={{ 
           height: isRecapOpen ? "auto" : "48px",
           y: isRecapOpen ? 0 : "calc(100% - 48px)" 
         }}
+        transition={{ type: "spring", damping: 20 }}
         className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t shadow-lg z-40"
       >
         <div className="container max-w-screen-2xl">
@@ -144,17 +155,17 @@ export function IdeationLayout({
             </Button>
           </div>
 
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {isRecapOpen && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.2 }}
+                transition={{ type: "spring", damping: 20 }}
                 className="p-6"
               >
                 <Tabs defaultValue="summary" className="space-y-4">
-                  <TabsList>
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="summary">Summary</TabsTrigger>
                     <TabsTrigger value="notes">Notes</TabsTrigger>
                     <TabsTrigger value="ai-insights">AI Insights</TabsTrigger>
@@ -162,25 +173,36 @@ export function IdeationLayout({
 
                   <TabsContent value="summary" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {steps.map(step => (
-                        <Card key={step.id} className={cn(
-                          "p-4 transition-colors",
-                          step.completed && "bg-primary/5 border-primary/10"
-                        )}>
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-semibold">{step.title}</h3>
-                            {step.completed && (
-                              <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                                Completed
-                              </span>
+                      {steps.map((step, index) => (
+                        <motion.div
+                          key={step.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                        >
+                          <Card className={cn(
+                            "p-4 transition-all duration-200 hover:shadow-md",
+                            step.completed && "bg-primary/5 border-primary/10"
+                          )}>
+                            <div className="flex items-start justify-between">
+                              <h3 className="font-semibold">{step.title}</h3>
+                              {step.completed && (
+                                <motion.span
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full"
+                                >
+                                  Completed
+                                </motion.span>
+                              )}
+                            </div>
+                            {moduleRecaps.find(r => r.id === step.id)?.summary && (
+                              <p className="text-sm text-muted-foreground mt-2">
+                                {moduleRecaps.find(r => r.id === step.id)?.summary}
+                              </p>
                             )}
-                          </div>
-                          {moduleRecaps.find(r => r.id === step.id)?.summary && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                              {moduleRecaps.find(r => r.id === step.id)?.summary}
-                            </p>
-                          )}
-                        </Card>
+                          </Card>
+                        </motion.div>
                       ))}
                     </div>
                   </TabsContent>
@@ -205,7 +227,7 @@ export function IdeationLayout({
             )}
           </AnimatePresence>
         </div>
-      </motion.div> */}
+      </motion.div>
     </div>
   )
 } 

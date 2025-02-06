@@ -1,123 +1,118 @@
-import { useCallback, useMemo } from 'react'
-import { ModuleType } from '@/types/project'
+import { useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSupabase } from '@/context/supabase-context'
+import { ModuleService } from '@/lib/services/core/module-service'
+import { DbModule, ModuleStatus, ModuleUpdateData } from '@/types/module'
+import { useToast } from '@/hooks/use-toast'
 import { getModuleConfig } from '@/config/modules'
-import { useModuleState } from './use-module-state'
-import { useAI } from '@/context/ai-context'
-import { useToast } from './use-toast'
 
 interface UseModuleOptions {
-  onComplete?: () => void
   onError?: (error: Error) => void
+  onComplete?: () => void
 }
 
 export function useModule(moduleId: string | null, options: UseModuleOptions = {}) {
+  const { supabase } = useSupabase()
   const { toast } = useToast()
-  const { generateSuggestion, enhanceContent, isGenerating: isGeneratingSuggestion, isEnhancing } = useAI()
+  const queryClient = useQueryClient()
+  const moduleService = new ModuleService(supabase)
 
-  // Use our new module state management
-  const {
-    module,
-    config,
-    responses,
-    isLoading,
-    error,
-    currentStepId,
-    isStepCompleted,
-    isModuleCompleted,
-    markStepAsCompleted,
-    navigateToStep,
-    completeModule,
-    getStepResponse,
-    saveResponse
-  } = useModuleState(moduleId, {
-    onComplete: options.onComplete,
+  // Fetch module data
+  const { data: module, isLoading, error } = useQuery({
+    queryKey: ['module', moduleId],
+    queryFn: () => moduleId ? moduleService.getModule(moduleId) : null,
+    enabled: !!moduleId
+  })
+
+  // Get module configuration
+  const config = module?.type ? getModuleConfig(module.type) : null
+
+  // Module status helpers
+  const isModuleCompleted = useCallback(() => 
+    module?.status === 'completed', [module?.status])
+
+  const isModuleDraft = useCallback(() => 
+    module?.status === 'draft', [module?.status])
+
+  const isModuleInProgress = useCallback(() => 
+    module?.status === 'in_progress', [module?.status])
+
+  // Step navigation helpers
+  const getCurrentStep = useCallback(() => 
+    module?.current_step_id || null, [module?.current_step_id])
+
+  const getStepIndex = useCallback((stepId: string) => {
+    if (!config?.steps) return -1
+    return config.steps.findIndex(step => step.id === stepId)
+  }, [config?.steps])
+
+  const getTotalSteps = useCallback(() => 
+    config?.steps?.length || 0, [config?.steps])
+
+  const getCurrentStepIndex = useCallback(() => {
+    const currentStepId = getCurrentStep()
+    return currentStepId ? getStepIndex(currentStepId) : -1
+  }, [getCurrentStep, getStepIndex])
+
+  // Update module mutation
+  const updateModuleMutation = useMutation({
+    mutationFn: async (data: ModuleUpdateData) => 
+      moduleId ? moduleService.updateModule(moduleId, data) : null,
+    onSuccess: (newModule) => {
+      if (newModule) {
+        queryClient.setQueryData(['module', moduleId], newModule)
+      }
+    },
     onError: (error) => {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive"
       })
-      options.onError?.(error)
+      options.onError?.(error instanceof Error ? error : new Error('Failed to update module'))
     }
   })
 
-  // Get current step configuration
-  const currentStep = useMemo(() => {
-    if (!config?.steps || !currentStepId) return null
-    return config.steps.find(step => step.id === currentStepId) || null
-  }, [config?.steps, currentStepId])
+  // Update module status
+  const updateStatus = useCallback(async (status: ModuleStatus) => {
+    if (!moduleId) return
+    await updateModuleMutation.mutateAsync({ status })
+  }, [moduleId, updateModuleMutation])
 
-  // Generate AI suggestion for current step
-  const generateAISuggestion = useCallback(async (prompt: string) => {
-    if (!module?.id || !currentStepId) return null
-
-    try {
-      const suggestion = await generateSuggestion({
-        moduleId: module.id,
-        stepId: currentStepId,
-        prompt
-      })
-
-      if (suggestion) {
-        await saveResponse(currentStepId, suggestion)
-      }
-
-      return suggestion
-    } catch (error) {
-      console.error('Error generating suggestion:', error)
-      toast({
-        title: "Error",
-        description: "Failed to generate AI suggestion. Please try again.",
-        variant: "destructive"
-      })
-      return null
-    }
-  }, [module?.id, currentStepId, generateSuggestion, saveResponse, toast])
-
-  // Enhance content with AI
-  const enhanceStepContent = useCallback(async (content: string, instructions: string) => {
-    if (!module?.id || !currentStepId) return null
+  // Mark module as completed
+  const completeModule = useCallback(async () => {
+    if (!module || !moduleId) return false
 
     try {
-      const enhanced = await enhanceContent({
-        moduleId: module.id,
-        stepId: currentStepId,
-        content,
-        instructions
-      })
-
-      if (enhanced) {
-        await saveResponse(currentStepId, enhanced)
-      }
-
-      return enhanced
+      await updateStatus('completed')
+      options.onComplete?.()
+      return true
     } catch (error) {
-      console.error('Error enhancing content:', error)
-      toast({
-        title: "Error",
-        description: "Failed to enhance content. Please try again.",
-        variant: "destructive"
-      })
-      return null
+      options.onError?.(error instanceof Error ? error : new Error('Failed to complete module'))
+      return false
     }
-  }, [module?.id, currentStepId, enhanceContent, saveResponse, toast])
+  }, [module, moduleId, updateStatus, options])
 
   return {
     module,
     config,
-    responses,
-    currentStep: currentStepId,
     isLoading,
     error,
-    isStepCompleted,
-    isModuleCompleted,
-    markStepAsCompleted,
-    navigateToStep,
+    // Status helpers
+    isCompleted: isModuleCompleted(),
+    isDraft: isModuleDraft(),
+    isInProgress: isModuleInProgress(),
+    // Step helpers
+    currentStepId: getCurrentStep(),
+    currentStepIndex: getCurrentStepIndex(),
+    totalSteps: getTotalSteps(),
+    getStepIndex,
+    // Actions
+    updateModule: updateModuleMutation.mutate,
+    updateModuleAsync: updateModuleMutation.mutateAsync,
+    updateStatus,
     completeModule,
-    saveResponse,
-    generateAISuggestion,
-    enhanceStepContent,
-    isGeneratingSuggestion,
-    isEnhancing
+    // Loading states
+    isUpdating: updateModuleMutation.isPending
   }
 } 

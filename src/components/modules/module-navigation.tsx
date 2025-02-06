@@ -63,36 +63,75 @@ export function ModuleNavigation({
                       initial={false}
                       animate={{
                         scale: isCurrent ? 1.1 : 1,
-                        borderColor: step.completed ? "var(--primary)" : isCurrent ? "var(--primary)" : "var(--border)"
+                        borderColor: step.completed ? "var(--primary)" : isCurrent ? "var(--primary)" : "var(--border)",
+                        backgroundColor: step.completed ? "var(--primary-light)" : "transparent"
                       }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ 
+                        type: "spring",
+                        damping: 15,
+                        stiffness: 300
+                      }}
                     >
                       {step.completed ? (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                          transition={{ 
+                            type: "spring",
+                            stiffness: 300,
+                            damping: 20
+                          }}
                         >
                           <Check className="h-4 w-4 text-primary" />
                         </motion.div>
                       ) : (
-                        <span className={cn(
-                          isCurrent && "text-primary font-medium"
-                        )}>{stepIdx + 1}</span>
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className={cn(
+                            "text-sm",
+                            isCurrent && "text-primary font-medium"
+                          )}
+                        >
+                          {stepIdx + 1}
+                        </motion.span>
                       )}
                     </motion.span>
-                    <span className={cn(
-                      "text-sm font-medium transition-colors",
-                      isCurrent && "text-primary"
-                    )}>
+                    <motion.span 
+                      className={cn(
+                        "text-sm font-medium transition-colors",
+                        isCurrent && "text-primary"
+                      )}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: stepIdx * 0.1 }}
+                    >
                       {step.title}
-                    </span>
+                    </motion.span>
                   </span>
-                  <ChevronRight className={cn(
-                    "h-4 w-4 transition-transform",
-                    isCurrent && "text-primary transform translate-x-1"
-                  )} />
+                  <motion.div
+                    initial={{ opacity: 0, x: -5 }}
+                    animate={{ 
+                      opacity: 1,
+                      x: isCurrent ? 0 : -5,
+                      rotate: isCurrent ? 0 : -45
+                    }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChevronRight className={cn(
+                      "h-4 w-4 transition-transform",
+                      isCurrent && "text-primary transform translate-x-1"
+                    )} />
+                  </motion.div>
                 </Button>
+
+                {isCurrent && (
+                  <motion.div
+                    layoutId="active-indicator"
+                    className="absolute inset-0 border-2 border-primary rounded-lg"
+                    transition={{ type: "spring", damping: 15 }}
+                  />
+                )}
               </motion.li>
             )
           })}
