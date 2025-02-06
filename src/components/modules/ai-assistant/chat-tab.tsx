@@ -5,12 +5,16 @@ import { Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ModuleResponse } from "@/types/module"
+import { DbModuleResponse } from "@/types/module"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Database } from "@/types/database"
+
+type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
 
 interface ChatTabProps {
-  currentResponse?: ModuleResponse
+  currentResponse?: DbModuleResponse
+  lastAIInteraction?: AIInteraction
   onSuggestionRequest: (context: string) => Promise<void>
   onSuggestionApply: (suggestion: string) => void
   isGenerating: boolean
@@ -20,6 +24,7 @@ interface ChatTabProps {
 
 export function ChatTab({
   currentResponse,
+  lastAIInteraction,
   onSuggestionRequest,
   onSuggestionApply,
   isGenerating,
@@ -46,7 +51,7 @@ export function ChatTab({
             </div>
           )}
 
-          {currentResponse?.aiSuggestion && (
+          {lastAIInteraction && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -57,13 +62,22 @@ export function ChatTab({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onSuggestionApply(currentResponse.aiSuggestion!)}
+                  onClick={() => {
+                    const suggestion = typeof lastAIInteraction.response === 'string' 
+                      ? lastAIInteraction.response 
+                      : JSON.stringify(lastAIInteraction.response)
+                    onSuggestionApply(suggestion)
+                  }}
                   disabled={isDisabled}
                 >
                   Apply
                 </Button>
               </div>
-              <p className="text-sm">{currentResponse.aiSuggestion}</p>
+              <p className="text-sm">
+                {typeof lastAIInteraction.response === 'string' 
+                  ? lastAIInteraction.response 
+                  : JSON.stringify(lastAIInteraction.response)}
+              </p>
             </motion.div>
           )}
         </div>

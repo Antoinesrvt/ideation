@@ -1,6 +1,6 @@
 
 import { ModuleType } from '@/types/project'
-import { ModuleResponse } from '@/types/module'
+import { DbModuleResponse } from '@/types/module'
 
 
 export interface ContextSource {
@@ -39,14 +39,14 @@ export class AIContextBuilder {
   /**
    * Add module responses to the context
    */
-  addModuleResponses(responses: Record<string, ModuleResponse>) {
+  addModuleResponses(responses: Record<string, DbModuleResponse>) {
     Object.entries(responses).forEach(([stepId, response]) => {
       this.context.sources.push({
         type: 'module_response',
         content: response.content,
         metadata: {
           stepId,
-          lastUpdated: response.lastUpdated
+          lastUpdated: response.last_updated
         }
       })
     })

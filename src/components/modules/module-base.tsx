@@ -9,13 +9,9 @@ import { ModuleUpdateOverlay } from "./module-update-overlay"
 import { useModule } from "@/hooks/use-module"
 import { ModuleType, MODULES_CONFIG } from "@/config/modules"
 import { LucideIcon } from "lucide-react"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 import { ModuleErrorBoundary } from "./module-error-boundary"
 import { useProject } from "@/context/project-context"
 import { useToast } from "@/hooks/use-toast"
-import { useAI } from "@/context/ai-context"
-import { ModuleResponse } from "@/types/module"
 import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -48,7 +44,8 @@ const ModuleBase = memo(function ModuleBase({
     generateAISuggestion,
     isGeneratingSuggestion,
     isInitializing,
-    quickActionGroups
+    quickActionGroups,
+    lastAIInteraction
   } = useModule(moduleType, {
     onComplete,
     onError: (error) => {
@@ -225,6 +222,7 @@ const ModuleBase = memo(function ModuleBase({
             undefined}
           moduleType={moduleType}
           projectId={project?.id || ''}
+          lastAIInteraction={lastAIInteraction}
         >
           <AnimatePresence mode="wait">
             {currentStep && config.steps && (

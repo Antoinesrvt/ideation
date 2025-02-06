@@ -3,20 +3,24 @@
 import { useState } from "react"
 import { Bot, MessageSquare, FileText } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ModuleResponse } from "@/types/module"
+import { DbModuleResponse } from "@/types/module"
 import { ModuleType } from "@/types/project"
 import { ChatTab } from "./ai-assistant/chat-tab"
 import { DocumentsTab } from "./ai-assistant/documents-tab"
 import { DocumentGenerationModal } from "./document-generation/modal"
+import { Database } from "@/types/database"
+
+type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
 
 interface AIAssistantProps {
-  currentResponse?: ModuleResponse
+  currentResponse?: DbModuleResponse
   moduleType: ModuleType
   projectId: string
   onSuggestionRequest: (context: string) => Promise<void>
   onSuggestionApply: (suggestion: string) => void
   isGenerating: boolean
   isDisabled?: boolean
+  lastAIInteraction?: AIInteraction
 }
 
 type AssistantView = "chat" | "documents"
@@ -28,7 +32,8 @@ export function AIAssistant({
   onSuggestionRequest,
   onSuggestionApply,
   isGenerating,
-  isDisabled = false
+  isDisabled = false,
+  lastAIInteraction
 }: AIAssistantProps) {
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false)
   const [currentView, setCurrentView] = useState<AssistantView>("chat")
@@ -80,6 +85,7 @@ export function AIAssistant({
         {currentView === "chat" ? (
           <ChatTab
             currentResponse={currentResponse}
+            lastAIInteraction={lastAIInteraction}
             onSuggestionRequest={onSuggestionRequest}
             onSuggestionApply={onSuggestionApply}
             isGenerating={isGenerating}

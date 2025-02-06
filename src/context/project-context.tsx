@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
-import type { Module, ModuleResponse, ModuleUpdateData } from '@/types/module'
+import type { Module, DbModuleResponse, ModuleUpdateData } from '@/types/module'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
 import { ProjectService, ProjectRow } from '@/lib/services/project-service'
@@ -17,12 +17,21 @@ interface ProjectState {
 }
 
 interface ProjectContextType extends ProjectState {
-  refreshProject: () => Promise<void>
-  updateProject: (updates: Partial<ProjectRow>) => Promise<void>
-  updateModule: (moduleId: string, updates: ModuleUpdateData) => Promise<Module>
-  saveModuleResponse: (moduleId: string, stepId: string, response: ModuleResponse) => Promise<void>
-  createModule: (data: Omit<Module, 'id' | 'created_at' | 'updated_at'>) => Promise<void>
-  ensureModule: (moduleType: ModuleType) => Promise<Module>
+  refreshProject: () => Promise<void>;
+  updateProject: (updates: Partial<ProjectRow>) => Promise<void>;
+  updateModule: (
+    moduleId: string,
+    updates: ModuleUpdateData
+  ) => Promise<Module>;
+  saveModuleResponse: (
+    moduleId: string,
+    stepId: string,
+    response: DbModuleResponse
+  ) => Promise<void>;
+  createModule: (
+    data: Omit<Module, "id" | "created_at" | "updated_at">
+  ) => Promise<void>;
+  ensureModule: (moduleType: ModuleType) => Promise<Module>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined)
@@ -167,35 +176,42 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [projectService, toast])
 
   // Module response update
-  const saveModuleResponse = useCallback(async (
-    moduleId: string,
-    stepId: string,
-    response: ModuleResponse
-  ) => {
-    try {
-      const savedResponse = await projectService.saveModuleResponse(moduleId, stepId, response)
-      setState(prev => ({
-        ...prev,
-        modules: prev.modules.map(m => 
-          m.id === moduleId ? {
-            ...m,
-            responses: [
-              ...(m.responses || []).filter(r => r.step_id !== stepId),
-              savedResponse
-            ]
-          } : m
-        )
-      }))
-    } catch (err) {
-      console.error('Error saving module response:', err)
-      toast({
-        title: "Error",
-        description: "Failed to save response. Please try again.",
-        variant: "destructive"
-      })
-      throw err
-    }
-  }, [projectService, toast])
+  const saveModuleResponse = useCallback(
+    async (moduleId: string, stepId: string, response: DbModuleResponse) => {
+      try {
+        const savedResponse = await projectService.saveModuleResponse(
+          moduleId,
+          stepId,
+          response
+        );
+
+
+        setState((prev) => ({
+          ...prev,
+          modules: prev.modules.map((m) =>
+            m.id === moduleId
+              ? {
+                  ...m,
+                  responses: [
+                    ...(m.responses || []).filter((r) => r.step_id !== stepId),
+                    savedResponse,
+                  ],
+                }
+              : m
+          ),
+        }));
+      } catch (err) {
+        console.error("Error saving module response:", err);
+        toast({
+          title: "Error",
+          description: "Failed to save response. Please try again.",
+          variant: "destructive",
+        });
+        throw err;
+      }
+    },
+    [projectService, toast]
+  );
 
   // Ensure module exists
   const ensureModule = useCallback(async (moduleType: ModuleType): Promise<Module> => {

@@ -9,12 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AIAssistant } from "./ai-assistant"
-import { ModuleResponse } from "@/types/module"
+import { DbModuleResponse } from "@/types/module"
 import { QuickActions } from "@/components/ai/quick-actions"
 import type { QuickActionGroup } from "@/types/ai"
 import { cn } from "@/lib/utils"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ModuleType } from "@/config/modules"
+import { Database } from "@/types/database"
+
+type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
 
 interface DocumentVersion {
   id: string
@@ -24,24 +27,25 @@ interface DocumentVersion {
 }
 
 interface ModuleLayoutProps {
-  title: string
-  description: string
-  stepProgress?: string
-  onBack: () => void
-  children: React.ReactNode
-  currentStep: string
-  currentResponse?: ModuleResponse
-  previousResponses?: Record<string, ModuleResponse>
-  onSuggestionRequest: (context: string) => Promise<void>
-  onSuggestionApply: (suggestion: string) => void
-  isGeneratingSuggestion: boolean
-  quickActionGroups?: QuickActionGroup[]
-  isLoading?: boolean
-  error?: Error | null
-  documents?: DocumentVersion[]
-  onGenerateDocument?: () => Promise<void>
-  moduleType: ModuleType
-  projectId: string
+  title: string;
+  description: string;
+  stepProgress?: string;
+  onBack: () => void;
+  children: React.ReactNode;
+  currentStep: string;
+  currentResponse?: DbModuleResponse;
+  previousResponses?: Record<string, DbModuleResponse>;
+  onSuggestionRequest: (context: string) => Promise<void>;
+  onSuggestionApply: (suggestion: string) => void;
+  isGeneratingSuggestion: boolean;
+  quickActionGroups?: QuickActionGroup[];
+  isLoading?: boolean;
+  error?: Error | null;
+  documents?: DocumentVersion[];
+  onGenerateDocument?: () => Promise<void>;
+  moduleType: ModuleType;
+  projectId: string;
+  lastAIInteraction?: AIInteraction;
 }
 
 export function ModuleLayout({ 
@@ -62,7 +66,8 @@ export function ModuleLayout({
   documents = [],
   onGenerateDocument,
   moduleType,
-  projectId
+  projectId,
+  lastAIInteraction
 }: ModuleLayoutProps) {
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false)
 
@@ -213,6 +218,7 @@ export function ModuleLayout({
             isDisabled={isLoading}
             moduleType={moduleType}
             projectId={projectId}
+            lastAIInteraction={lastAIInteraction}
           />
         </div>
       </motion.div>

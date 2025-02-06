@@ -1,5 +1,5 @@
 import { ModuleType } from '@/types/project'
-import { ModuleResponse } from '@/types/module'
+import { DbModuleResponse } from '@/types/module'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 import { AIContextBuilder, EnrichmentOptions } from '@/lib/ai/context-builder'
@@ -34,7 +34,7 @@ export class DocumentWorkflow {
    * Execute the document generation workflow
    */
   async execute(
-    moduleResponses: Record<string, ModuleResponse>,
+    moduleResponses: Record<string, DbModuleResponse>,
     projectData: Record<string, any>,
     options: WorkflowOptions = {}
   ): Promise<WorkflowResult> {
@@ -98,7 +98,7 @@ export class DocumentWorkflow {
    * Validate module data before processing
    */
   private validateModuleData(
-    moduleResponses: Record<string, ModuleResponse>,
+    moduleResponses: Record<string, DbModuleResponse>,
     projectData: Record<string, any>
   ): boolean {
     // TODO: Implement validation logic

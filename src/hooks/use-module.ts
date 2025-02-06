@@ -1,10 +1,15 @@
 import { useCallback, useState, useEffect, useMemo } from 'react'
 import { useProject } from '@/context/project-context'
 import { ModuleType, MODULE_CONFIG } from '@/config/modules'
-import { Module, ModuleResponse, parseModuleResponse } from '@/types/module'
+import { Module, DbModuleResponse } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
 import { useAI } from '@/context/ai-context'
 import { ModuleResponseRow } from '@/lib/services/project-service'
+import { Database } from '@/types/database'
+import { useSupabase } from '@/context/supabase-context'
+import { ProjectService } from '@/lib/services/project-service'
+
+type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
 
 interface UseModuleOptions {
   onComplete?: () => void
@@ -12,7 +17,8 @@ interface UseModuleOptions {
 }
 
 export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}) {
-  const { modules, updateModule, saveModuleResponse } = useProject()
+  const { supabase } = useSupabase()
+  const { project, modules, updateModule } = useProject()
   const { getQuickActionsForModule, generateSuggestion } = useAI()
   const { toast } = useToast()
   
@@ -20,42 +26,76 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
   const [isInitializing, setIsInitializing] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false)
+  const [initializationError, setInitializationError] = useState<Error | null>(null)
+  const [lastAIInteraction, setLastAIInteraction] = useState<AIInteraction>()
   
   // Local state management - only for current view
-  const [localResponses, setLocalResponses] = useState<Record<string, ModuleResponse>>({})
+  const [responses, setResponses] = useState<Record<string, DbModuleResponse>>({})
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, boolean>>({})
+  const [currentModule, setCurrentModule] = useState<Module | null>(null)
   const [currentStepId, setCurrentStepId] = useState<string>(() => {
-    const firstStepId = MODULE_CONFIG[moduleType].steps[0]?.id
-    if (!firstStepId) throw new Error('Module must have at least one step')
-    return firstStepId
+    // Initialize with first step but this will be updated during initialization
+    return MODULE_CONFIG[moduleType].steps[0]?.id || ''
   })
 
   // Memoize module and config
   const module = useMemo(() => modules.find(m => m.type === moduleType), [modules, moduleType])
   const config = useMemo(() => MODULE_CONFIG[moduleType], [moduleType])
+  const projectService = useMemo(() => new ProjectService(supabase), [supabase])
 
-  // Initialize local state from module data
+  // Initialize module
   useEffect(() => {
-    if (module) {
-      // Convert module responses to local format
-      const responses = module.responses?.reduce<Record<string, ModuleResponse>>((acc, response) => {
-        acc[response.step_id] = parseModuleResponse(response)
-        return acc
-      }, {}) || {}
+    let mounted = true
 
-      setLocalResponses(responses)
-      setUnsavedChanges({})
-      if (module.currentStepId) {
-        setCurrentStepId(module.currentStepId)
+    async function initializeModule() {
+      if (!project?.id || !mounted) return
+      
+      try {
+        console.log('🚀 Starting module initialization...')
+        setIsInitializing(true)
+        setInitializationError(null)
+
+        const projectService = new ProjectService(supabase)
+        
+        // Only initialize if module doesn't exist
+        if (!module) {
+          const initializedModule = await projectService.ensureModuleExists(project.id, moduleType)
+          console.log('✅ Module initialized:', initializedModule)
+        }
+
+        // Set default step if needed
+        if (module && !module.current_step_id) {
+          const firstStep = config.steps[0].id
+          console.log('1️⃣ Using first step as default:', firstStep)
+          
+          await updateModule(module.id, {
+            current_step_id: firstStep
+          })
+          console.log('✅ Current step set to:', firstStep)
+        }
+      } catch (error) {
+        console.error('❌ Error initializing module:', error)
+        setInitializationError(error instanceof Error ? error : new Error('Failed to initialize module'))
+        options.onError?.(error instanceof Error ? error : new Error('Failed to initialize module'))
+      } finally {
+        if (mounted) {
+          setIsInitializing(false)
+          console.log('🏁 Module initialization complete')
+        }
       }
-      setIsInitializing(false)
     }
-  }, [module])
+
+    initializeModule()
+
+    return () => {
+      mounted = false
+    }
+  }, [project?.id, moduleType, supabase])
 
   // Helper functions for completion status
   const isStepCompleted = useCallback((stepId: string) => 
-    module?.completedStepIds?.includes(stepId) || false
-  , [module?.completedStepIds])
+    module?.completed_step_ids?.includes(stepId) || false
+  , [module?.completed_step_ids])
 
   const isModuleCompleted = useCallback(() => 
     config.steps.every(step => isStepCompleted(step.id))
@@ -63,15 +103,23 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
   // Save response - only updates local state
   const saveResponse = useCallback((stepId: string, content: string) => {
-    const response: ModuleResponse = {
+    const response: DbModuleResponse = {
+      id: '', // Will be set by the backend
+      step_id: stepId,
       content,
-      lastUpdated: new Date().toISOString()
+      last_updated: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      module_id: module?.id || ''
     }
 
-    setLocalResponses(prev => ({
-      ...prev,
-      [stepId]: response
-    }))
+    setResponses(prev => {
+      const newResponses = {
+        ...prev,
+        [stepId]: response
+      }
+      console.log('📝 Updated local responses:', newResponses)
+      return newResponses
+    })
     setUnsavedChanges(prev => ({
       ...prev,
       [stepId]: true
@@ -82,11 +130,11 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
   const syncStepWithBackend = useCallback(async (stepId: string) => {
     if (!module?.id || !unsavedChanges[stepId]) return
 
-    const response = localResponses[stepId]
+    const response = responses[stepId]
     if (!response) return
 
     try {
-      await saveModuleResponse(module.id, stepId, response)
+      await projectService.saveModuleResponse(module.id, stepId, response)
       setUnsavedChanges(prev => ({
         ...prev,
         [stepId]: false
@@ -100,7 +148,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       })
       throw err
     }
-  }, [module?.id, localResponses, unsavedChanges, saveModuleResponse, toast])
+  }, [module?.id, responses, unsavedChanges, projectService, toast])
 
   // Handle step completion
   const markStepAsCompleted = useCallback(async (stepId: string) => {
@@ -115,9 +163,9 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       }
 
       // Update completed steps in backend
-      const newCompletedStepIds = Array.from(new Set([...(module.completedStepIds || []), stepId]))
+      const newCompletedStepIds = Array.from(new Set([...(module.completed_step_ids || []), stepId]))
       await updateModule(module.id, {
-        completedStepIds: newCompletedStepIds
+        completed_step_ids: newCompletedStepIds
       })
 
       // Return whether all steps are now completed
@@ -133,7 +181,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     } finally {
       setIsSyncing(false)
     }
-  }, [module?.id, module?.completedStepIds, config.steps, unsavedChanges, syncStepWithBackend, updateModule, toast])
+  }, [module?.id, module?.completed_step_ids, config.steps, unsavedChanges, syncStepWithBackend, updateModule, toast])
 
   // Handle navigation between steps
   const navigateToStep = useCallback(async (stepId: string) => {
@@ -149,7 +197,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
 
       // Update current step in backend
       await updateModule(module.id, {
-        currentStepId: stepId
+        current_step_id: stepId
       })
       
       // Update local navigation state
@@ -202,7 +250,7 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       })
       throw err
     }
-  }, [module?.id, isModuleCompleted, updateModule, options, toast])
+  }, [module?.id, isModuleCompleted, updateModule, toast])
 
   // AI suggestion generation
   const generateAISuggestion = useCallback(async (stepId: string, context: string) => {
@@ -213,7 +261,24 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
       const suggestion = await generateSuggestion(context)
 
       if (suggestion) {
-        saveResponse(stepId, suggestion)
+        // Save AI interaction
+        const { data: interaction, error } = await supabase
+          .from('ai_interactions')
+          .insert({
+            project_id: module.project_id,
+            module_id: module.id,
+            step_id: stepId,
+            type: 'content',
+            prompt: context,
+            response: suggestion
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+        if (interaction) {
+          setLastAIInteraction(interaction)
+        }
       }
     } catch (err) {
       toast({
@@ -225,23 +290,25 @@ export function useModule(moduleType: ModuleType, options: UseModuleOptions = {}
     } finally {
       setIsGeneratingSuggestion(false)
     }
-  }, [module?.id, isGeneratingSuggestion, generateSuggestion, saveResponse, toast])
+  }, [module?.id, module?.project_id, isGeneratingSuggestion, generateSuggestion, supabase, toast])
 
   return {
     module,
     config,
-    responses: localResponses,
+    responses,
     currentStep: currentStepId,
     isStepCompleted,
     isModuleCompleted: isModuleCompleted(),
     isLoading: isSyncing,
     isInitializing,
     isGeneratingSuggestion,
+    error: initializationError,
     saveResponse,
     markStepAsCompleted,
     navigateToStep,
     completeModule,
     generateAISuggestion,
-    quickActionGroups: getQuickActionsForModule(moduleType) ? [getQuickActionsForModule(moduleType)] : []
+    quickActionGroups: getQuickActionsForModule(moduleType) ? [getQuickActionsForModule(moduleType)] : [],
+    lastAIInteraction
   }
 } 

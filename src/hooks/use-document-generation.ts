@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useSupabase } from '@/context/supabase-context'
 import { useProject } from '@/context/project-context'
 import { ModuleType } from '@/types/project'
-import { ModuleResponse } from '@/types/module'
+import { DbModuleResponse } from '@/types/module'
 import { DocumentWorkflow } from '@/lib/services/document-workflow'
 import { useToast } from '@/hooks/use-toast'
 
@@ -35,10 +35,14 @@ export function useDocumentGeneration(moduleType: ModuleType, projectId: string)
       setDocumentUrl(undefined)
 
       // Get module responses
-      const moduleResponses = module.responses?.reduce<Record<string, ModuleResponse>>((acc, response) => {
+      const moduleResponses = module.responses?.reduce<Record<string, DbModuleResponse>>((acc, response) => {
         acc[response.step_id] = {
+          id: response.id,
+          module_id: response.module_id,
+          step_id: response.step_id,
           content: response.content,
-          lastUpdated: response.last_updated
+          last_updated: response.last_updated,
+          created_at: response.created_at
         }
         return acc
       }, {}) || {}

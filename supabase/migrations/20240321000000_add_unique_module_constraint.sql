@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS modules_project_id_type_unique_idx ON public.modules (project_id, type); ALTER TABLE public.modules ADD CONSTRAINT modules_project_id_type_unique UNIQUE USING INDEX modules_project_id_type_unique_idx;
