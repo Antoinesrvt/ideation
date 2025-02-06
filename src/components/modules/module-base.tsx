@@ -7,8 +7,8 @@ import { ExpertTips } from "./expert-tips"
 import { ModuleCompletionOverlay } from "./module-completion-overlay"
 import { ModuleUpdateOverlay } from "./module-update-overlay"
 import { useModule } from "@/hooks/use-module"
-import { ModuleType, MODULES_CONFIG } from "@/config/modules"
-import { LucideIcon } from "lucide-react"
+import { ModuleType, MODULES_CONFIG, type ModuleConfig } from "@/config/modules"
+import { LucideIcon, AlertCircle } from "lucide-react"
 import { ModuleErrorBoundary } from "./module-error-boundary"
 import { useProject } from "@/context/project-context"
 import { useToast } from "@/hooks/use-toast"
@@ -16,7 +16,7 @@ import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 
 interface ModuleBaseProps {
-  moduleType: ModuleType
+  moduleId: string
   mode: 'guided' | 'expert'
   onBack: () => void
   onComplete: () => void
@@ -24,7 +24,7 @@ interface ModuleBaseProps {
 }
 
 const ModuleBase = memo(function ModuleBase({
-  moduleType,
+  moduleId,
   mode,
   onBack,
   onComplete,
@@ -43,12 +43,9 @@ const ModuleBase = memo(function ModuleBase({
     completeModule,
     generateAISuggestion,
     isGeneratingSuggestion,
-    isInitializing,
-    quickActionGroups,
-    lastAIInteraction,
-    enhanceContent,
-    isEnhancing
-  } = useModule(moduleType, {
+    isLoading: isInitializing,
+    error
+  } = useModule(moduleId, {
     onComplete,
     onError: (error) => {
       toast({
@@ -67,6 +64,22 @@ const ModuleBase = memo(function ModuleBase({
     stepId: string | undefined
   } | null>(null)
 
+  // Get the module configuration
+  const moduleConfig = useMemo<ModuleConfig>(() => {
+    if (!config) {
+      // Return a default config to prevent null errors
+      return {
+        id: 'vision-problem',
+        title: '',
+        description: '',
+        order_index: 0,
+        icon: AlertCircle,
+        steps: []
+      }
+    }
+    return config
+  }, [config])
+
   // Store previous content when transitioning
   useEffect(() => {
     if (module && currentStep) {
@@ -78,17 +91,19 @@ const ModuleBase = memo(function ModuleBase({
 
   // Always start from first step when entering a module
   useEffect(() => {
-    if (module && config.steps && (!currentStep || !config.steps.find(s => s.id === currentStep))) {
-      const firstStep = config.steps[0]
-      navigateToStep(firstStep.id)
+    if (module && moduleConfig.steps && (!currentStep || !moduleConfig.steps.find(s => s.id === currentStep))) {
+      const firstStep = moduleConfig.steps[0]
+      if (firstStep) {
+        navigateToStep(firstStep.id)
+      }
     }
-  }, [module, config.steps, currentStep, navigateToStep])
+  }, [module, moduleConfig.steps, currentStep, navigateToStep])
 
   const handleNext = async () => {
-    if (!currentStep || !config.steps) return
+    if (!currentStep || !moduleConfig.steps) return
 
-    const currentIndex = config.steps.findIndex(step => step.id === currentStep)
-    const isLastStep = currentIndex === config.steps.length - 1
+    const currentIndex = moduleConfig.steps.findIndex(step => step.id === currentStep)
+    const isLastStep = currentIndex === moduleConfig.steps.length - 1
 
     try {
       // First mark the current step as completed
@@ -107,8 +122,10 @@ const ModuleBase = memo(function ModuleBase({
         }
       } else {
         // Always move to the next step in sequence
-        const nextStep = config.steps[currentIndex + 1]
-        await navigateToStep(nextStep.id)
+        const nextStep = moduleConfig.steps[currentIndex + 1]
+        if (nextStep) {
+          await navigateToStep(nextStep.id)
+        }
       }
     } catch (error) {
       console.error('Error handling next step:', error)
@@ -121,15 +138,17 @@ const ModuleBase = memo(function ModuleBase({
   }
 
   const handlePrevious = async () => {
-    if (!currentStep || !config.steps) return
+    if (!currentStep || !moduleConfig.steps) return
 
-    const currentIndex = config.steps.findIndex(step => step.id === currentStep)
+    const currentIndex = moduleConfig.steps.findIndex(step => step.id === currentStep)
     
     try {
       if (currentIndex > 0) {
         // Move to the previous step in sequence
-        const prevStep = config.steps[currentIndex - 1]
-        await navigateToStep(prevStep.id)
+        const prevStep = moduleConfig.steps[currentIndex - 1]
+        if (prevStep) {
+          await navigateToStep(prevStep.id)
+        }
       } else {
         // If we're at the first step, go back to the previous module
         onBack?.()
@@ -146,11 +165,11 @@ const ModuleBase = memo(function ModuleBase({
 
   const handleGenerateSuggestion = async (context: string) => {
     if (!currentStep) return
-    await generateAISuggestion(currentStep, context)
+    await generateAISuggestion(context)
   }
 
   // Helper function to render module content
-  function renderModuleContent(currentStepId: string, steps: typeof config.steps) {
+  function renderModuleContent(currentStepId: string, steps: typeof moduleConfig.steps) {
     const step = steps.find((s) => s.id === currentStepId)
     if (!step) return null
 
@@ -158,7 +177,7 @@ const ModuleBase = memo(function ModuleBase({
     const isLastStep = currentIndex === steps.length - 1
     const isFirstStep = currentIndex === 0
     const firstModuleId = MODULES_CONFIG[0]?.id
-    const isFirstModule = moduleType === firstModuleId
+    const isFirstModule = module?.type === firstModuleId
 
     return (
       <div className="space-y-6">
@@ -190,8 +209,9 @@ const ModuleBase = memo(function ModuleBase({
 
   // Get next module name for completion overlay
   const getNextModuleName = () => {
-    const currentModuleIndex = Object.keys(MODULES_CONFIG).indexOf(moduleType)
-    const nextModule = Object.values(MODULES_CONFIG)[currentModuleIndex + 1]
+    if (!module?.type) return undefined
+    const currentModuleIndex = MODULES_CONFIG.findIndex(m => m.id === module.type)
+    const nextModule = MODULES_CONFIG[currentModuleIndex + 1]
     return nextModule?.title
   }
 
@@ -209,27 +229,23 @@ const ModuleBase = memo(function ModuleBase({
         transition={{ duration: 0.3 }}
       >
         <ModuleLayout
-          title={config.title}
-          description={config.description}
+          title={moduleConfig.title}
+          description={moduleConfig.description}
           onBack={onBack}
-          currentStep={currentStep}
-          currentResponse={responses[currentStep]}
+          currentStep={currentStep || ''}
+          currentResponse={currentStep ? responses[currentStep] : undefined}
           previousResponses={responses}
           onSuggestionRequest={handleGenerateSuggestion}
           onSuggestionApply={(suggestion) => currentStep && saveResponse(currentStep, suggestion)}
           isGeneratingSuggestion={isGeneratingSuggestion}
-          quickActionGroups={quickActionGroups}
-          stepProgress={currentStep && config.steps ? 
-            `Step ${config.steps.findIndex(s => s.id === currentStep) + 1} of ${config.steps.length}` : 
+          stepProgress={currentStep && moduleConfig.steps ? 
+            `Step ${moduleConfig.steps.findIndex(s => s.id === currentStep) + 1} of ${moduleConfig.steps.length}` : 
             undefined}
-          moduleType={moduleType}
+          moduleType={module?.type ?? 'vision-problem'}
           projectId={project?.id || ''}
-          lastAIInteraction={lastAIInteraction}
-          onEnhanceContent={enhanceContent}
-          isEnhancing={isEnhancing}
         >
           <AnimatePresence mode="wait">
-            {currentStep && config.steps && (
+            {currentStep && moduleConfig.steps && (
               <motion.div
                 key={currentStep}
                 initial={{ opacity: 0, x: 20 }}
@@ -237,7 +253,7 @@ const ModuleBase = memo(function ModuleBase({
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {renderModuleContent(currentStep, config.steps)}
+                {renderModuleContent(currentStep, moduleConfig.steps)}
               </motion.div>
             )}
           </AnimatePresence>
@@ -265,14 +281,14 @@ const ModuleBase = memo(function ModuleBase({
             setShowUpdate(false)
             onComplete()
           }}
-          documentName={config.title}
+          documentName={moduleConfig.title}
         />
       </motion.div>
     </ModuleErrorBoundary>
   )
 }, (prevProps, nextProps) => {
   return (
-    prevProps.moduleType === nextProps.moduleType &&
+    prevProps.moduleId === nextProps.moduleId &&
     prevProps.mode === nextProps.mode
   )
 })

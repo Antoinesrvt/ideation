@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 
 export type ModuleStep = {
-  id: ModuleType
+  id: string
   title: string
   completed?: boolean
   icon?: React.ElementType
@@ -15,8 +15,8 @@ export type ModuleStep = {
 
 interface ModuleNavigationProps {
   steps: ModuleStep[]
-  currentStepId: ModuleType
-  onStepSelect: (stepId: ModuleType) => void
+  currentStepId: string
+  onStepSelect: (stepId: string) => void
   className?: string
 }
 

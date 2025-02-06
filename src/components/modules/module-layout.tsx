@@ -38,16 +38,12 @@ interface ModuleLayoutProps {
   onSuggestionRequest: (context: string) => Promise<void>;
   onSuggestionApply: (suggestion: string) => void;
   isGeneratingSuggestion: boolean;
-  quickActionGroups?: QuickActionGroup[];
   isLoading?: boolean;
   error?: Error | null;
   documents?: DocumentVersion[];
   onGenerateDocument?: () => Promise<void>;
   moduleType: ModuleType;
   projectId: string;
-  lastAIInteraction?: AIInteraction;
-  onEnhanceContent?: () => Promise<void>;
-  isEnhancing?: boolean;
 }
 
 export function ModuleLayout({ 
@@ -62,16 +58,12 @@ export function ModuleLayout({
   onSuggestionRequest,
   onSuggestionApply,
   isGeneratingSuggestion,
-  quickActionGroups = [],
   isLoading = false,
   error = null,
   documents = [],
   onGenerateDocument,
   moduleType,
   projectId,
-  lastAIInteraction,
-  onEnhanceContent,
-  isEnhancing = false,
 }: ModuleLayoutProps) {
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false)
 
@@ -81,10 +73,6 @@ export function ModuleLayout({
     const [_, current, __, total] = stepProgress.split(' ')
     return (Number(current) / Number(total)) * 100
   }, [stepProgress])
-
-  const handleQuickActionSelect = (action: { content: string }) => {
-    onSuggestionApply(action.content)
-  }
 
   if (error) {
     return (
@@ -126,34 +114,6 @@ export function ModuleLayout({
             </div>
 
             <div className="ml-auto flex items-center space-x-6">
-              {/* Enhancement Button */}
-              {onEnhanceContent && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onEnhanceContent}
-                  disabled={isEnhancing || isLoading}
-                  className="gap-2"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {isEnhancing ? 'Enhancing...' : 'Enhance'}
-                </Button>
-              )}
-
-              {/* Quick Actions */}
-              {quickActionGroups.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                >
-                  <QuickActions
-                    contextualActions={quickActionGroups}
-                    onActionSelect={handleQuickActionSelect}
-                  />
-                </motion.div>
-              )}
-
               {/* Progress Indicator */}
               {stepProgress && (
                 <div className="flex items-center space-x-4">
@@ -201,7 +161,7 @@ export function ModuleLayout({
           opacity: isRightPanelCollapsed ? 0.5 : 1,
         }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="relative  bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        className="relative bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
       >
         {/* Collapse Toggle Button */}
         <Button
@@ -234,7 +194,6 @@ export function ModuleLayout({
             isDisabled={isLoading}
             moduleType={moduleType}
             projectId={projectId}
-            lastAIInteraction={lastAIInteraction}
           />
         </div>
       </motion.div>

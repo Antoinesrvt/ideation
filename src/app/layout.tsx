@@ -6,11 +6,16 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { GeistSans } from "geist/font/sans";
 import { Toaster } from '@/components/ui/toaster'
 import { ProjectProvider } from '@/context/project-context'
+import { ModuleProvider } from '@/context/module-context'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 export const metadata: Metadata = {
   title: 'Startup Builder',
   description: 'Build your startup with AI assistance',
 }
+
+// Create a client
+const queryClient = new QueryClient()
 
 export default async function RootLayout({
   children,
@@ -31,9 +36,15 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SupabaseProvider initialSession={session?.user ?? null}>
-              <ProjectProvider>{children}</ProjectProvider>
-          </SupabaseProvider>
+          <QueryClientProvider client={queryClient}>
+            <SupabaseProvider initialSession={session?.user ?? null}>
+              <ProjectProvider>
+                <ModuleProvider>
+                  {children}
+                </ModuleProvider>
+              </ProjectProvider>
+            </SupabaseProvider>
+          </QueryClientProvider>
         </ThemeProvider>
         <Toaster />
       </body>
