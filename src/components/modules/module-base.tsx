@@ -45,7 +45,9 @@ const ModuleBase = memo(function ModuleBase({
     isGeneratingSuggestion,
     isInitializing,
     quickActionGroups,
-    lastAIInteraction
+    lastAIInteraction,
+    enhanceContent,
+    isEnhancing
   } = useModule(moduleType, {
     onComplete,
     onError: (error) => {
@@ -223,6 +225,8 @@ const ModuleBase = memo(function ModuleBase({
           moduleType={moduleType}
           projectId={project?.id || ''}
           lastAIInteraction={lastAIInteraction}
+          onEnhanceContent={enhanceContent}
+          isEnhancing={isEnhancing}
         >
           <AnimatePresence mode="wait">
             {currentStep && config.steps && (

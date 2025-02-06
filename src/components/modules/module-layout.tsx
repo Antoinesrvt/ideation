@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { ArrowLeft, MessageSquare, Lightbulb, History, ChevronRight, FileText, Download } from "lucide-react"
+import { ArrowLeft, MessageSquare, Lightbulb, History, ChevronRight, FileText, Download, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { motion, AnimatePresence } from "framer-motion"
@@ -46,6 +46,8 @@ interface ModuleLayoutProps {
   moduleType: ModuleType;
   projectId: string;
   lastAIInteraction?: AIInteraction;
+  onEnhanceContent?: () => Promise<void>;
+  isEnhancing?: boolean;
 }
 
 export function ModuleLayout({ 
@@ -67,7 +69,9 @@ export function ModuleLayout({
   onGenerateDocument,
   moduleType,
   projectId,
-  lastAIInteraction
+  lastAIInteraction,
+  onEnhanceContent,
+  isEnhancing = false,
 }: ModuleLayoutProps) {
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false)
 
@@ -122,7 +126,19 @@ export function ModuleLayout({
             </div>
 
             <div className="ml-auto flex items-center space-x-6">
-              {/* Quick Actions */}
+              {/* Enhancement Button */}
+              {onEnhanceContent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onEnhanceContent}
+                  disabled={isEnhancing || isLoading}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {isEnhancing ? 'Enhancing...' : 'Enhance'}
+                </Button>
+              )}
 
               {/* Quick Actions */}
               {quickActionGroups.length > 0 && (
