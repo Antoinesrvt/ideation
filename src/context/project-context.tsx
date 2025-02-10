@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useReducer, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useReducer, useCallback, ReactNode, useMemo } from 'react'
 import { ProjectService } from '@/lib/services/core/project-service'
 import { useSupabase } from './supabase-context'
 import { ProjectRow, ProjectUpdateData, ProjectWithModules } from '@/types/project'
@@ -75,13 +75,15 @@ function projectReducer(state: ProjectState, action: ProjectAction): ProjectStat
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(projectReducer, initialState)
   const { supabase } = useSupabase()
-  const projectService = new ProjectService(supabase)
+  
+  // Memoize the projectService instance
+  const projectService = useMemo(() => new ProjectService(supabase), [supabase])
 
   const loadProject = useCallback(async (projectId: string) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true })
       
-      const project = await projectService.getProject(projectId)
+      const project = await projectService.getProjectWithModules(projectId)
       dispatch({ type: 'SET_PROJECT', payload: project })
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to load project') })
@@ -111,7 +113,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       const updatedProject = await projectService.updateProject(state.currentProject.id, data)
       
       // Reload project to get updated modules
-      const project = await projectService.getProject(updatedProject.id)
+      const project = await projectService.getProjectWithModules(updatedProject.id)
       dispatch({ type: 'SET_PROJECT', payload: project })
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to update project') })

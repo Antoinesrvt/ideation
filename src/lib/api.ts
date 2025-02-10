@@ -1,11 +1,10 @@
 import { ModuleType } from "@/types/project"
-import { GenerationStatus } from "@/hooks/use-document-generation"
 
 interface GenerateDocumentOptions {
   projectId: string
   moduleType: ModuleType
   templateId: string
-  onProgress: (status: GenerationStatus, progress: number) => void
+  onProgress: (status: string, progress: number) => void
 }
 
 interface GenerateDocumentResponse {
@@ -23,7 +22,7 @@ export async function generateDocument({
     // Simulate document generation progress
     // TODO: Replace with actual API call
     await new Promise<void>((resolve) => {
-      const steps: GenerationStatus[] = ['preparing', 'context', 'generating', 'finalizing']
+      const steps = ['preparing', 'context', 'generating', 'finalizing']
       let currentStep = 0
       let progress = 0
 

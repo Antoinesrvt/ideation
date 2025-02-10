@@ -7,25 +7,23 @@ import { GeistSans } from "geist/font/sans";
 import { Toaster } from '@/components/ui/toaster'
 import { ProjectProvider } from '@/context/project-context'
 import { ModuleProvider } from '@/context/module-context'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
+import { QueryProvider } from './clientLayout'
 export const metadata: Metadata = {
   title: 'Startup Builder',
   description: 'Build your startup with AI assistance',
 }
-
-// Create a client
-const queryClient = new QueryClient()
 
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createClient()
+  const supabase = createClient();
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
+
+
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -36,15 +34,13 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryClientProvider client={queryClient}>
+          <QueryProvider>
             <SupabaseProvider initialSession={session?.user ?? null}>
               <ProjectProvider>
-                <ModuleProvider>
-                  {children}
-                </ModuleProvider>
+                <ModuleProvider>{children}</ModuleProvider>
               </ProjectProvider>
             </SupabaseProvider>
-          </QueryClientProvider>
+          </QueryProvider>
         </ThemeProvider>
         <Toaster />
       </body>

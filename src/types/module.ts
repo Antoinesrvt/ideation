@@ -6,6 +6,7 @@ import { ModuleType } from "./project"
 export type DbModule = Database['public']['Tables']['modules']['Row']
 export type DbModuleStep = Database['public']['Tables']['module_steps']['Row']
 export type DbStepResponse = Database['public']['Tables']['step_responses']['Row']
+export type DbModuleResponse = DbStepResponse // For backward compatibility
 
 // Status types from database enums
 export type ModuleStatus = Database['public']['Enums']['module_status']

@@ -4,19 +4,36 @@ import { useSupabase } from '@/context/supabase-context'
 import { StepService } from '@/lib/services/core/step-service'
 import { DbModuleStep, DbStepResponse, StepStatus } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
-import { useAI } from '@/context/ai-context'
+import { useAIEnhancement } from '@/lib/hooks/use-ai-enhancement'
+import { ModuleType } from '@/types/project'
+import { EnhancementResult } from '@/lib/services/ai/enhancement-service'
 
 interface UseStepOptions {
   onComplete?: () => void
   onError?: (error: Error) => void
+  moduleType: ModuleType
+  projectId: string
 }
 
-export function useStep(stepId: string | null, options: UseStepOptions = {}) {
+export function useStep(stepId: string | null, options: UseStepOptions) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const stepService = new StepService(supabase)
-  const { generateSuggestion, enhanceContent, isGenerating: isGeneratingSuggestion, isEnhancing } = useAI()
+  
+  // Initialize AI enhancement hook
+  const {
+    generateSuggestion,
+    enhance: enhanceContent,
+    isGenerating: isGeneratingSuggestion,
+    isEnhancing
+  } = useAIEnhancement(options.projectId, options.moduleType, {
+    onSuccess: (result) => {
+      if ((result as EnhancementResult)?.enhancedContent) {
+        saveResponse((result as EnhancementResult).enhancedContent)
+      }
+    }
+  })
 
   // Fetch step data
   const { data: step, isLoading: isLoadingStep } = useQuery({
@@ -108,20 +125,21 @@ export function useStep(stepId: string | null, options: UseStepOptions = {}) {
 
   // AI functions
   const generateAISuggestion = useCallback(async (prompt: string) => {
-    if (!step?.module_id || !stepId) return null
+    if (!step?.module_id || !stepId || !responses) return null
 
     try {
       const suggestion = await generateSuggestion({
-        moduleId: step.module_id,
-        stepId: stepId,
-        prompt
+        steps: [{ ...step, responses }],
+        projectData: {},
+        currentStepId: stepId
       })
 
-      if (suggestion) {
+      if (typeof suggestion === 'string') {
         await saveResponse(suggestion)
+        return suggestion
       }
 
-      return suggestion
+      return null
     } catch (error) {
       console.error('Error generating suggestion:', error)
       toast({
@@ -131,24 +149,21 @@ export function useStep(stepId: string | null, options: UseStepOptions = {}) {
       })
       return null
     }
-  }, [step?.module_id, stepId, generateSuggestion, saveResponse, toast])
+  }, [step, stepId, responses, generateSuggestion, saveResponse, toast])
 
   const enhanceStepContent = useCallback(async (content: string, instructions: string) => {
-    if (!step?.module_id || !stepId) return null
+    if (!step?.module_id || !stepId || !responses) return null
 
     try {
-      const enhanced = await enhanceContent({
-        moduleId: step.module_id,
-        stepId: stepId,
+      enhanceContent({
         content,
-        instructions
+        steps: [{ ...step, responses }],
+        projectData: {},
+        options: { customInstructions: instructions }
       })
 
-      if (enhanced) {
-        await saveResponse(enhanced)
-      }
-
-      return enhanced
+      // The result will be handled in the onSuccess callback
+      return content
     } catch (error) {
       console.error('Error enhancing content:', error)
       toast({
@@ -158,7 +173,7 @@ export function useStep(stepId: string | null, options: UseStepOptions = {}) {
       })
       return null
     }
-  }, [step?.module_id, stepId, enhanceContent, saveResponse, toast])
+  }, [step, stepId, responses, enhanceContent, toast])
 
   return {
     step,

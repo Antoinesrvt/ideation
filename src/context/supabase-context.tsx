@@ -34,17 +34,22 @@ export function SupabaseProvider({
       setLoading(false)
     })
 
+    console.log("session state 1", initialSession, user);
+
     // Initial session check if no initialSession provided
     if (!initialSession) {
       supabase.auth.getSession().then(({ data: { session }, error }) => {
         if (error) {
           setError(error)
         } else {
+          console.log("session state 3", session?.user);
           setUser(session?.user ?? null)
         }
         setLoading(false)
       })
     }
+
+    console.log("session state 2", user);
 
     return () => {
       subscription.unsubscribe()

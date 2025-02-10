@@ -10,12 +10,12 @@ import { DocumentGenerationModal } from "./document-generation/modal"
 import { Database } from "@/types/database"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { DbStepResponse } from "@/types/module"
 
 type AIInteraction = Database['public']['Tables']['ai_interactions']['Row']
-type DbModuleResponse = Database['public']['Tables']['module_responses']['Row']
 
 interface AIAssistantProps {
-  currentResponse?: DbModuleResponse
+  currentResponse?: DbStepResponse,
   moduleType: ModuleType
   projectId: string
   onSuggestionRequest: (context: string) => Promise<void>

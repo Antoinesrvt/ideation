@@ -22,8 +22,9 @@ export default function ProjectsPage() {
   const { toast } = useToast()
 
   useEffect(() => {
+    // Only load projects once on mount
     loadProjects()
-  }, [loadProjects])
+  }, []) // Empty dependency array
 
   if (isLoading) {
     return (

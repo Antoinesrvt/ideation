@@ -52,33 +52,71 @@ export class ProjectService extends BaseSupabaseService {
   }
 
   /**
-   * Get a single project with its modules and members
+   * Get a single project with basic information
    */
-  async getProject(projectId: string): Promise<ProjectWithModules> {
-    return this.handleDatabaseOperation<ProjectWithModules>(
+  async getProject(projectId: string): Promise<ProjectRow> {
+    return this.handleDatabaseOperation<ProjectRow>(
+      async () => {
+        const result = await this.supabase
+          .from('projects')
+          .select('*')
+          .eq('id', projectId)
+          .single()
+
+        return result as PostgrestSingleResponse<ProjectRow>
+      },
+      'getProject'
+    )
+  }
+
+  /**
+   * Get project with its modules (basic info only)
+   */
+  async getProjectWithModules(projectId: string) {
+    return this.handleDatabaseOperation(
       async () => {
         const result = await this.supabase
           .from('projects')
           .select(`
             *,
             modules:modules(
-              *,
-              steps:module_steps(
-                *,
-                responses:step_responses(*)
-              )
-            ),
-            members:project_members(
-              *,
-              profile:profiles(full_name, avatar_url)
+              id,
+              title,
+              type,
+              status,
+              created_at,
+              updated_at
             )
           `)
           .eq('id', projectId)
           .single()
 
-        return result as PostgrestSingleResponse<ProjectWithModules>
+        return result
       },
-      'getProject'
+      'getProjectWithModules'
+    )
+  }
+
+  /**
+   * Get project members with their profiles
+   */
+  async getProjectMembersWithProfiles(projectId: string) {
+    return this.handleDatabaseOperation(
+      async () => {
+        const result = await this.supabase
+          .from('project_members')
+          .select(`
+            *,
+            profile:profiles(
+              full_name,
+              avatar_url
+            )
+          `)
+          .eq('project_id', projectId)
+
+        return result
+      },
+      'getProjectMembersWithProfiles'
     )
   }
 
@@ -235,7 +273,7 @@ export class ProjectService extends BaseSupabaseService {
     )
   }
 
-  // Module-related methods that use ModuleService
+  // Module listing only - detailed operations should go through ModuleService
   async getProjectModules(projectId: string) {
     return this.moduleService.getModulesByProject(projectId)
   }

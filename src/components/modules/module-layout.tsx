@@ -74,6 +74,11 @@ export function ModuleLayout({
     return (Number(current) / Number(total)) * 100
   }, [stepProgress])
 
+  const serializedResponse = currentResponse ? {
+    ...currentResponse,
+    created_at: currentResponse.created_at
+  } : undefined;
+
   if (error) {
     return (
       <motion.div
@@ -231,7 +236,7 @@ export function ModuleLayout({
           )}
         >
           <AIAssistant
-            currentResponse={currentResponse}
+            currentResponse={serializedResponse}
             onSuggestionRequest={onSuggestionRequest}
             onSuggestionApply={onSuggestionApply}
             isGenerating={isGeneratingSuggestion}

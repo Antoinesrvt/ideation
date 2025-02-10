@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, UseQueryOptions } from '@tanstack/react-query'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -14,7 +15,7 @@ import {
 // Type-safe hooks for specific research types
 export function useMarketResearch(
   query: ResearchQuery,
-  options?: Omit<UseQueryOptions<ResearchResult<MarketData>, Error>, 'queryKey' | 'queryFn'>
+  options?: UseQueryOptions<ResearchResult<MarketData>, Error>
 ) {
   return useQuery<ResearchResult<MarketData>, Error>({
     queryKey: ['market-research', query],
@@ -28,7 +29,7 @@ export function useMarketResearch(
 
 export function useCompetitorResearch(
   query: ResearchQuery,
-  options?: Omit<UseQueryOptions<ResearchResult<CompetitorData>, Error>, 'queryKey' | 'queryFn'>
+  options?: UseQueryOptions<ResearchResult<CompetitorData>, Error>
 ) {
   return useQuery<ResearchResult<CompetitorData>, Error>({
     queryKey: ['competitor-research', query],
@@ -42,7 +43,7 @@ export function useCompetitorResearch(
 
 export function useFinancialResearch(
   query: ResearchQuery,
-  options?: Omit<UseQueryOptions<ResearchResult<FinancialData>, Error>, 'queryKey' | 'queryFn'>
+  options?: UseQueryOptions<ResearchResult<FinancialData>, Error>
 ) {
   return useQuery<ResearchResult<FinancialData>, Error>({
     queryKey: ['financial-research', query],
