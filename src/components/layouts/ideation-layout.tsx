@@ -22,18 +22,18 @@ interface ModuleRecap {
 }
 
 interface IdeationLayoutProps {
-  steps: ModuleStep[]
-  currentStepId: ModuleType
-  onStepSelect: (stepId: ModuleType) => void
-  progress: number
-  moduleRecaps: ModuleRecap[]
-  children: React.ReactNode
-  mode?: 'guided' | 'expert'
+  steps: ModuleStep[];
+  currentStepType: ModuleType;
+  onStepSelect: (stepId: ModuleType) => void;
+  progress: number;
+  moduleRecaps: ModuleRecap[];
+  children: React.ReactNode;
+  mode?: "guided" | "expert";
 }
 
 export function IdeationLayout({
   steps,
-  currentStepId,
+  currentStepType,
   onStepSelect,
   progress,
   moduleRecaps,
@@ -81,8 +81,10 @@ export function IdeationLayout({
       <div className="flex-1 p-4">
         <ModuleNavigation
           steps={steps}
-          currentStepId={currentStepId}
-          onStepSelect={(stepId: string) => onStepSelect(stepId as ModuleType)}
+          currentStepType={currentStepType}
+          onStepSelect={(stepType: string) =>
+            onStepSelect(stepType as ModuleType)
+          }
         />
       </div>
     </div>

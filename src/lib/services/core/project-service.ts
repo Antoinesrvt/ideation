@@ -30,22 +30,37 @@ export class ProjectService extends BaseSupabaseService {
   async getProjects(): Promise<ProjectRow[]> {
     return this.handleDatabaseOperation<ProjectRow[]>(
       async () => {
-        const { data: { user } } = await this.supabase.auth.getUser()
+        const { data: { user }, error: authError } = await this.supabase.auth.getUser()
+        if (authError) throw authError
         if (!user) throw new Error('No authenticated user')
 
-        const result = await this.supabase
+        // First get all projects where user is creator
+        const { data: createdProjects, error: createdError } = await this.supabase
           .from('projects')
           .select('*')
-          .or(`created_by.eq.${user.id},id.in.(${
-            this.supabase
-              .from('project_members')
-              .select('project_id')
-              .eq('user_id', user.id)
-              .toString()
-          })`)
-          .order('updated_at', { ascending: false })
+          .eq('created_by', user.id)
 
-        return result as PostgrestResponse<ProjectRow>
+        if (createdError) throw createdError
+
+        // Then get all projects where user is a member
+        const { data: memberProjects, error: memberError } = await this.supabase
+          .from('projects')
+          .select('*, project_members(*)')
+          .eq('project_members.user_id', user.id)
+
+        if (memberError) throw memberError
+
+        // Combine and deduplicate projects
+        const allProjects = [...(createdProjects || []), ...(memberProjects || [])]
+        const uniqueProjects = Array.from(new Map(allProjects.map(p => [p.id, p])).values())
+
+        // Sort by updated_at and return as PostgrestResponse
+        return {
+          data: uniqueProjects.sort((a, b) => 
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          ),
+          error: null
+        } as PostgrestResponse<ProjectRow>
       },
       'getProjects'
     )
