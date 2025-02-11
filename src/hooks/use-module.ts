@@ -4,28 +4,39 @@ import { useSupabase } from '@/context/supabase-context'
 import { ModuleService } from '@/lib/services/core/module-service'
 import { DbModule, ModuleStatus, ModuleUpdateData } from '@/types/module'
 import { useToast } from '@/hooks/use-toast'
-import { getModuleConfig } from '@/config/modules'
+import { getModuleConfig, ModuleType } from '@/config/modules'
 
 interface UseModuleOptions {
+  moduleType: ModuleType
+  projectId: string
   onError?: (error: Error) => void
   onComplete?: () => void
 }
 
-export function useModule(moduleId: string | null, options: UseModuleOptions = {}) {
+export function useModule(options: UseModuleOptions) {
   const { supabase } = useSupabase()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const moduleService = new ModuleService(supabase)
 
-  // Fetch module data
-  const { data: module, isLoading, error } = useQuery({
-    queryKey: ['module', moduleId],
-    queryFn: () => moduleId ? moduleService.getModule(moduleId) : null,
-    enabled: !!moduleId
+  // Fetch module data using type
+  const { data: moduleResponse, isLoading, error } = useQuery({
+    queryKey: ['module', options.projectId, options.moduleType],
+    queryFn: async () => {
+      const result = await moduleService.getModuleByType(options.projectId, options.moduleType)
+      // It's ok if no module exists yet
+      if (!result) {
+        return null
+      }
+      return result
+    },
+    enabled: !!options.projectId && !!options.moduleType
   })
 
+  const module = moduleResponse
+
   // Get module configuration
-  const config = module?.type ? getModuleConfig(module.type) : null
+  const config = getModuleConfig(options.moduleType)
 
   // Module status helpers
   const isModuleCompleted = useCallback(() => 
@@ -57,10 +68,13 @@ export function useModule(moduleId: string | null, options: UseModuleOptions = {
   // Update module mutation
   const updateModuleMutation = useMutation({
     mutationFn: async (data: ModuleUpdateData) => 
-      moduleId ? moduleService.updateModule(moduleId, data) : null,
+      module?.id ? moduleService.updateModule(module.id, data) : null,
     onSuccess: (newModule) => {
       if (newModule) {
-        queryClient.setQueryData(['module', moduleId], newModule)
+        queryClient.setQueryData(
+          ['module', options.projectId, options.moduleType], 
+          newModule
+        )
       }
     },
     onError: (error) => {
@@ -75,13 +89,13 @@ export function useModule(moduleId: string | null, options: UseModuleOptions = {
 
   // Update module status
   const updateStatus = useCallback(async (status: ModuleStatus) => {
-    if (!moduleId) return
+    if (!module?.id) return
     await updateModuleMutation.mutateAsync({ status })
-  }, [moduleId, updateModuleMutation])
+  }, [module?.id, updateModuleMutation])
 
   // Mark module as completed
   const completeModule = useCallback(async () => {
-    if (!module || !moduleId) return false
+    if (!module) return false
 
     try {
       await updateStatus('completed')
@@ -91,7 +105,7 @@ export function useModule(moduleId: string | null, options: UseModuleOptions = {
       options.onError?.(error instanceof Error ? error : new Error('Failed to complete module'))
       return false
     }
-  }, [module, moduleId, updateStatus, options])
+  }, [module, updateStatus, options])
 
   return {
     module,

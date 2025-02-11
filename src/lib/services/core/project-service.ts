@@ -6,7 +6,8 @@ import {
   ProjectMember,
   ProjectInsertData,
   ProjectUpdateData,
-  MemberRole
+  MemberRole,
+  ModuleType
 } from '@/types/project'
 import { ModuleInsertData, ModuleUpdateData } from '@/types/module'
 import { PostgrestSingleResponse, PostgrestResponse, PostgrestError } from '@supabase/supabase-js'
@@ -291,6 +292,10 @@ export class ProjectService extends BaseSupabaseService {
   // Module listing only - detailed operations should go through ModuleService
   async getProjectModules(projectId: string) {
     return this.moduleService.getModulesByProject(projectId)
+  }
+
+  async getOrCreateModule(projectId: string, moduleType: ModuleType, userId: string) {
+    return this.moduleService.getOrCreateModule(projectId, moduleType, userId)
   }
 
   async createProjectModule(data: ModuleInsertData) {

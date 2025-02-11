@@ -70,8 +70,10 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true })
       
-      const module = await moduleService.getModule(moduleId)
-      dispatch({ type: 'SET_MODULE', payload: module })
+      const response = await moduleService.getModule(moduleId)
+      if (response) {
+        dispatch({ type: 'SET_MODULE', payload: response })
+      }
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to load module') })
     } finally {
@@ -84,8 +86,10 @@ export function ModuleProvider({ children }: { children: ReactNode }) {
       if (!state.currentModule?.id) throw new Error('No module loaded')
       
       dispatch({ type: 'SET_LOADING', payload: true })
-      const updatedModule = await moduleService.updateModule(state.currentModule.id, data)
-      dispatch({ type: 'SET_MODULE', payload: updatedModule })
+      const response = await moduleService.updateModule(state.currentModule.id, data)
+      if (response) {
+        dispatch({ type: 'SET_MODULE', payload: response })
+      }
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error : new Error('Failed to update module') })
     } finally {

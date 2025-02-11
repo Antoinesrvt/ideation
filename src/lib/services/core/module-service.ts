@@ -9,7 +9,7 @@ import {
   DbStepResponse
 } from '@/types/module'
 import { ModuleType } from '@/types/project'
-import { PostgrestSingleResponse, PostgrestResponse } from '@supabase/supabase-js'
+import { PostgrestSingleResponse, PostgrestResponse, PostgrestError } from '@supabase/supabase-js'
 import { MODULES_CONFIG } from '@/config/modules'
 
 export class ModuleService extends BaseSupabaseService {
@@ -24,7 +24,7 @@ export class ModuleService extends BaseSupabaseService {
    * Get a single module with its steps and responses
    */
   async getModule(moduleId: string): Promise<DbModule & { steps: (ModuleStep & { responses: DbStepResponse[] })[] }> {
-    return this.handleDatabaseOperation(
+    return this.handleDatabaseOperation<DbModule & { steps: (ModuleStep & { responses: DbStepResponse[] })[] }>(
       async () => {
         const result = await this.supabase
           .from('modules')
@@ -37,85 +37,181 @@ export class ModuleService extends BaseSupabaseService {
           `)
           .eq('id', moduleId)
           .single()
-        return result as PostgrestSingleResponse<DbModule & { 
-          steps: (ModuleStep & { responses: DbStepResponse[] })[] 
-        }>
+
+        if (result.error) throw result.error
+        if (!result.data) throw new Error('Module not found')
+        return result.data
       },
       'getModule'
     )
   }
 
   /**
+   * Get module by type for a specific project
+   */
+  async getModuleByType(projectId: string, moduleType: ModuleType): Promise<(DbModule & { steps: (ModuleStep & { responses: DbStepResponse[] })[] }) | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('modules')
+        .select(`
+          *,
+          steps:module_steps(
+            *,
+            responses:step_responses(*)
+          )
+        `)
+        .eq('project_id', projectId)
+        .eq('type', moduleType)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error fetching module:', error)
+        return null
+      }
+
+      return data
+    } catch (err) {
+      console.error('Error in getModuleByType:', err)
+      return null
+    }
+  }
+
+  /**
    * Get all modules for a project
    */
   async getModulesByProject(projectId: string): Promise<DbModule[]> {
-    return this.handleDatabaseOperation(
+    try {
+      const { data, error } = await this.supabase
+        .from('modules')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching modules:', error)
+        return []
+      }
+
+      return data || []
+    } catch (err) {
+      console.error('Error in getModulesByProject:', err)
+      return []
+    }
+  }
+
+  /**
+   * Get or create a module by type
+   */
+  async getOrCreateModule(projectId: string, moduleType: ModuleType, userId: string): Promise<DbModule & { steps: ModuleStep[] }> {
+    return this.handleDatabaseOperation<DbModule & { steps: ModuleStep[] }>(
       async () => {
-        const result = await this.supabase
+        // Try to get existing module
+        const { data: existingModule, error: fetchError } = await this.supabase
           .from('modules')
-          .select('*')
+          .select(`
+            *,
+            steps:module_steps(*)
+          `)
           .eq('project_id', projectId)
-          .order('created_at', { ascending: true })
-        return result as PostgrestResponse<DbModule>
+          .eq('type', moduleType)
+          .single()
+
+        // If we found an existing module, return it
+        if (!fetchError && existingModule) {
+          return { data: existingModule, error: null }
+        }
+
+        // If module doesn't exist, create it
+        const moduleConfig = MODULES_CONFIG.find(m => m.id === moduleType)
+        if (!moduleConfig) {
+          throw new Error(`Module config not found: ${moduleType}`)
+        }
+
+        // Create module
+        const { data: moduleData, error: moduleError } = await this.supabase
+          .from('modules')
+          .insert({
+            project_id: projectId,
+            type: moduleType,
+            title: moduleConfig.title,
+            created_by: userId,
+            status: 'draft',
+            metadata: {}
+          })
+          .select()
+          .single()
+
+        if (moduleError || !moduleData) {
+          throw moduleError || new Error('Failed to create module')
+        }
+
+        // Create steps based on config
+        const steps = await Promise.all(
+          moduleConfig.steps.map((stepConfig, index) => 
+            this.stepService.createStep({
+              module_id: moduleData.id,
+              step_type: stepConfig.id,
+              order_index: index,
+              status: 'not_started',
+              metadata: {}
+            })
+          )
+        )
+
+        // Return in the format expected by handleDatabaseOperation
+        return {
+          data: {
+            ...moduleData,
+            steps
+          },
+          error: null
+        }
       },
-      'getModulesByProject'
+      'getOrCreateModule'
     )
   }
 
   /**
-   * Create a new module
+   * Create a new module with steps based on config
    */
-  async createModule(data: ModuleInsertData): Promise<DbModule> {
+  async createModule(data: ModuleInsertData): Promise<DbModule & { steps: ModuleStep[] }> {
     return this.handleDatabaseOperation(
       async () => {
+        // Get module config
+        const moduleConfig = MODULES_CONFIG.find(m => m.id === data.type)
+        if (!moduleConfig) throw new Error(`Module config not found: ${data.type}`)
+
         // Create module
         const { data: moduleData, error: moduleError } = await this.supabase
           .from('modules')
           .insert({
             ...data,
+            title: moduleConfig.title,
             status: 'draft',
             metadata: data.metadata || {}
           })
           .select()
           .single()
 
-        if (moduleError) throw moduleError
-        if (!moduleData) throw new Error('Failed to create module')
+        if (moduleError || !moduleData) throw moduleError || new Error('Failed to create module')
 
-        // Get module config to create steps
-        const moduleConfig = MODULES_CONFIG.find(m => m.id === data.type)
-        if (moduleConfig) {
-          // Create steps in order
-          await Promise.all(moduleConfig.steps.map((stepConfig, index) => 
+        // Create steps based on config
+        const steps = await Promise.all(
+          moduleConfig.steps.map((stepConfig, index) => 
             this.stepService.createStep({
               module_id: moduleData.id,
-              step_type: stepConfig.id, // Use step ID from config as step_type
+              step_type: stepConfig.id,
               order_index: index,
               status: 'not_started',
               metadata: {}
             })
-          ))
+          )
+        )
 
-          // Fetch the complete module with steps
-          const { data: completeModule, error: fetchError } = await this.supabase
-            .from('modules')
-            .select(`
-              *,
-              steps:module_steps(
-                *,
-                responses:step_responses(*)
-              )
-            `)
-            .eq('id', moduleData.id)
-            .single()
-
-          if (fetchError) throw fetchError
-          if (!completeModule) throw new Error('Failed to fetch complete module')
-
-          return { data: completeModule, error: null }
+        return {
+          ...moduleData,
+          steps
         }
-
-        return { data: moduleData, error: null }
       },
       'createModule'
     )
@@ -127,7 +223,7 @@ export class ModuleService extends BaseSupabaseService {
   async updateModule(moduleId: string, data: ModuleUpdateData): Promise<DbModule> {
     return this.handleDatabaseOperation(
       async () => {
-        const result = await this.supabase
+        const { data: updatedModule, error } = await this.supabase
           .from('modules')
           .update({
             ...data,
@@ -137,7 +233,8 @@ export class ModuleService extends BaseSupabaseService {
           .select()
           .single()
 
-        return result as PostgrestSingleResponse<DbModule>
+        if (error || !updatedModule) throw error || new Error('Failed to update module')
+        return updatedModule
       },
       'updateModule'
     )

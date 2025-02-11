@@ -6,7 +6,7 @@ import { Save, X, ChevronUp, Download, Eye, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   ModuleNavigation,
-  ModuleStep,
+  ModuleNavigationItem,
 } from "@/components/modules/module-navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card } from "@/components/ui/card"
@@ -22,9 +22,9 @@ interface ModuleRecap {
 }
 
 interface IdeationLayoutProps {
-  steps: ModuleStep[];
-  currentStepType: ModuleType;
-  onStepSelect: (stepId: ModuleType) => void;
+  modules: ModuleNavigationItem[];
+  currentModuleType: ModuleType;
+  onModuleSelect: (moduleType: ModuleType) => void;
   progress: number;
   moduleRecaps: ModuleRecap[];
   children: React.ReactNode;
@@ -32,9 +32,9 @@ interface IdeationLayoutProps {
 }
 
 export function IdeationLayout({
-  steps,
-  currentStepType,
-  onStepSelect,
+  modules,
+  currentModuleType,
+  onModuleSelect,
   progress,
   moduleRecaps,
   children,
@@ -80,11 +80,9 @@ export function IdeationLayout({
       {/* Navigation Content */}
       <div className="flex-1 p-4">
         <ModuleNavigation
-          steps={steps}
-          currentStepType={currentStepType}
-          onStepSelect={(stepType: string) =>
-            onStepSelect(stepType as ModuleType)
-          }
+          modules={modules}
+          currentModuleType={currentModuleType}
+          onModuleSelect={onModuleSelect}
         />
       </div>
     </div>
@@ -145,7 +143,7 @@ export function IdeationLayout({
               <span className="font-semibold">Progress Recap</span>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  {steps.filter(s => s.completed).length} of {steps.length} completed
+                  {modules.filter(m => m.completed).length} of {modules.length} completed
                 </span>
                 <motion.div 
                   animate={{ rotate: isRecapOpen ? 180 : 0 }}
@@ -175,20 +173,20 @@ export function IdeationLayout({
 
                   <TabsContent value="summary" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {steps.map((step, index) => (
+                      {modules.map((module, index) => (
                         <motion.div
-                          key={step.id}
+                          key={module.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
                         >
                           <Card className={cn(
                             "p-4 transition-all duration-200 hover:shadow-md",
-                            step.completed && "bg-primary/5 border-primary/10"
+                            module.completed && "bg-primary/5 border-primary/10"
                           )}>
                             <div className="flex items-start justify-between">
-                              <h3 className="font-semibold">{step.title}</h3>
-                              {step.completed && (
+                              <h3 className="font-semibold">{module.title}</h3>
+                              {module.completed && (
                                 <motion.span
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}
@@ -198,9 +196,9 @@ export function IdeationLayout({
                                 </motion.span>
                               )}
                             </div>
-                            {moduleRecaps.find(r => r.id === step.id)?.summary && (
+                            {moduleRecaps.find(r => r.id === module.id)?.summary && (
                               <p className="text-sm text-muted-foreground mt-2">
-                                {moduleRecaps.find(r => r.id === step.id)?.summary}
+                                {moduleRecaps.find(r => r.id === module.id)?.summary}
                               </p>
                             )}
                           </Card>

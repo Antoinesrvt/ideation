@@ -12,7 +12,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import ModuleBase from "@/components/modules/module-base"
-import { ModuleStep } from "@/components/modules/module-navigation"
 import { IdeationLayout } from "@/components/layouts/ideation-layout"
 import { useProject } from "@/context/project-context"
 import { useModule } from "@/context/module-context"
@@ -70,29 +69,25 @@ function isModuleType(step: StepState): step is ModuleType {
 type StepState = ModuleType | 'selection'
 
 interface ModuleWrapperProps {
-  currentStep: ModuleType
+  moduleType: ModuleType
+  projectId: string
   selectedPath: "guided" | "expert"
   onBack: () => void
   onComplete: () => void
 }
 
 const ModuleWrapper = memo(function ModuleWrapper({
-  currentStep,
+  moduleType,
+  projectId,
   selectedPath,
   onBack,
   onComplete
 }: ModuleWrapperProps) {
-  const { state: { currentProject } } = useProject()
-  const moduleConfig = useMemo(() => MODULES_CONFIG.find(m => m.id === currentStep), [currentStep])
-  
-  // Get the actual module ID from the project's modules
-  const moduleId = useMemo(() => {
-    if (!currentProject?.modules) return null
-    const module = currentProject.modules.find(m => m.type === currentStep)
-    return module?.id
-  }, [currentProject?.modules, currentStep])
-
-  if (!moduleConfig || !moduleId) return null
+  const moduleConfig = useMemo(() => {
+    const config = MODULES_CONFIG.find(m => m.id === moduleType)
+    if (!config) throw new Error(`Module config not found: ${moduleType}`)
+    return config
+  }, [moduleType])
 
   const stepIcons = useMemo(() => 
     moduleConfig.steps.reduce((acc, step) => ({
@@ -102,7 +97,7 @@ const ModuleWrapper = memo(function ModuleWrapper({
 
   return (
     <motion.div
-      key={currentStep}
+      key={moduleType}
       initial={{ opacity: 0.8 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0.8 }}
@@ -112,8 +107,8 @@ const ModuleWrapper = memo(function ModuleWrapper({
       }}
     >
       <ModuleBase
-        key={moduleId}
-        moduleId={moduleId}
+        moduleType={moduleType}
+        projectId={projectId}
         mode={selectedPath}
         onBack={onBack}
         onComplete={onComplete}
@@ -154,19 +149,25 @@ export default function IdeationPage() {
     const completedModules = currentProject.modules.filter(m => m.status === 'completed')
     const overallProgress = (completedModules.length / MODULES_CONFIG.length) * 100
 
+    // Use MODULES_CONFIG as the source of truth for display
     const currentModules = MODULES_CONFIG.map(config => ({
       id: config.id,
-      title: currentProject.modules.find(m => m.type === config.id)?.title || config.title,
+      type: config.id,
+      title: config.title,
       completed: currentProject.modules.find(m => m.type === config.id)?.status === 'completed',
       icon: config.icon
     }))
 
-    const moduleRecaps = currentProject.modules.map(m => ({
-      id: m.type,
-      title: m.title,
-      completed: m.status === 'completed',
-      summary: (m.metadata as { summary?: string })?.summary
-    }))
+    const moduleRecaps = MODULES_CONFIG.map(config => {
+      const projectModule = currentProject.modules.find(m => m.type === config.id)
+      return {
+        id: config.id,
+        type: config.id,
+        title: config.title,
+        completed: projectModule?.status === 'completed',
+        summary: projectModule ? (projectModule.metadata as { summary?: string })?.summary : undefined
+      }
+    })
 
     return { currentModules, overallProgress, moduleRecaps }
   }, [currentProject?.modules])
@@ -177,26 +178,11 @@ export default function IdeationPage() {
 
     setIsNavigating(true)
     try {
-      // Get or create the module
-      let module = currentProject.modules?.find(m => m.type === moduleType)
-      if (!module) {
-        const moduleConfig = MODULES_CONFIG.find(m => m.id === moduleType)
-        if (!moduleConfig) throw new Error('Module configuration not found')
-
-        const newModule = await projectService.createProjectModule({
-          project_id: currentProject.id,
-          type: moduleType,
-          title: moduleConfig.title,
-          status: 'draft',
-          created_by: user.id
-        })
-        // Reload project to get the new module
-        await loadProject(currentProject.id)
-        module = newModule
-      }
-
-      if (module) {
-        await loadModule(module.id)
+      // Get or create the module using the new method
+      const result = await projectService.getOrCreateModule(currentProject.id, moduleType, user.id)
+      
+      if (result) {
+        await loadModule(result.id)
         setCurrentStep(moduleType)
       }
     } catch (err) {
@@ -216,24 +202,9 @@ export default function IdeationPage() {
     e.preventDefault()
     if (!currentProject || !selectedPath || !user) return
 
+    setIsNavigating(true)
     try {
-      // Create the first module if it doesn't exist
-      const existingModule = currentProject.modules?.find(m => m.type === 'vision-problem')
-      if (!existingModule) {
-        await projectService.createProjectModule({
-          project_id: currentProject.id,
-          type: 'vision-problem',
-          title: MODULES_CONFIG.find(m => m.id === 'vision-problem')?.title || 'Vision & Problem',
-          status: 'draft',
-          created_by: user.id
-        })
-        // Reload project to get the new module
-        await loadProject(currentProject.id)
-      }
-
-      await handleModuleSelect('vision-problem')
-      
-      // Update project metadata
+      // Update project metadata first
       const currentMetadata = currentProject.metadata as ProjectMetadataContent | null
       const defaultSettings = {
         allowCollaboration: true,
@@ -254,6 +225,18 @@ export default function IdeationPage() {
       await updateProject({
         metadata
       })
+
+      // Create or get the first module
+      const result = await projectService.getOrCreateModule(
+        currentProject.id, 
+        'vision-problem',
+        user.id
+      )
+      
+      if (result) {
+        await loadProject(currentProject.id)
+        setCurrentStep('vision-problem')
+      }
     } catch (err) {
       console.error('Error starting journey:', err)
       toast({
@@ -262,6 +245,8 @@ export default function IdeationPage() {
         variant: "destructive"
       })
       setCurrentStep('selection')
+    } finally {
+      setIsNavigating(false)
     }
   }, [currentProject, selectedPath, handleModuleSelect, updateProject, toast, loadProject, user, projectService])
 
@@ -291,7 +276,7 @@ export default function IdeationPage() {
     if (currentStep === 'selection') return
 
     try {
-      const currentModuleData = currentModules.find(m => m.id === currentStep)
+      const currentModuleData = currentModules.find(m => m.type === currentStep)
       if (!currentModuleData?.completed) {
         toast({
           title: "Module Incomplete",
@@ -481,20 +466,15 @@ export default function IdeationPage() {
         </motion.div>
       ) : (
         <IdeationLayout
-          steps={currentModules.map(m => ({
-            id: m.id,
-            title: m.title,
-            completed: m.completed,
-            icon: m.icon,
-            step_type: m.id
-          }))}
-          currentStepType={currentStep}
-          onStepSelect={handleModuleSelect}
+          modules={currentModules}
+          currentModuleType={currentStep as ModuleType}
+          onModuleSelect={handleModuleSelect}
           progress={overallProgress}
           moduleRecaps={moduleRecaps}
         >
           <ModuleWrapper
-            currentStep={currentStep}
+            moduleType={currentStep as ModuleType}
+            projectId={currentProject?.id || ''}
             selectedPath={selectedPath!}
             onBack={handleBack}
             onComplete={handleComplete}

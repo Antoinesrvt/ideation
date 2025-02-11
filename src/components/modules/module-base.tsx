@@ -14,9 +14,12 @@ import { ModuleErrorBoundary } from "./module-error-boundary"
 import { useToast } from "@/hooks/use-toast"
 import { ModuleLoadingSkeleton } from "./module-loading-skeleton"
 import { motion, AnimatePresence } from "framer-motion"
+import { useSupabase } from "@/context/supabase-context"
+import { ModuleService } from "@/lib/services/core/module-service"
 
 interface ModuleBaseProps {
-  moduleId: string
+  moduleType: ModuleType
+  projectId: string
   mode: 'guided' | 'expert'
   onBack: () => void
   onComplete: () => void
@@ -24,7 +27,8 @@ interface ModuleBaseProps {
 }
 
 const ModuleBase = memo(function ModuleBase({
-  moduleId,
+  moduleType,
+  projectId,
   mode,
   onBack,
   onComplete,
@@ -33,27 +37,38 @@ const ModuleBase = memo(function ModuleBase({
   const { toast } = useToast()
   const [showCompletion, setShowCompletion] = useState(false)
   const [showUpdate, setShowUpdate] = useState(false)
+  const { supabase } = useSupabase()
 
-  // Use module hook
+  // Get module configuration from MODULES_CONFIG
+  const moduleConfig = useMemo(() => {
+    const config = MODULES_CONFIG.find(m => m.id === moduleType)
+    if (!config) throw new Error(`Module config not found: ${moduleType}`)
+    return config
+  }, [moduleType])
+
+  // Create module service instance
+  const moduleService = useMemo(() => new ModuleService(supabase), [supabase])
+
+  // Use module hook with type-based query
   const {
-    module,
-    config,
+    module: dbModule,
     isLoading: isLoadingModule,
     error: moduleError,
     currentStepId,
     isCompleted,
     updateModule,
     completeModule
-  } = useModule(moduleId, {
+  } = useModule({
+    moduleType,
+    projectId,
     onComplete: () => {
-      if (module?.status === 'completed') {
+      if (dbModule?.status === 'completed') {
         setShowUpdate(true)
       } else {
         setShowCompletion(true)
       }
-      onComplete()
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message,
@@ -61,6 +76,27 @@ const ModuleBase = memo(function ModuleBase({
       })
     }
   })
+
+  // Map between step types and database IDs
+  const stepIdMapping = useMemo(() => {
+    if (!dbModule?.steps) return {}
+    return dbModule.steps.reduce((acc, step) => ({
+      ...acc,
+      [step.step_type]: step.id
+    }), {} as Record<string, string>)
+  }, [dbModule?.steps])
+
+  // Get current step type from database ID
+  const currentStepType = useMemo(() => {
+    if (!dbModule?.steps || !currentStepId) return moduleConfig.steps[0].id
+    const step = dbModule.steps.find(s => s.id === currentStepId)
+    return step?.step_type || moduleConfig.steps[0].id
+  }, [dbModule?.steps, currentStepId, moduleConfig])
+
+  // Get database ID from step type
+  const getStepDatabaseId = useCallback((stepType: string) => {
+    return stepIdMapping[stepType]
+  }, [stepIdMapping])
 
   // Use step hook for current step
   const {
@@ -76,8 +112,8 @@ const ModuleBase = memo(function ModuleBase({
     isEnhancing,
     isSaving
   } = useStep(currentStepId, {
-    moduleType: module?.type || 'vision-problem',
-    projectId: module?.project_id || '',
+    moduleType,
+    projectId,
     onError: (error) => {
       toast({
         title: "Error",
@@ -87,80 +123,43 @@ const ModuleBase = memo(function ModuleBase({
     }
   })
 
-  // Get the module configuration
-  const moduleConfig = useMemo<ModuleConfig>(() => {
-    if (!config) {
-      // Return a default config to prevent null errors
-      return {
-        id: 'vision-problem',
-        title: '',
-        description: '',
-        order_index: 0,
-        icon: AlertCircle,
-        steps: []
-      }
-    }
-    return config
-  }, [config])
-
-  // Create a mapping between step types and database IDs
-  const stepIdMapping = useMemo(() => {
-    if (!module?.steps) return {}
-    return module.steps.reduce((acc, step) => ({
-      ...acc,
-      [step.step_type]: step.id
-    }), {} as Record<string, string>)
-  }, [module?.steps])
-
-  // Get step type from database ID
-  const getStepTypeFromId = useCallback((stepId: string) => {
-    if (!module?.steps) return null
-    const step = module.steps.find(s => s.id === stepId)
-    return step?.step_type || null
-  }, [module?.steps])
-
   // Always start from first step when entering a module
   useEffect(() => {
-    if (module && moduleConfig.steps && (!currentStepId || !module.steps.find(s => s.id === currentStepId))) {
+    if (dbModule && moduleConfig?.steps && (!currentStepId || !dbModule.steps.find(s => s.id === currentStepId))) {
       const firstStepType = moduleConfig.steps[0].id
       const firstStepId = stepIdMapping[firstStepType]
       if (firstStepId) {
         updateModule({ current_step_id: firstStepId })
       }
     }
-  }, [module, moduleConfig.steps, currentStepId, updateModule, stepIdMapping])
+  }, [dbModule, moduleConfig?.steps, currentStepId, updateModule, stepIdMapping])
 
   // Handle next step
   const handleNext = useCallback(async () => {
-    if (!config?.steps || !currentStepId || !module) return
+    if (!moduleConfig?.steps || !currentStepType || !dbModule) return
 
-    // Get current step type
-    const currentStepType = getStepTypeFromId(currentStepId)
-    if (!currentStepType) return
-
-    // Get current step index from config using step type
-    const currentIndex = config.steps.findIndex(s => s.id === currentStepType)
+    const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepType)
     if (currentIndex === -1) return
 
-    // Check if this is the last step
-    const isLastStep = currentIndex === config.steps.length - 1
+    const isLastStep = currentIndex === moduleConfig.steps.length - 1
 
     try {
       // Mark current step as completed
-      await markAsCompleted()
+      const currentDbStepId = getStepDatabaseId(currentStepType)
+      if (currentDbStepId) {
+        await markAsCompleted()
+      }
 
       if (isLastStep) {
         // Complete module if all steps are completed
         await completeModule()
       } else {
-        // Move to next step - get the next step type from config
-        const nextStepType = config.steps[currentIndex + 1].id
-        // Get the actual database ID for this step type
-        const nextStepId = stepIdMapping[nextStepType]
-        if (!nextStepId) {
-          throw new Error('Step not found')
+        // Move to next step using types
+        const nextStepType = moduleConfig.steps[currentIndex + 1].id
+        const nextStepId = getStepDatabaseId(nextStepType)
+        if (nextStepId) {
+          await updateModule({ current_step_id: nextStepId })
         }
-        await updateModule({ current_step_id: nextStepId })
       }
     } catch (error) {
       console.error('Error handling next step:', error)
@@ -170,32 +169,25 @@ const ModuleBase = memo(function ModuleBase({
         variant: "destructive"
       })
     }
-  }, [config?.steps, currentStepId, module, stepIdMapping, getStepTypeFromId, markAsCompleted, completeModule, updateModule, toast])
+  }, [moduleConfig?.steps, currentStepType, dbModule, getStepDatabaseId, markAsCompleted, completeModule, updateModule, toast])
 
   // Handle previous step
   const handlePrevious = useCallback(async () => {
-    if (!config?.steps || !currentStepId || !module) return
+    if (!moduleConfig?.steps || !currentStepType || !dbModule) return
 
     try {
-      // Get current step type
-      const currentStepType = getStepTypeFromId(currentStepId)
-      if (!currentStepType) return
-
-      // Get current step index from config using step type
-      const currentIndex = config.steps.findIndex(s => s.id === currentStepType)
+      const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepType)
       if (currentIndex <= 0) {
         onBack()
         return
       }
 
-      // Move to previous step - get the previous step type from config
-      const previousStepType = config.steps[currentIndex - 1].id
-      // Get the actual database ID for this step type
-      const previousStepId = stepIdMapping[previousStepType]
-      if (!previousStepId) {
-        throw new Error('Step not found')
+      // Move to previous step using types
+      const previousStepType = moduleConfig.steps[currentIndex - 1].id
+      const previousStepId = getStepDatabaseId(previousStepType)
+      if (previousStepId) {
+        await updateModule({ current_step_id: previousStepId })
       }
-      await updateModule({ current_step_id: previousStepId })
     } catch (error) {
       console.error('Error handling previous step:', error)
       toast({
@@ -204,7 +196,7 @@ const ModuleBase = memo(function ModuleBase({
         variant: "destructive"
       })
     }
-  }, [config?.steps, currentStepId, module, stepIdMapping, getStepTypeFromId, updateModule, onBack, toast])
+  }, [moduleConfig?.steps, currentStepType, dbModule, getStepDatabaseId, updateModule, onBack, toast])
 
   // Handle AI suggestion generation
   const handleGenerateSuggestion = useCallback(async (context: string) => {
@@ -218,31 +210,42 @@ const ModuleBase = memo(function ModuleBase({
 
   // Helper function to render module content
   function renderModuleContent() {
-    if (!moduleConfig.steps || !currentStepId || !module?.steps) return null
+    if (!moduleConfig.steps) return null
 
-    // Get current step from module steps
-    const currentStep = module.steps.find(s => s.id === currentStepId)
-    if (!currentStep) return null
+    // Get current step configuration
+    const currentStepConfig = moduleConfig.steps[
+      dbModule?.current_step_id 
+        ? moduleConfig.steps.findIndex(s => 
+            dbModule.steps?.find(dbStep => 
+              dbStep.step_type === s.id && dbStep.id === dbModule.current_step_id
+            )
+          )
+        : 0
+    ]
+    
+    if (!currentStepConfig) return null
 
-    // Get step config using step type
-    const stepConfig = moduleConfig.steps.find(s => s.id === currentStep.step_type)
-    if (!stepConfig) return null
+    // Get database step if it exists
+    const currentDbStep = dbModule?.steps?.find(s => 
+      s.step_type === currentStepConfig.id && 
+      s.id === dbModule?.current_step_id
+    )
 
-    const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStep.step_type)
+    const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepConfig.id)
     const isLastStep = currentIndex === moduleConfig.steps.length - 1
     const isFirstStep = currentIndex === 0
     const firstModuleId = MODULES_CONFIG[0]?.id
-    const isFirstModule = module.type === firstModuleId
+    const isFirstModule = moduleType === firstModuleId
 
     return (
       <div className="space-y-6">
         <StepCard
-          key={currentStep.id}
-          title={stepConfig.title}
-          description={stepConfig.description}
-          placeholder={stepConfig.placeholder || ''}
-          icon={stepIcons[stepConfig.id] || Object.values(stepIcons)[0]}
-          value={latestResponse?.content || ""}
+          key={currentDbStep?.id || currentStepConfig.id}
+          title={currentStepConfig.title}
+          description={currentStepConfig.description}
+          placeholder={currentStepConfig.placeholder || ''}
+          icon={stepIcons[currentStepConfig.id] || Object.values(stepIcons)[0]}
+          value={currentDbStep?.responses?.[0]?.content || ""}
           onChange={(value) => saveResponse(value)}
           onPrevious={handlePrevious}
           onNext={handleNext}
@@ -252,10 +255,10 @@ const ModuleBase = memo(function ModuleBase({
           previousButtonText={isFirstStep && !isFirstModule ? "Previous Module" : "Previous"}
           isCompleted={currentStepCompleted}
         />
-        {mode === "expert" && stepConfig.expert_tips && (
+        {mode === "expert" && currentStepConfig.expert_tips && (
           <ExpertTips 
-            key={`tips-${currentStep.id}`}
-            tips={stepConfig.expert_tips} 
+            key={`tips-${currentDbStep?.id || currentStepConfig.id}`}
+            tips={currentStepConfig.expert_tips} 
           />
         )}
       </div>
@@ -264,8 +267,8 @@ const ModuleBase = memo(function ModuleBase({
 
   // Get next module name for completion overlay
   const getNextModuleName = () => {
-    if (!module?.type) return undefined
-    const currentModuleIndex = MODULES_CONFIG.findIndex(m => m.id === module.type)
+    if (!dbModule?.type) return undefined
+    const currentModuleIndex = MODULES_CONFIG.findIndex(m => m.id === dbModule.type)
     const nextModule = MODULES_CONFIG[currentModuleIndex + 1]
     return nextModule?.title
   }
@@ -284,9 +287,9 @@ const ModuleBase = memo(function ModuleBase({
     )
   }
 
-  // No module or config
-  if (!module || !moduleConfig) {
-    return <div>Module not found</div>
+  // No module config
+  if (!moduleConfig) {
+    return <div>Module configuration not found</div>
   }
 
   return (
@@ -294,7 +297,7 @@ const ModuleBase = memo(function ModuleBase({
       <ModuleLayout
         title={moduleConfig.title}
         description={moduleConfig.description}
-        stepProgress={`Step ${currentStepId ? moduleConfig.steps.findIndex(s => s.id === currentStepId) + 1 : 1} of ${moduleConfig.steps.length}`}
+        stepProgress={`Step ${currentStepId ? moduleConfig.steps.findIndex(s => dbModule?.steps?.find(dbStep => dbStep.id === currentStepId && dbStep.step_type === s.id)) + 1 : 1} of ${moduleConfig.steps.length}`}
         onBack={onBack}
         currentStep={currentStepId || ''}
         currentResponse={latestResponse}
@@ -303,8 +306,8 @@ const ModuleBase = memo(function ModuleBase({
         onSuggestionApply={handleSuggestionApply}
         isGeneratingSuggestion={isGeneratingSuggestion}
         isLoading={isSaving}
-        moduleType={module.type}
-        projectId={module.project_id}
+        moduleType={moduleType}
+        projectId={projectId}
       >
         <AnimatePresence mode="wait">
           {renderModuleContent()}
