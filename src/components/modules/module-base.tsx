@@ -37,6 +37,7 @@ const ModuleBase = memo(function ModuleBase({
   const { toast } = useToast()
   const [showCompletion, setShowCompletion] = useState(false)
   const [showUpdate, setShowUpdate] = useState(false)
+  const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const { supabase } = useSupabase()
 
   // Get module configuration from MODULES_CONFIG
@@ -77,26 +78,33 @@ const ModuleBase = memo(function ModuleBase({
     }
   })
 
-  // Map between step types and database IDs
-  const stepIdMapping = useMemo(() => {
-    if (!dbModule?.steps) return {}
-    return dbModule.steps.reduce((acc, step) => ({
-      ...acc,
-      [step.step_type]: step.id
-    }), {} as Record<string, string>)
-  }, [dbModule?.steps])
+  // Get current step configuration
+  const currentStepConfig = useMemo(() => 
+    moduleConfig.steps[currentStepIndex], 
+    [moduleConfig.steps, currentStepIndex]
+  )
 
-  // Get current step type from database ID
-  const currentStepType = useMemo(() => {
-    if (!dbModule?.steps || !currentStepId) return moduleConfig.steps[0].id
-    const step = dbModule.steps.find(s => s.id === currentStepId)
-    return step?.step_type || moduleConfig.steps[0].id
-  }, [dbModule?.steps, currentStepId, moduleConfig])
+  // Get database step if it exists
+  const currentDbStep = useMemo(() => 
+    dbModule?.steps?.find(s => 
+      s.step_type === currentStepConfig?.id && 
+      s.id === currentStepId
+    ), 
+    [dbModule?.steps, currentStepConfig?.id, currentStepId]
+  )
 
-  // Get database ID from step type
-  const getStepDatabaseId = useCallback((stepType: string) => {
-    return stepIdMapping[stepType]
-  }, [stepIdMapping])
+  // Sync current step index with database when it loads
+  useEffect(() => {
+    if (dbModule?.current_step_id && moduleConfig.steps) {
+      const dbStep = dbModule.steps.find(s => s.id === dbModule.current_step_id)
+      if (dbStep) {
+        const stepIndex = moduleConfig.steps.findIndex(s => s.id === dbStep.step_type)
+        if (stepIndex !== -1) {
+          setCurrentStepIndex(stepIndex)
+        }
+      }
+    }
+  }, [dbModule?.current_step_id, dbModule?.steps, moduleConfig.steps])
 
   // Use step hook for current step
   const {
@@ -123,45 +131,41 @@ const ModuleBase = memo(function ModuleBase({
     }
   })
 
-  // Always start from first step when entering a module
-  useEffect(() => {
-    if (dbModule && moduleConfig?.steps && (!currentStepId || !dbModule.steps.find(s => s.id === currentStepId))) {
-      const firstStepType = moduleConfig.steps[0].id
-      const firstStepId = stepIdMapping[firstStepType]
-      if (firstStepId) {
-        updateModule({ current_step_id: firstStepId })
-      }
-    }
-  }, [dbModule, moduleConfig?.steps, currentStepId, updateModule, stepIdMapping])
-
   // Handle next step
   const handleNext = useCallback(async () => {
-    if (!moduleConfig?.steps || !currentStepType || !dbModule) return
+    if (!moduleConfig?.steps) return
 
-    const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepType)
-    if (currentIndex === -1) return
-
-    const isLastStep = currentIndex === moduleConfig.steps.length - 1
+    const isLastStep = currentStepIndex === moduleConfig.steps.length - 1
 
     try {
-      // Mark current step as completed
-      const currentDbStepId = getStepDatabaseId(currentStepType)
-      if (currentDbStepId) {
+      // Mark current step as completed first
+      if (currentDbStep) {
         await markAsCompleted()
       }
 
       if (isLastStep) {
-        // Complete module if all steps are completed
+        // For the last step, complete the module first
         await completeModule()
+        // Don't update the step index since we're showing completion overlay
       } else {
-        // Move to next step using types
-        const nextStepType = moduleConfig.steps[currentIndex + 1].id
-        const nextStepId = getStepDatabaseId(nextStepType)
-        if (nextStepId) {
-          await updateModule({ current_step_id: nextStepId })
+        // Update front-end state immediately for non-last steps
+        setCurrentStepIndex(prev => prev + 1)
+
+        // Then sync with backend
+        if (dbModule) {
+          // Find the next step in database
+          const nextStepConfig = moduleConfig.steps[currentStepIndex + 1]
+          const nextDbStep = dbModule.steps.find(s => s.step_type === nextStepConfig.id)
+          if (nextDbStep) {
+            await updateModule({ current_step_id: nextDbStep.id })
+          }
         }
       }
     } catch (error) {
+      // Revert front-end state if backend sync fails
+      if (!isLastStep) {
+        setCurrentStepIndex(prev => prev - 1)
+      }
       console.error('Error handling next step:', error)
       toast({
         title: "Error",
@@ -169,26 +173,32 @@ const ModuleBase = memo(function ModuleBase({
         variant: "destructive"
       })
     }
-  }, [moduleConfig?.steps, currentStepType, dbModule, getStepDatabaseId, markAsCompleted, completeModule, updateModule, toast])
+  }, [moduleConfig?.steps, currentStepIndex, currentDbStep, dbModule, markAsCompleted, completeModule, updateModule, toast])
 
   // Handle previous step
   const handlePrevious = useCallback(async () => {
-    if (!moduleConfig?.steps || !currentStepType || !dbModule) return
+    if (!moduleConfig?.steps) return
 
     try {
-      const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepType)
-      if (currentIndex <= 0) {
+      if (currentStepIndex <= 0) {
         onBack()
         return
       }
 
-      // Move to previous step using types
-      const previousStepType = moduleConfig.steps[currentIndex - 1].id
-      const previousStepId = getStepDatabaseId(previousStepType)
-      if (previousStepId) {
-        await updateModule({ current_step_id: previousStepId })
+      // Update front-end state immediately
+      setCurrentStepIndex(prev => prev - 1)
+
+      // Then sync with backend if available
+      if (dbModule) {
+        const prevStepConfig = moduleConfig.steps[currentStepIndex - 1]
+        const prevDbStep = dbModule.steps.find(s => s.step_type === prevStepConfig.id)
+        if (prevDbStep) {
+          await updateModule({ current_step_id: prevDbStep.id })
+        }
       }
     } catch (error) {
+      // Revert front-end state if backend sync fails
+      setCurrentStepIndex(prev => prev + 1)
       console.error('Error handling previous step:', error)
       toast({
         title: "Error",
@@ -196,7 +206,7 @@ const ModuleBase = memo(function ModuleBase({
         variant: "destructive"
       })
     }
-  }, [moduleConfig?.steps, currentStepType, dbModule, getStepDatabaseId, updateModule, onBack, toast])
+  }, [moduleConfig?.steps, currentStepIndex, dbModule, updateModule, onBack, toast])
 
   // Handle AI suggestion generation
   const handleGenerateSuggestion = useCallback(async (context: string) => {
@@ -210,30 +220,10 @@ const ModuleBase = memo(function ModuleBase({
 
   // Helper function to render module content
   function renderModuleContent() {
-    if (!moduleConfig.steps) return null
+    if (!moduleConfig.steps || !currentStepConfig) return null
 
-    // Get current step configuration
-    const currentStepConfig = moduleConfig.steps[
-      dbModule?.current_step_id 
-        ? moduleConfig.steps.findIndex(s => 
-            dbModule.steps?.find(dbStep => 
-              dbStep.step_type === s.id && dbStep.id === dbModule.current_step_id
-            )
-          )
-        : 0
-    ]
-    
-    if (!currentStepConfig) return null
-
-    // Get database step if it exists
-    const currentDbStep = dbModule?.steps?.find(s => 
-      s.step_type === currentStepConfig.id && 
-      s.id === dbModule?.current_step_id
-    )
-
-    const currentIndex = moduleConfig.steps.findIndex(s => s.id === currentStepConfig.id)
-    const isLastStep = currentIndex === moduleConfig.steps.length - 1
-    const isFirstStep = currentIndex === 0
+    const isLastStep = currentStepIndex === moduleConfig.steps.length - 1
+    const isFirstStep = currentStepIndex === 0
     const firstModuleId = MODULES_CONFIG[0]?.id
     const isFirstModule = moduleType === firstModuleId
 
@@ -297,7 +287,7 @@ const ModuleBase = memo(function ModuleBase({
       <ModuleLayout
         title={moduleConfig.title}
         description={moduleConfig.description}
-        stepProgress={`Step ${currentStepId ? moduleConfig.steps.findIndex(s => dbModule?.steps?.find(dbStep => dbStep.id === currentStepId && dbStep.step_type === s.id)) + 1 : 1} of ${moduleConfig.steps.length}`}
+        stepProgress={`Step ${currentStepIndex + 1} of ${moduleConfig.steps.length}`}
         onBack={onBack}
         currentStep={currentStepId || ''}
         currentResponse={latestResponse}

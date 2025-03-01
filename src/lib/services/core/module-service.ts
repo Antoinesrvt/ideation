@@ -221,20 +221,27 @@ export class ModuleService extends BaseSupabaseService {
    * Update a module
    */
   async updateModule(moduleId: string, data: ModuleUpdateData): Promise<DbModule> {
-    return this.handleDatabaseOperation(
+    return this.handleDatabaseOperation<DbModule>(
       async () => {
-        const { data: updatedModule, error } = await this.supabase
+        const result = await this.supabase
           .from('modules')
           .update({
             ...data,
             last_activity_at: new Date().toISOString()
           })
           .eq('id', moduleId)
-          .select()
+          .select(`
+            *,
+            steps:module_steps(
+              *,
+              responses:step_responses(*)
+            )
+          `)
           .single()
 
-        if (error || !updatedModule) throw error || new Error('Failed to update module')
-        return updatedModule
+        if (result.error) throw result.error
+        if (!result.data) throw new Error('Failed to update module')
+        return result.data
       },
       'updateModule'
     )
