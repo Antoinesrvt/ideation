@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { ValidationForm } from '../common/ValidationForm';
 import { Button } from '@/components/ui/button';
-import { X, Plus, HelpCircle } from 'lucide-react';
+import { X, Plus, HelpCircle, Info, ChevronDown } from 'lucide-react';
 import { Hypothesis } from '@/types';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface HypothesisFormProps {
   open: boolean;
@@ -58,6 +59,8 @@ export const HypothesisForm: React.FC<HypothesisFormProps> = ({
   
   const [evidence, setEvidence] = useState<string[]>(initialData?.evidence || []);
   const [evidenceInput, setEvidenceInput] = useState('');
+
+  const [showGuidance, setShowGuidance] = useState(true);
 
   const form = useForm<HypothesisFormValues>({
     defaultValues: {
@@ -124,17 +127,29 @@ export const HypothesisForm: React.FC<HypothesisFormProps> = ({
       onSubmit={handleFormSubmit}
       submitLabel={isEditing ? "Update" : "Create"}
     >
-      <Card className="bg-blue-50 border-blue-200 mb-4">
-        <CardContent className="pt-4 text-sm text-blue-700">
-          <p className="font-medium mb-2">Effective Hypothesis Development</p>
-          <ul className="list-disc pl-4 space-y-1">
+      <Collapsible
+        open={showGuidance}
+        onOpenChange={setShowGuidance}
+        className="mb-4"
+      >
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-blue-100 bg-blue-50 hover:bg-blue-100 text-blue-800">
+            <div className="flex items-center">
+              <Info className="h-4 w-4 mr-2 text-blue-600" />
+              <span className="font-medium">Effective Hypothesis Development</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 transform transition-transform ${showGuidance ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="p-3 border border-blue-100 border-t-0 bg-blue-50 rounded-b-md">
+          <ul className="list-disc pl-4 space-y-1 text-sm text-blue-700">
             <li>Frame statements as testable predictions</li>
             <li>Identify underlying assumptions that must be true</li>
             <li>Define clear validation methods</li>
             <li>Collect evidence systematically to validate or invalidate</li>
           </ul>
-        </CardContent>
-      </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <FormField
         control={form.control}

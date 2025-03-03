@@ -412,6 +412,84 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
         </Badge>
       </div>
 
+      {/* <Collapsible
+        open={expandedHelp.overview}
+        onOpenChange={() => toggleHelp("overview")}
+        className="mb-6"
+      >
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="flex w-full justify-between p-2 text-sm border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 text-emerald-800"
+          >
+            <div className="flex items-center">
+              <Calculator className="h-4 w-4 mr-2 text-emerald-600" />
+              <span className="font-medium">
+                Financial Planning Fundamentals
+              </span>
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 transform transition-transform ${
+                expandedHelp.overview ? "rotate-180" : ""
+              }`}
+            />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="p-4 border border-emerald-100 border-t-0 bg-emerald-50 rounded-b-md">
+          <div className="space-y-3">
+            <p className="text-sm text-emerald-700">
+              Financial projections help you plan your business finances,
+              attract investors, and make informed decisions. An effective
+              financial plan balances optimism with realism.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <div className="bg-emerald-100 rounded-full p-1.5 mr-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h4 className="font-medium text-emerald-800">
+                    Growth Assumptions
+                  </h4>
+                </div>
+                <p className="text-xs text-emerald-700">
+                  Base your projections on reasonable growth rates. Document
+                  your assumptions to track their accuracy over time.
+                </p>
+              </div>
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <div className="bg-emerald-100 rounded-full p-1.5 mr-2">
+                    <PiggyBank className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h4 className="font-medium text-emerald-800">
+                    Conservative Estimates
+                  </h4>
+                </div>
+                <p className="text-xs text-emerald-700">
+                  Plan for multiple scenarios. Include best-case, expected-case,
+                  and worst-case projections.
+                </p>
+              </div>
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <div className="bg-emerald-100 rounded-full p-1.5 mr-2">
+                    <LineChart className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h4 className="font-medium text-emerald-800">
+                    Regular Updates
+                  </h4>
+                </div>
+                <p className="text-xs text-emerald-700">
+                  Review and adjust your projections monthly or quarterly as you
+                  gather real performance data.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible> */}
+
       {/* Financial Overview Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -513,29 +591,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
           </CardContent>
         </Card>
       </div>
-
-      <Alert
-        variant="default"
-        className="bg-blue-50 text-blue-800 border-blue-200"
-      >
-        <Info className="h-4 w-4" />
-        <AlertTitle>Financial Planning Best Practices</AlertTitle>
-        <AlertDescription>
-          <ul className="list-disc list-inside text-sm mt-2 space-y-1">
-            <li>
-              Create multiple revenue scenarios (conservative, moderate,
-              optimistic)
-            </li>
-            <li>Track both fixed and variable costs accurately</li>
-            <li>Revisit your breakeven analysis regularly as costs change</li>
-            <li>
-              Consider competitor pricing when setting your own pricing strategy
-            </li>
-            <li>Plan for unexpected expenses with a contingency budget</li>
-          </ul>
-        </AlertDescription>
-      </Alert>
-
+      
       <Tabs defaultValue="revenue">
         <TabsList className="grid grid-cols-4 mb-8">
           <TooltipProvider>

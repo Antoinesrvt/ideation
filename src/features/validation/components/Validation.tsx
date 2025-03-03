@@ -39,9 +39,17 @@ import {
   XCircle,
   ChevronRight,
   PanelTop,
-  Info
+  Info,
+  HelpCircle,
+  ChevronDown,
+  ClipboardCheck,
+  AlertCircle,
+  ArrowRight,
+  Plus
 } from 'lucide-react';
 import { ProjectDetails, Experiment, ABTest, UserFeedback, Hypothesis } from '@/types';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 
 interface ValidationProps {
   data?: ProjectDetails;
@@ -239,6 +247,29 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
     return summary;
   };
 
+  const [expandedHelp, setExpandedHelp] = useState<{
+    overview: boolean;
+    hypotheses: boolean;
+    experiments: boolean;
+    abTests: boolean;
+    userFeedback: boolean;
+    learnings: boolean;
+  }>({
+    overview: false,
+    hypotheses: false,
+    experiments: false,
+    abTests: false,
+    userFeedback: false,
+    learnings: false
+  });
+
+  const toggleHelp = (section: keyof typeof expandedHelp) => {
+    setExpandedHelp(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   const renderOverview = () => {
     return (
       <div className="space-y-6">
@@ -246,16 +277,16 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
           <Card className="p-4 border-l-4 border-l-blue-500">
             <h3 className="text-lg font-semibold">Why validate your ideas?</h3>
             <p className="text-sm text-gray-600 mt-2">
-              Validation helps reduce risk and increase the chances of building 
-              something people actually want. It's about testing your assumptions 
-              before investing significant time and resources.
+              Validation helps reduce risk and increase the chances of building
+              something people actually want. It's about testing your
+              assumptions before investing significant time and resources.
             </p>
           </Card>
           <Card className="p-4 border-l-4 border-l-green-500">
             <h3 className="text-lg font-semibold">Validation framework</h3>
             <p className="text-sm text-gray-600 mt-2">
-              Start with hypotheses, test them through experiments and A/B tests, 
-              collect user feedback, and iterate based on what you learn.
+              Start with hypotheses, test them through experiments and A/B
+              tests, collect user feedback, and iterate based on what you learn.
             </p>
           </Card>
         </div>
@@ -267,14 +298,20 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               <div className="flex justify-between items-center">
                 <span>Hypotheses</span>
                 <div className="flex items-center">
-                  <span className="text-sm mr-2">{getStatusSummary().validatedHypotheses}/{counts.hypotheses}</span>
+                  <span className="text-sm mr-2">
+                    {getStatusSummary().validatedHypotheses}/{counts.hypotheses}
+                  </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500" 
-                      style={{ 
-                        width: `${counts.hypotheses > 0 
-                          ? (getStatusSummary().validatedHypotheses / counts.hypotheses) * 100 
-                          : 0}%` 
+                    <div
+                      className="h-full bg-green-500"
+                      style={{
+                        width: `${
+                          counts.hypotheses > 0
+                            ? (getStatusSummary().validatedHypotheses /
+                                counts.hypotheses) *
+                              100
+                            : 0
+                        }%`,
                       }}
                     />
                   </div>
@@ -283,14 +320,21 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               <div className="flex justify-between items-center">
                 <span>Experiments</span>
                 <div className="flex items-center">
-                  <span className="text-sm mr-2">{getStatusSummary().completedExperiments}/{counts.experiments}</span>
+                  <span className="text-sm mr-2">
+                    {getStatusSummary().completedExperiments}/
+                    {counts.experiments}
+                  </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-blue-500" 
-                      style={{ 
-                        width: `${counts.experiments > 0 
-                          ? (getStatusSummary().completedExperiments / counts.experiments) * 100 
-                          : 0}%` 
+                    <div
+                      className="h-full bg-blue-500"
+                      style={{
+                        width: `${
+                          counts.experiments > 0
+                            ? (getStatusSummary().completedExperiments /
+                                counts.experiments) *
+                              100
+                            : 0
+                        }%`,
                       }}
                     />
                   </div>
@@ -299,14 +343,20 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               <div className="flex justify-between items-center">
                 <span>A/B Tests</span>
                 <div className="flex items-center">
-                  <span className="text-sm mr-2">{getStatusSummary().completedTests}/{counts.abTests}</span>
+                  <span className="text-sm mr-2">
+                    {getStatusSummary().completedTests}/{counts.abTests}
+                  </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-purple-500" 
-                      style={{ 
-                        width: `${counts.abTests > 0 
-                          ? (getStatusSummary().completedTests / counts.abTests) * 100 
-                          : 0}%` 
+                    <div
+                      className="h-full bg-purple-500"
+                      style={{
+                        width: `${
+                          counts.abTests > 0
+                            ? (getStatusSummary().completedTests /
+                                counts.abTests) *
+                              100
+                            : 0
+                        }%`,
                       }}
                     />
                   </div>
@@ -315,14 +365,20 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               <div className="flex justify-between items-center">
                 <span>Feedback</span>
                 <div className="flex items-center">
-                  <span className="text-sm mr-2">{getStatusSummary().processedFeedback}/{counts.feedback}</span>
+                  <span className="text-sm mr-2">
+                    {getStatusSummary().processedFeedback}/{counts.feedback}
+                  </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-amber-500" 
-                      style={{ 
-                        width: `${counts.feedback > 0 
-                          ? (getStatusSummary().processedFeedback / counts.feedback) * 100 
-                          : 0}%` 
+                    <div
+                      className="h-full bg-amber-500"
+                      style={{
+                        width: `${
+                          counts.feedback > 0
+                            ? (getStatusSummary().processedFeedback /
+                                counts.feedback) *
+                              100
+                            : 0
+                        }%`,
                       }}
                     />
                   </div>
@@ -332,47 +388,69 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-3">Recommended Next Steps</h3>
+            <h3 className="text-lg font-semibold mb-3">
+              Recommended Next Steps
+            </h3>
             <div className="space-y-3">
-              <Card className="p-3 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('hypotheses')}>
+              <Card
+                className="p-3 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setActiveTab("hypotheses")}
+              >
                 <div className="flex items-start">
                   <Lightbulb className="h-5 w-5 mr-2 text-blue-500" />
                   <div>
                     <h4 className="font-medium">Create hypotheses</h4>
-                    <p className="text-sm text-gray-600">Start by documenting what you believe to be true</p>
+                    <p className="text-sm text-gray-600">
+                      Start by documenting what you believe to be true
+                    </p>
                   </div>
                   <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
                 </div>
               </Card>
 
-              <Card className="p-3 border-l-4 border-l-indigo-500 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('experiments')}>
+              <Card
+                className="p-3 border-l-4 border-l-indigo-500 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setActiveTab("experiments")}
+              >
                 <div className="flex items-start">
                   <Beaker className="h-5 w-5 mr-2 text-indigo-500" />
                   <div>
                     <h4 className="font-medium">Design experiments</h4>
-                    <p className="text-sm text-gray-600">Test your most important assumptions</p>
+                    <p className="text-sm text-gray-600">
+                      Test your most important assumptions
+                    </p>
                   </div>
                   <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
                 </div>
               </Card>
 
-              <Card className="p-3 border-l-4 border-l-amber-500 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('user-feedback')}>
+              <Card
+                className="p-3 border-l-4 border-l-amber-500 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setActiveTab("user-feedback")}
+              >
                 <div className="flex items-start">
                   <MessageSquare className="h-5 w-5 mr-2 text-amber-500" />
                   <div>
                     <h4 className="font-medium">Collect feedback</h4>
-                    <p className="text-sm text-gray-600">Gather insights directly from users</p>
+                    <p className="text-sm text-gray-600">
+                      Gather insights directly from users
+                    </p>
                   </div>
                   <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
                 </div>
               </Card>
 
-              <Card className="p-3 border-l-4 border-l-purple-500 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setActiveTab('ab-tests')}>
+              <Card
+                className="p-3 border-l-4 border-l-purple-500 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setActiveTab("ab-tests")}
+              >
                 <div className="flex items-start">
                   <LineChart className="h-5 w-5 mr-2 text-purple-500" />
                   <div>
                     <h4 className="font-medium">Run A/B tests</h4>
-                    <p className="text-sm text-gray-600">Compare alternatives with quantitative data</p>
+                    <p className="text-sm text-gray-600">
+                      Compare alternatives with quantitative data
+                    </p>
                   </div>
                   <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
                 </div>
@@ -386,20 +464,101 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Validation</h2>
-          <p className="text-gray-600">Test your ideas, collect feedback, and build evidence</p>
+          <p className="text-gray-600">Test your assumptions, run experiments, and gather learnings</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Input
-            placeholder="Search validation items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-64"
-          />
-        </div>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button variant="outline" size="sm" className="flex items-center gap-1">
+              <HelpCircle className="h-4 w-4" />
+              <span>Help Guide</span>
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <div className="space-y-4">
+              <h4 className="font-medium">Validation Resources</h4>
+              <div className="space-y-2 text-sm">
+                <p className="font-medium">Quick Guides:</p>
+                <a href="#" className="text-blue-600 hover:underline block">
+                  → Creating effective hypotheses
+                </a>
+                <a href="#" className="text-blue-600 hover:underline block">
+                  → Designing lean experiments
+                </a>
+                <a href="#" className="text-blue-600 hover:underline block">
+                  → Interview frameworks and techniques
+                </a>
+                <a href="#" className="text-blue-600 hover:underline block">
+                  → Interpreting validation results
+                </a>
+                <p className="text-gray-500 mt-2">
+                  Click on the '?' icons in each section for specific guidance.
+                </p>
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       </div>
+
+      <Collapsible
+        open={expandedHelp.overview}
+        onOpenChange={() => toggleHelp('overview')}
+        className="mb-6"
+      >
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-indigo-100 bg-indigo-50 hover:bg-indigo-100 text-indigo-800">
+            <div className="flex items-center">
+              <ClipboardCheck className="h-4 w-4 mr-2 text-indigo-600" />
+              <span className="font-medium">Validation Essentials</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.overview ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="p-4 border border-indigo-100 border-t-0 bg-indigo-50 rounded-b-md">
+          <div className="space-y-3">
+            <p className="text-sm text-indigo-700">
+              Validation is the process of testing assumptions through experiments to reduce risk and increase confidence in your ideas.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <div className="bg-indigo-100 rounded-full p-1.5 mr-2">
+                    <AlertCircle className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <h4 className="font-medium text-indigo-800">Start with Hypotheses</h4>
+                </div>
+                <p className="text-xs text-indigo-700">
+                  Frame your assumptions as testable predictions that can be validated or invalidated.
+                </p>
+              </div>
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <div className="bg-indigo-100 rounded-full p-1.5 mr-2">
+                    <Beaker className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <h4 className="font-medium text-indigo-800">Run Experiments</h4>
+                </div>
+                <p className="text-xs text-indigo-700">
+                  Design experiments that test your hypotheses with the least amount of time and resources.
+                </p>
+              </div>
+              <div className="bg-white rounded-md p-3 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <div className="bg-indigo-100 rounded-full p-1.5 mr-2">
+                    <ArrowRight className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <h4 className="font-medium text-indigo-800">Document Learnings</h4>
+                </div>
+                <p className="text-xs text-indigo-700">
+                  Record what you learn, adjust your approach, and iterate based on evidence.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
@@ -486,23 +645,61 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
             </Button>
           </div>
 
-          <Card className="bg-blue-50 border-blue-200 mb-4">
-            <CardContent className="p-4">
-              <div className="flex items-start">
-                <Info className="h-5 w-5 mr-2 text-blue-500" />
+
+
+          <Collapsible
+            open={expandedHelp.learnings}
+            onOpenChange={() => toggleHelp('learnings')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-blue-100 bg-blue-50 hover:bg-blue-100 text-blue-800">
+                <div className="flex items-center">
+                  <Info className="h-4 w-4 mr-2 text-blue-600" />
+                  <span className="font-medium">Creating Effective Hypotheses</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.learnings ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-blue-100 border-t-0 bg-blue-50 rounded-b-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium">How to use hypotheses effectively:</h4>
-                  <ul className="list-disc pl-4 mt-1 text-sm space-y-1 text-blue-700">
-                    <li>Start with your riskiest assumptions</li>
-                    <li>Frame in the format: "We believe that [doing X] will result in [outcome Y]"</li>
-                    <li>Define how you'll validate or invalidate each hypothesis</li>
-                    <li>Use experiments and user feedback to test hypotheses</li>
-                    <li>Update your confidence level as you gather evidence</li>
+                  <h4 className="font-semibold text-blue-800 mb-2">Hypothesis Structure</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Make it specific and testable</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Use format: "We believe that [doing X] will result in [outcome Y]"</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Include how you'll measure success</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-blue-800 mb-2">Prioritizing Hypotheses</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Start with riskiest assumptions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Focus on assumptions that could invalidate your idea</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Consider time and resource constraints</span>
+                    </li>
                   </ul>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </CollapsibleContent>
+          </Collapsible>
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <HypothesesList
@@ -557,12 +754,23 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
             </Button>
           </div>
 
-          <Card className="bg-indigo-50 border-indigo-200 mb-4">
-            <CardContent className="p-4">
+          <Collapsible
+            open={expandedHelp.experiments}
+            onOpenChange={() => toggleHelp('experiments')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-indigo-100 bg-indigo-50 hover:bg-indigo-100 text-indigo-800">
+                <div className="flex items-center">
+                  <Info className="h-4 w-4 mr-2 text-indigo-600" />
+                  <span className="font-medium">How to run effective experiments</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.experiments ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-indigo-100 border-t-0 bg-indigo-50 rounded-b-md">
               <div className="flex items-start">
-                <Info className="h-5 w-5 mr-2 text-indigo-500" />
                 <div>
-                  <h4 className="font-medium">How to run effective experiments:</h4>
                   <ul className="list-disc pl-4 mt-1 text-sm space-y-1 text-indigo-700">
                     <li>Start with a clear hypothesis you want to test</li>
                     <li>Define specific metrics to measure success</li>
@@ -572,8 +780,10 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                   </ul>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </CollapsibleContent>
+          </Collapsible>
+
+
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <ExperimentsList
@@ -625,12 +835,23 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
             </Button>
           </div>
 
-          <Card className="bg-purple-50 border-purple-200 mb-4">
-            <CardContent className="p-4">
+          <Collapsible
+            open={expandedHelp.abTests}
+            onOpenChange={() => toggleHelp('abTests')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-purple-100 bg-purple-50 hover:bg-purple-100 text-purple-800">
+                <div className="flex items-center">
+                  <Info className="h-4 w-4 mr-2 text-purple-600" />
+                  <span className="font-medium">A/B testing best practices</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.abTests ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-purple-100 border-t-0 bg-purple-50 rounded-b-md">
               <div className="flex items-start">
-                <Info className="h-5 w-5 mr-2 text-purple-500" />
                 <div>
-                  <h4 className="font-medium">A/B testing best practices:</h4>
                   <ul className="list-disc pl-4 mt-1 text-sm space-y-1 text-purple-700">
                     <li>Test only one variable at a time for clear results</li>
                     <li>Ensure your sample size is large enough (at least 100 per variant)</li>
@@ -640,8 +861,8 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                   </ul>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </CollapsibleContent>
+          </Collapsible>
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <ABTestsList
@@ -696,12 +917,23 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
             </Button>
           </div>
 
-          <Card className="bg-amber-50 border-amber-200 mb-4">
-            <CardContent className="p-4">
+          <Collapsible
+            open={expandedHelp.userFeedback}
+            onOpenChange={() => toggleHelp('userFeedback')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-amber-100 bg-amber-50 hover:bg-amber-100 text-amber-800">
+                <div className="flex items-center">
+                  <Info className="h-4 w-4 mr-2 text-amber-600" />
+                  <span className="font-medium">How to collect and use feedback effectively</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.userFeedback ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-amber-100 border-t-0 bg-amber-50 rounded-b-md">
               <div className="flex items-start">
-                <Info className="h-5 w-5 mr-2 text-amber-500" />
                 <div>
-                  <h4 className="font-medium">How to collect and use feedback effectively:</h4>
                   <ul className="list-disc pl-4 mt-1 text-sm space-y-1 text-amber-700">
                     <li>Capture feedback verbatim when possible to preserve context</li>
                     <li>Categorize by type to identify patterns (feature requests, bugs, etc.)</li>
@@ -711,8 +943,8 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                   </ul>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </CollapsibleContent>
+          </Collapsible>
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <UserFeedbackList

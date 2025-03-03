@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/project/Sidebar';
 import { BusinessModelCanvas } from '@/features/canvas/components/BusinessModelCanvas';
 import { GRPModel } from '@/features/grp/components/GRPModel';
 import { MarketAnalysis } from '@/features/market/components/MarketAnalysis';
-import { UserFlowDesign } from '@/features/product_design/components/UserFlowDesign';
+import { UserFlowDesign } from '@/features/product_design/components/ProductDesign';
 import { ProjectOverview } from '@/features/overview';
 import { DocumentGenerator } from '@/features/documents/components/DocumentGenerator';
 import { ExternalTools } from '@/features/tools/components/ExternalTools';
@@ -199,7 +199,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col w-full h-full min-h-screen bg-gray-50">
         {/* Header */}
-        <Header onExport={handleExport} />
+        {/* <Header onExport={handleExport} /> */}
         
         {/* Main Content */}
         <main className="flex flex-1 overflow-hidden">

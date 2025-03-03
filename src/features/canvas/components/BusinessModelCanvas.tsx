@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, Edit, HelpCircle, Lightbulb, PlusCircle, Trash2, Smartphone, Laptop } from 'lucide-react';
 import { BusinessModelCanvas as BusinessModelCanvasType, CanvasItem } from '@/types';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 
 // Extend the CanvasItem interface for our internal use
 interface ExtendedCanvasItem extends CanvasItem {
@@ -315,52 +315,54 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
             </DialogTitle>
           </DialogHeader>
           {editingItem && (
-            <form onSubmit={form.handleSubmit(saveItemChanges)}>
-              <div className="space-y-4 py-2">
-                <FormField
-                  control={form.control}
-                  name="text"
-                  defaultValue={editingItem.item.text}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Summary</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder={`Enter ${sectionGuidance[editingItem.section].title.toLowerCase()} item...`} 
-                          {...field} 
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="details"
-                  defaultValue={editingItem.item.details || ''}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Details (For Display Only)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Add more details about this item (note: not saved permanently)" 
-                          className="resize-none" 
-                          rows={3} 
-                          {...field} 
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                <div className="flex justify-end space-x-2">
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button type="submit">Save Changes</Button>
+            <FormProvider {...form}>
+              <form onSubmit={form.handleSubmit(saveItemChanges)}>
+                <div className="space-y-4 py-2">
+                  <FormField
+                    control={form.control}
+                    name="text"
+                    defaultValue={editingItem.item.text}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Summary</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder={`Enter ${sectionGuidance[editingItem.section].title.toLowerCase()} item...`} 
+                            {...field} 
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="details"
+                    defaultValue={editingItem.item.details || ''}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Details (For Display Only)</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Add more details about this item (note: not saved permanently)" 
+                            className="resize-none" 
+                            rows={3} 
+                            {...field} 
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex justify-end space-x-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit">Save Changes</Button>
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            </FormProvider>
           )}
         </DialogContent>
       </Dialog>

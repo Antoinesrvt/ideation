@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Tabs,
   TabsContent,
@@ -57,8 +57,26 @@ import {
   Edit, 
   Check,
   AlertCircle,
-  Clock
+  Clock,
+  Info,
+  AlertTriangle,
+  Activity,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  ListChecks,
+  PlusCircle,
+  UserCheck
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 // Types for team data
 export interface TeamData {
@@ -305,123 +323,84 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
   data,
   onUpdate
 }) => {
-  const safeData = data || generateSampleData();
   const [newMemberDialogOpen, setNewMemberDialogOpen] = useState(false);
   const [newTaskDialogOpen, setNewTaskDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('members');
   
-  // Task status options for select
+  // State for help visibility
+  const [expandedHelp, setExpandedHelp] = useState<{
+    members: boolean;
+    tasks: boolean;
+    roles: boolean;
+    raci: boolean;
+  }>({
+    members: false,
+    tasks: false,
+    roles: false,
+    raci: false
+  });
+  
+  // Ensure we have default values if data is undefined
+  const safeData: TeamData = {
+    members: data?.members || [],
+    roles: data?.roles || [],
+    tasks: data?.tasks || [],
+    raci: data?.raci || []
+  };
+
+  // Calculate team statistics
+  const teamStats = useMemo(() => {
+    const completedTasks = safeData.tasks.filter(task => task.status === 'completed').length;
+    const inProgressTasks = safeData.tasks.filter(task => task.status === 'in_progress').length;
+    const blockedTasks = safeData.tasks.filter(task => task.status === 'blocked').length;
+    
+    // Get upcoming deadlines (tasks due in the next 7 days)
+    const now = new Date();
+    const oneWeekFromNow = new Date();
+    oneWeekFromNow.setDate(now.getDate() + 7);
+    
+    const upcomingDeadlines = safeData.tasks.filter(task => {
+      const dueDate = new Date(task.dueDate);
+      return dueDate >= now && dueDate <= oneWeekFromNow && task.status !== 'completed';
+    }).length;
+    
+    return {
+      totalMembers: safeData.members.length,
+      completedTasks,
+      inProgressTasks,
+      blockedTasks,
+      upcomingDeadlines
+    };
+  }, [safeData.members, safeData.tasks]);
+  
+  // Calculate overall task progress
+  const calculateTaskProgress = () => {
+    if (safeData.tasks.length === 0) return 0;
+    
+    const totalProgress = safeData.tasks.reduce((sum, task) => sum + task.progress, 0);
+    return Math.round(totalProgress / safeData.tasks.length);
+  };
+
   const taskStatusOptions = [
     { value: 'not_started', label: 'Not Started' },
     { value: 'in_progress', label: 'In Progress' },
     { value: 'blocked', label: 'Blocked' },
     { value: 'completed', label: 'Completed' }
   ];
-  
-  // Task priority options for select
+
   const taskPriorityOptions = [
     { value: 'low', label: 'Low' },
     { value: 'medium', label: 'Medium' },
     { value: 'high', label: 'High' }
   ];
-  
-  // RACI matrix options
-  const raciOptions = [
-    { value: 'responsible', label: 'Responsible (R)', description: 'Does the work to complete the task' },
-    { value: 'accountable', label: 'Accountable (A)', description: 'Ultimately answerable for the task' },
-    { value: 'consulted', label: 'Consulted (C)', description: 'Provides input or expertise' },
-    { value: 'informed', label: 'Informed (I)', description: 'Kept up-to-date on progress' }
+
+  const raciTypes = [
+    { value: 'responsible', label: 'Responsible', description: 'Person who performs the work' },
+    { value: 'accountable', label: 'Accountable', description: 'Person ultimately answerable for the work' },
+    { value: 'consulted', label: 'Consulted', description: 'Person whose opinion is sought' },
+    { value: 'informed', label: 'Informed', description: 'Person kept up-to-date on progress' }
   ];
-  
-  // Event handlers
-  const handleAddTeamMember = (e: React.FormEvent) => {
-    e.preventDefault();
-    // This would typically capture form data
-    const newMember: TeamMember = {
-      id: Math.random().toString(36).substring(2, 9),
-      name: 'New Team Member',
-      email: 'new.member@example.com',
-      role: 'Team Member',
-      skills: [],
-      tasksAssigned: []
-    };
-    
-    onUpdate({
-      members: [...safeData.members, newMember]
-    });
-    
-    setNewMemberDialogOpen(false);
-  };
-  
-  const handleAddTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    // This would typically capture form data
-    const newTask: Task = {
-      id: Math.random().toString(36).substring(2, 9),
-      title: 'New Task',
-      description: 'Task description',
-      assignedTo: [],
-      dueDate: new Date().toISOString().split('T')[0],
-      status: 'not_started',
-      priority: 'medium',
-      progress: 0
-    };
-    
-    onUpdate({
-      tasks: [...safeData.tasks, newTask]
-    });
-    
-    setNewTaskDialogOpen(false);
-  };
-  
-  // Helper functions
-  const getTaskStatusBadge = (status: Task['status']) => {
-    switch (status) {
-      case 'not_started':
-        return <Badge variant="outline" className="bg-gray-100">Not Started</Badge>;
-      case 'in_progress':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-700">In Progress</Badge>;
-      case 'blocked':
-        return <Badge variant="outline" className="bg-red-100 text-red-700">Blocked</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-green-100 text-green-700">Completed</Badge>;
-    }
-  };
-  
-  const getTaskPriorityBadge = (priority: Task['priority']) => {
-    switch (priority) {
-      case 'low':
-        return <Badge variant="outline" className="bg-gray-100">Low</Badge>;
-      case 'medium':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-700">Medium</Badge>;
-      case 'high':
-        return <Badge variant="outline" className="bg-red-100 text-red-700">High</Badge>;
-    }
-  };
-  
-  const getMemberById = (id: string): TeamMember | undefined => {
-    return safeData.members.find(member => member.id === id);
-  };
-  
-  const getRoleById = (roleTitle: string): Role | undefined => {
-    return safeData.roles.find(role => role.title === roleTitle);
-  };
-  
-  const getRaciCellContent = (memberId: string, activity: RaciItem) => {
-    const assignment = activity.assignments.find(a => a.memberId === memberId);
-    if (!assignment) return null;
-    
-    switch (assignment.type) {
-      case 'responsible':
-        return <Badge className="bg-green-100 text-green-700 hover:bg-green-200">R</Badge>;
-      case 'accountable':
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">A</Badge>;
-      case 'consulted':
-        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200">C</Badge>;
-      case 'informed':
-        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-200">I</Badge>;
-    }
-  };
-  
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -429,12 +408,187 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
       .join('')
       .toUpperCase();
   };
-  
+
+  const getMemberById = (id: string) => {
+    return safeData.members.find(member => member.id === id);
+  };
+
+  const getRoleById = (title: string) => {
+    return safeData.roles.find(role => role.title === title);
+  };
+
+  const handleAddTeamMember = (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewMemberDialogOpen(false);
+    // Implementation for adding team member
+  };
+
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    setNewTaskDialogOpen(false);
+    // Implementation for adding task
+  };
+
+  const getTaskStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">Completed</Badge>;
+      case 'in_progress':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">In Progress</Badge>;
+      case 'blocked':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">Blocked</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-0">Not Started</Badge>;
+    }
+  };
+
+  const getTaskPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">High</Badge>;
+      case 'medium':
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-0">Medium</Badge>;
+      default:
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">Low</Badge>;
+    }
+  };
+
+  const getRaciTypeColor = (type: string) => {
+    switch (type) {
+      case 'responsible':
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-0';
+      case 'accountable':
+        return 'bg-green-100 text-green-800 hover:bg-green-200 border-0';
+      case 'consulted':
+        return 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-0';
+      case 'informed':
+        return 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-0';
+      default:
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-0';
+    }
+  };
+
+  const toggleHelp = (section: keyof typeof expandedHelp) => {
+    setExpandedHelp(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Team Management</h1>
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Team Management</h1>
+          <p className="text-gray-600">Organize your team, roles, tasks, and responsibilities</p>
+        </div>
+        
+        {/* Help Menu */}
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-1">
+              <HelpCircle className="h-4 w-4" />
+              <span>Help</span>
+            </Button>
+          </HoverCardTrigger>
+          <HoverCardContent className="w-80">
+            <div className="space-y-2">
+              <h3 className="font-semibold">Team Management Guide</h3>
+              <p className="text-sm">Manage your project team effectively with these tools:</p>
+              <ul className="text-sm space-y-1.5">
+                <li className="flex gap-2">
+                  <Users className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                  <span><strong>Team Members:</strong> Add and manage people working on your project</span>
+                </li>
+                <li className="flex gap-2">
+                  <CheckSquare className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                  <span><strong>Tasks:</strong> Track work items and their completion status</span>
+                </li>
+                <li className="flex gap-2">
+                  <User className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" />
+                  <span><strong>Roles:</strong> Define responsibilities for each position</span>
+                </li>
+                <li className="flex gap-2">
+                  <Grid className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                  <span><strong>RACI Matrix:</strong> Clarify who's Responsible, Accountable, Consulted, or Informed</span>
+                </li>
+              </ul>
+              <p className="text-sm text-muted-foreground">Click on a section tab to explore specific features.</p>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
+      </div>
       
-      <Tabs defaultValue="members" className="w-full">
+      {/* Dashboard Overview */}
+      {/* <Card className="border-0 shadow-md">
+        <CardHeader className="bg-slate-50 border-b">
+          <CardTitle>Team Dashboard</CardTitle>
+          <CardDescription>Overview of your team's status and progress</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-5 gap-4">
+            <Card className="p-4 border-l-4 border-l-blue-500">
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Team Members</p>
+                  <p className="text-2xl font-bold">{teamStats.totalMembers}</p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500 opacity-70" />
+              </div>
+            </Card>
+            
+            <Card className="p-4 border-l-4 border-l-green-500">
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Completed Tasks</p>
+                  <p className="text-2xl font-bold">{teamStats.completedTasks}</p>
+                </div>
+                <Check className="h-8 w-8 text-green-500 opacity-70" />
+              </div>
+            </Card>
+            
+            <Card className="p-4 border-l-4 border-l-blue-500">
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">In Progress</p>
+                  <p className="text-2xl font-bold">{teamStats.inProgressTasks}</p>
+                </div>
+                <Activity className="h-8 w-8 text-blue-500 opacity-70" />
+              </div>
+            </Card>
+            
+            <Card className="p-4 border-l-4 border-l-red-500">
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Blocked Tasks</p>
+                  <p className="text-2xl font-bold">{teamStats.blockedTasks}</p>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-red-500 opacity-70" />
+              </div>
+            </Card>
+            
+            <Card className="p-4 border-l-4 border-l-amber-500">
+              <div className="flex justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Upcoming Deadlines</p>
+                  <p className="text-2xl font-bold">{teamStats.upcomingDeadlines}</p>
+                </div>
+                <Clock className="h-8 w-8 text-amber-500 opacity-70" />
+              </div>
+            </Card>
+          </div>
+          
+          <div className="mt-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm font-medium">Overall Progress</p>
+              <p className="text-sm text-gray-500">{calculateTaskProgress()}%</p>
+            </div>
+            <Progress value={calculateTaskProgress()} className="h-2" />
+          </div>
+        </CardContent>
+      </Card> */}
+      
+      <Tabs defaultValue="members" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-4 mb-6">
           <TabsTrigger value="members" className="flex items-center">
             <Users className="h-4 w-4 mr-2" />
@@ -455,8 +609,62 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
         </TabsList>
         
         {/* Team Members Tab */}
-        <TabsContent value="members">
-          <div className="flex justify-between items-center mb-6">
+        <TabsContent value="members" className="space-y-4">
+          <Collapsible
+            open={expandedHelp.members}
+            onOpenChange={() => toggleHelp('members')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-blue-100 bg-blue-50 hover:bg-blue-100 text-blue-800">
+                <div className="flex items-center">
+                  <Users className="h-4 w-4 mr-2 text-blue-600" />
+                  <span className="font-medium">Building Your Team</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.members ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-blue-100 border-t-0 bg-blue-50 rounded-b-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-blue-800 mb-2">Team Composition</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Include diverse skills and perspectives</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Consider both technical and soft skills</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Identify skill gaps early</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-blue-800 mb-2">Team Collaboration</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Define clear communication channels</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Establish regular check-ins and meetings</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Create opportunities for team bonding</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Team Members</h2>
             <Dialog open={newMemberDialogOpen} onOpenChange={setNewMemberDialogOpen}>
               <DialogTrigger asChild>
@@ -507,7 +715,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                       <Label htmlFor="skills" className="text-right">
                         Skills
                       </Label>
-                      <Input id="skills" placeholder="Skills (comma separated)" className="col-span-3" />
+                      <Input id="skills" placeholder="e.g. React, Design, Marketing" className="col-span-3" />
                     </div>
                   </div>
                   <DialogFooter>
@@ -518,102 +726,170 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
             </Dialog>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {safeData.members.map((member) => {
-              const memberRole = getRoleById(member.role);
-              const memberTasks = safeData.tasks.filter(task => 
-                task.assignedTo.includes(member.id)
-              );
-              
-              return (
-                <Card key={member.id} className="overflow-hidden">
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center">
-                        <Avatar className="h-12 w-12 mr-4">
-                          <AvatarImage src={member.avatarUrl} alt={member.name} />
-                          <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <CardTitle className="text-lg">{member.name}</CardTitle>
-                          <CardDescription className="flex items-center">
-                            <Mail className="h-3 w-3 mr-1" />
-                            {member.email}
-                          </CardDescription>
+          {/* Empty state for when there are no team members */}
+          {safeData.members.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-8 border border-dashed">
+              <UserPlus className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No team members yet</h3>
+              <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+                Start building your team by adding members with their roles and responsibilities.
+              </p>
+              <Button onClick={() => setNewMemberDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add First Team Member
+              </Button>
+            </Card>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-450px)]">
+              <div className="grid grid-cols-2 gap-4">
+                {safeData.members.map((member) => (
+                  <Card key={member.id} className="overflow-hidden">
+                    <div className="p-6 flex items-start">
+                      <Avatar className="h-12 w-12 mr-4">
+                        <AvatarImage src={member.avatarUrl} />
+                        <AvatarFallback className="bg-blue-100 text-blue-700">{getInitials(member.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-semibold text-lg">{member.name}</h3>
+                            <p className="text-sm text-gray-500">{member.email}</p>
+                          </div>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
+                                  {member.role}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="w-60">
+                                  {getRoleById(member.role)?.description || 'No description available'}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-xs font-medium text-gray-500 mb-1">SKILLS</p>
+                          <div className="flex flex-wrap gap-1">
+                            {member.skills.map((skill, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                            {member.skills.length === 0 && (
+                              <span className="text-sm text-gray-400">No skills added</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <p className="text-xs font-medium text-gray-500 mb-1">ASSIGNED TASKS</p>
+                          <div className="space-y-1">
+                            {member.tasksAssigned.map((taskId) => {
+                              const task = safeData.tasks.find(t => t.id === taskId);
+                              return task ? (
+                                <div key={taskId} className="flex items-center">
+                                  <div className="w-2 h-2 rounded-full mr-2" 
+                                    style={{ 
+                                      backgroundColor: 
+                                        task.status === 'completed' ? 'rgb(22, 163, 74)' : 
+                                        task.status === 'in_progress' ? 'rgb(37, 99, 235)' : 
+                                        task.status === 'blocked' ? 'rgb(220, 38, 38)' : 'rgb(156, 163, 175)'
+                                    }}
+                                  />
+                                  <span className="text-sm">{task.title}</span>
+                                </div>
+                              ) : null;
+                            })}
+                            {member.tasksAssigned.length === 0 && (
+                              <span className="text-sm text-gray-400">No tasks assigned</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <Edit className="h-4 w-4" />
+                    </div>
+                    <div className="border-t border-gray-100 bg-gray-50 px-6 py-3 flex justify-end">
+                      <Button variant="ghost" size="sm" className="h-8 text-gray-500 hover:text-gray-700">
+                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 text-red-500 hover:text-red-700">
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Remove
                       </Button>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="mb-2">
-                      <Badge className="bg-blue-100 text-blue-800">{member.role}</Badge>
-                    </div>
-                    
-                    {memberRole && (
-                      <div className="mb-3">
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Responsibilities:</h4>
-                        <ul className="text-sm text-gray-600 list-disc list-inside">
-                          {memberRole.responsibilities.slice(0, 2).map((resp, idx) => (
-                            <li key={idx}>{resp}</li>
-                          ))}
-                          {memberRole.responsibilities.length > 2 && (
-                            <li className="text-xs text-gray-500">
-                              +{memberRole.responsibilities.length - 2} more
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    <div className="mb-3">
-                      <h4 className="text-sm font-medium text-gray-700 mb-1">Skills:</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {member.skills.map((skill, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-800">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {memberTasks.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Assigned Tasks:</h4>
-                        <ul className="text-sm text-gray-600">
-                          {memberTasks.map((task) => (
-                            <li key={task.id} className="flex items-center justify-between mb-1">
-                              <span className="flex items-center">
-                                {task.status === 'completed' ? (
-                                  <Check className="h-3 w-3 text-green-500 mr-1" />
-                                ) : (
-                                  <Clock className="h-3 w-3 text-blue-500 mr-1" />
-                                )}
-                                {task.title}
-                              </span>
-                              {getTaskStatusBadge(task.status)}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </TabsContent>
         
         {/* Tasks Tab */}
-        <TabsContent value="tasks">
-          <div className="flex justify-between items-center mb-6">
+        <TabsContent value="tasks" className="space-y-4">
+          <Collapsible
+            open={expandedHelp.tasks}
+            onOpenChange={() => toggleHelp('tasks')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-purple-100 bg-purple-50 hover:bg-purple-100 text-purple-800">
+                <div className="flex items-center">
+                  <CheckSquare className="h-4 w-4 mr-2 text-purple-600" />
+                  <span className="font-medium">Effective Task Management</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.tasks ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-purple-100 border-t-0 bg-purple-50 rounded-b-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-purple-800 mb-2">Task Creation</h4>
+                  <ul className="text-sm text-purple-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Make tasks specific and actionable</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Set clear deadlines and priorities</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Break down large tasks into smaller ones</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-purple-800 mb-2">Task Tracking</h4>
+                  <ul className="text-sm text-purple-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Update task status regularly</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Identify and address blockers quickly</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Review completed tasks for learnings</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Tasks</h2>
             <Dialog open={newTaskDialogOpen} onOpenChange={setNewTaskDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="default">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <CheckSquare className="h-4 w-4 mr-2" />
                   Add Task
                 </Button>
               </DialogTrigger>
@@ -621,7 +897,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                 <DialogHeader>
                   <DialogTitle>Add New Task</DialogTitle>
                   <DialogDescription>
-                    Create a new task and assign team members.
+                    Fill in the details to create a new task.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddTask}>
@@ -639,12 +915,12 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                       <Input id="description" placeholder="Task description" className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="assignees" className="text-right">
-                        Assignees
+                      <Label htmlFor="assignedTo" className="text-right">
+                        Assigned To
                       </Label>
                       <Select>
                         <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Assign to" />
+                          <SelectValue placeholder="Select team member" />
                         </SelectTrigger>
                         <SelectContent>
                           {safeData.members.map((member) => (
@@ -662,12 +938,29 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                       <Input id="dueDate" type="date" className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="status" className="text-right">
+                        Status
+                      </Label>
+                      <Select>
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {taskStatusOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="priority" className="text-right">
                         Priority
                       </Label>
                       <Select>
                         <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Set priority" />
+                          <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
                         <SelectContent>
                           {taskPriorityOptions.map((option) => (
@@ -680,219 +973,358 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit">Create Task</Button>
+                    <Button type="submit">Add Task</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
             </Dialog>
           </div>
           
-          <Card>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[600px] w-full">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Task</TableHead>
-                      <TableHead>Assignees</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Progress</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {safeData.tasks.map((task) => (
-                      <TableRow key={task.id}>
-                        <TableCell>
-                          <div className="font-medium">{task.title}</div>
-                          <div className="text-sm text-muted-foreground">{task.description}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex -space-x-2">
-                            {task.assignedTo.map((memberId) => {
-                              const member = getMemberById(memberId);
-                              return member ? (
-                                <Avatar key={memberId} className="h-8 w-8 border-2 border-background">
-                                  <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                                </Avatar>
-                              ) : null;
-                            })}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                            {task.dueDate}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getTaskPriorityBadge(task.priority)}
-                        </TableCell>
-                        <TableCell>
-                          {getTaskStatusBadge(task.status)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-[100px]">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-medium">{task.progress}%</span>
-                            </div>
-                            <Progress value={task.progress} max={100} className="h-2" />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Roles Tab */}
-        <TabsContent value="roles">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">Roles & Responsibilities</h2>
-            <Button variant="default">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Role
-            </Button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {safeData.roles.map((role) => (
-              <Card key={role.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{role.title}</CardTitle>
-                      <CardDescription>{role.description}</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="icon">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Responsibilities</h4>
-                      <ul className="text-sm space-y-1 list-disc list-inside">
-                        {role.responsibilities.map((responsibility, idx) => (
-                          <li key={idx}>{responsibility}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Required Skills</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {role.requiredSkills.map((skill, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-gray-100">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Team Members with this Role</h4>
-                      <div className="flex -space-x-2">
-                        {safeData.members
-                          .filter(member => member.role === role.title)
-                          .map(member => (
-                            <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                              <AvatarFallback>{getInitials(member.name)}</AvatarFallback>
-                            </Avatar>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-        
-        {/* RACI Matrix Tab */}
-        <TabsContent value="raci">
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-2">RACI Responsibility Matrix</h2>
-            <p className="text-gray-600">
-              The RACI matrix clarifies the role of each team member for each project activity.
-            </p>
-            <div className="flex flex-wrap gap-3 mt-3">
-              {raciOptions.map((option) => (
-                <div key={option.value} className="flex items-center space-x-2">
-                  <Badge className={
-                    option.value === 'responsible' ? 'bg-green-100 text-green-700' :
-                    option.value === 'accountable' ? 'bg-blue-100 text-blue-700' :
-                    option.value === 'consulted' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-gray-100 text-gray-700'
-                  }>
-                    {option.value === 'responsible' ? 'R' :
-                     option.value === 'accountable' ? 'A' :
-                     option.value === 'consulted' ? 'C' : 'I'}
-                  </Badge>
-                  <span className="text-sm font-medium">{option.label}</span>
-                  <span className="text-xs text-gray-500">{option.description}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <Card>
-            <CardContent className="p-0 overflow-x-auto">
+          {/* Empty state for when there are no tasks */}
+          {safeData.tasks.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-8 border border-dashed">
+              <CheckSquare className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No tasks created yet</h3>
+              <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+                Break your project down into manageable tasks and assign them to team members.
+              </p>
+              <Button onClick={() => setNewTaskDialogOpen(true)}>
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Create First Task
+              </Button>
+            </Card>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-450px)]">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="sticky left-0 bg-white">Activity</TableHead>
-                    {safeData.members.map((member) => (
-                      <TableHead key={member.id}>
-                        <div className="whitespace-nowrap">{member.name}</div>
-                        <div className="text-xs text-gray-500">{member.role}</div>
-                      </TableHead>
-                    ))}
-                    <TableHead></TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead className="text-right">Progress</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {safeData.raci.map((activity) => (
-                    <TableRow key={activity.id}>
-                      <TableCell className="sticky left-0 bg-white font-medium">
-                        {activity.activity}
+                  {safeData.tasks.map((task) => (
+                    <TableRow key={task.id}>
+                      <TableCell className="font-medium">
+                        <div>
+                          <p>{task.title}</p>
+                          <p className="text-xs text-gray-500 mt-1">{task.description}</p>
+                        </div>
                       </TableCell>
-                      {safeData.members.map((member) => (
-                        <TableCell key={member.id} className="text-center">
-                          {getRaciCellContent(member.id, activity)}
-                        </TableCell>
-                      ))}
                       <TableCell>
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <div className="flex -space-x-2">
+                          {task.assignedTo.map((memberId) => {
+                            const member = getMemberById(memberId);
+                            return member ? (
+                              <TooltipProvider key={memberId}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Avatar className="h-8 w-8 border-2 border-white">
+                                      <AvatarImage src={member.avatarUrl} />
+                                      <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+                                        {getInitials(member.name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{member.name}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : null;
+                          })}
+                          {task.assignedTo.length === 0 && (
+                            <span className="text-sm text-gray-400">Unassigned</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{getTaskStatusBadge(task.status)}</TableCell>
+                      <TableCell>{getTaskPriorityBadge(task.priority)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end">
+                          <span className="text-sm mr-2">{task.progress}%</span>
+                          <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-500" 
+                              style={{ width: `${task.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-            <CardFooter className="flex justify-center p-4">
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Activity
+            </ScrollArea>
+          )}
+        </TabsContent>
+        
+        {/* Roles Tab */}
+        <TabsContent value="roles" className="space-y-4">
+          <Collapsible
+            open={expandedHelp.roles}
+            onOpenChange={() => toggleHelp('roles')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-amber-100 bg-amber-50 hover:bg-amber-100 text-amber-800">
+                <div className="flex items-center">
+                  <UserPlus className="h-4 w-4 mr-2 text-amber-600" />
+                  <span className="font-medium">Defining Team Roles</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.roles ? 'rotate-180' : ''}`} />
               </Button>
-            </CardFooter>
-          </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-amber-100 border-t-0 bg-amber-50 rounded-b-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-amber-800 mb-2">Creating Clear Roles</h4>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Define responsibilities and expectations</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Identify required skills and competencies</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Clarify reporting relationships</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-amber-800 mb-2">Avoiding Role Issues</h4>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Prevent role overlap and duplication</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Address gaps in responsibility</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Adapt roles as project needs change</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Empty state for when there are no roles */}
+          {safeData.roles.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-8 border border-dashed">
+              <User className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No roles defined yet</h3>
+              <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+                Define clear roles with responsibilities and required skills for your project.
+              </p>
+              <Button>
+                <User className="h-4 w-4 mr-2" />
+                Define Your First Role
+              </Button>
+            </Card>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-450px)]">
+              <div className="grid grid-cols-2 gap-6">
+                {safeData.roles.map((role) => (
+                  <Card key={role.id}>
+                    <CardHeader>
+                      <CardTitle>{role.title}</CardTitle>
+                      <CardDescription>{role.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Responsibilities</h4>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {role.responsibilities.map((responsibility, index) => (
+                              <li key={index} className="text-sm">{responsibility}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Required Skills</h4>
+                          <div className="flex flex-wrap gap-1">
+                            {role.requiredSkills.map((skill, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-2">Team Members in this Role</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {safeData.members
+                              .filter(member => member.role === role.title)
+                              .map(member => (
+                                <TooltipProvider key={member.id}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Avatar className="h-8 w-8">
+                                        <AvatarImage src={member.avatarUrl} />
+                                        <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+                                          {getInitials(member.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{member.name}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ))}
+                            {safeData.members.filter(member => member.role === role.title).length === 0 && (
+                              <span className="text-sm text-gray-400">No members assigned</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </TabsContent>
+        
+        {/* RACI Matrix Tab */}
+        <TabsContent value="raci" className="space-y-4">
+          <Collapsible
+            open={expandedHelp.raci}
+            onOpenChange={() => toggleHelp('raci')}
+            className="mb-4"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-green-100 bg-green-50 hover:bg-green-100 text-green-800">
+                <div className="flex items-center">
+                  <ListChecks className="h-4 w-4 mr-2 text-green-600" />
+                  <span className="font-medium">Using the RACI Matrix</span>
+                </div>
+                <ChevronDown className={`h-4 w-4 transform transition-transform ${expandedHelp.raci ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-3 border border-green-100 border-t-0 bg-green-50 rounded-b-md">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold text-green-800 mb-2">RACI Explained</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span><b>R</b>esponsible: Who does the work</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span><b>A</b>ccountable: Who has final authority</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span><b>C</b>onsulted: Whose input is sought</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span><b>I</b>nformed: Who is kept updated</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-green-800 mb-2">RACI Best Practices</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Only one person should be Accountable</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Ensure every task has someone Responsible</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Limit Consulted to avoid bottlenecks</span>
+                    </li>
+                    <li className="flex items-start">
+                      <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0" />
+                      <span>Keep Informed updated efficiently</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Empty state for when there are no RACI items */}
+          {safeData.raci.length === 0 ? (
+            <Card className="flex flex-col items-center justify-center p-8 border border-dashed">
+              <Grid className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No RACI matrix defined</h3>
+              <p className="text-sm text-gray-500 mb-4 text-center max-w-md">
+                Create a RACI matrix to clearly define who is Responsible, Accountable, Consulted, and Informed for project activities.
+              </p>
+              <Button>
+                <Grid className="h-4 w-4 mr-2" />
+                Create RACI Matrix
+              </Button>
+            </Card>
+          ) : (
+            <ScrollArea className="h-[calc(100vh-450px)]">
+              <Table className="border">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-1/4">Activity</TableHead>
+                    {safeData.members.map((member) => (
+                      <TableHead key={member.id} className="text-center w-1/5">
+                        <div className="flex flex-col items-center">
+                          <Avatar className="h-8 w-8 mb-1">
+                            <AvatarImage src={member.avatarUrl} />
+                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+                              {getInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
+                            {member.name}
+                          </span>
+                          <span className="text-xs text-gray-500">{member.role}</span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {safeData.raci.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.activity}</TableCell>
+                      {safeData.members.map((member) => (
+                        <TableCell key={member.id} className="text-center">
+                          {getRaciTypeColor(item.assignments.find(a => a.memberId === member.id)?.type || '')}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
         </TabsContent>
       </Tabs>
     </div>

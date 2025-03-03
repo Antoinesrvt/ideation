@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { 
@@ -29,6 +29,10 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
+import { Info } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ABTestFormProps {
   open: boolean;
@@ -85,6 +89,8 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
   const status = watch('status');
   const showResults = status === 'completed';
 
+  const [showGuidance, setShowGuidance] = useState(true);
+
   const handleFormSubmit = (values: ABTestFormValues) => {
     const test: ABTest = {
       id: initialData?.id || uuidv4(),
@@ -117,17 +123,29 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
       onSubmit={handleFormSubmit}
       submitLabel={isEditing ? "Update" : "Create"}
     >
-      <Card className="bg-blue-50 border-blue-200 mb-4">
-        <CardContent className="pt-4 text-sm text-blue-700">
-          <p className="font-medium mb-2">Effective A/B Testing</p>
-          <ul className="list-disc pl-4 space-y-1">
+      <Collapsible
+        open={showGuidance}
+        onOpenChange={setShowGuidance}
+        className="mb-4"
+      >
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-purple-100 bg-purple-50 hover:bg-purple-100 text-purple-800">
+            <div className="flex items-center">
+              <Info className="h-4 w-4 mr-2 text-purple-600" />
+              <span className="font-medium">Effective A/B Testing</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 transform transition-transform ${showGuidance ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="p-3 border border-purple-100 border-t-0 bg-purple-50 rounded-b-md">
+          <ul className="list-disc pl-4 space-y-1 text-sm text-purple-700">
             <li>Test only one variable at a time for clear results</li>
             <li>Ensure your sample size is large enough to be statistically significant</li>
             <li>Run your test for a sufficient duration (at least one full business cycle)</li>
             <li>Focus on metrics that directly impact your business goals</li>
           </ul>
-        </CardContent>
-      </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <FormField
         control={form.control}

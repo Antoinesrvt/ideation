@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ValidationForm } from '../common/ValidationForm';
-import { X, Plus, HelpCircle } from 'lucide-react';
+import { X, Plus, HelpCircle, Info, CalendarIcon, ChevronDown } from 'lucide-react';
 import { Experiment } from '@/types';
 import {
   Tooltip,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface ExperimentFormProps {
   open: boolean;
@@ -89,6 +90,8 @@ export const ExperimentForm: React.FC<ExperimentFormProps> = ({
   const status = watch('status');
   const showResults = status === 'completed' || status === 'cancelled';
 
+  const [showGuidance, setShowGuidance] = useState(true);
+
   const handleFormSubmit = (values: ExperimentFormValues) => {
     const experiment: Experiment = {
       id: initialData?.id || uuidv4(),
@@ -127,17 +130,29 @@ export const ExperimentForm: React.FC<ExperimentFormProps> = ({
       onSubmit={handleFormSubmit}
       submitLabel={isEditing ? "Update" : "Create"}
     >
-      <Card className="bg-blue-50 border-blue-200 mb-4">
-        <CardContent className="pt-4 text-sm text-blue-700">
-          <p className="font-medium mb-2">What makes a good experiment?</p>
-          <ul className="list-disc pl-4 space-y-1">
+      <Collapsible
+        open={showGuidance}
+        onOpenChange={setShowGuidance}
+        className="mb-4"
+      >
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-blue-100 bg-blue-50 hover:bg-blue-100 text-blue-800">
+            <div className="flex items-center">
+              <Info className="h-4 w-4 mr-2 text-blue-600" />
+              <span className="font-medium">What makes a good experiment?</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 transform transition-transform ${showGuidance ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="p-3 border border-blue-100 border-t-0 bg-blue-50 rounded-b-md">
+          <ul className="list-disc pl-4 space-y-1 text-sm text-blue-700">
             <li>Clear, testable hypothesis that can be proven or disproven</li>
             <li>Specific, measurable success metrics</li>
             <li>Defined timeframe with start and end dates</li>
             <li>Focused on learning, not just proving you're right</li>
           </ul>
-        </CardContent>
-      </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <FormField
         control={form.control}

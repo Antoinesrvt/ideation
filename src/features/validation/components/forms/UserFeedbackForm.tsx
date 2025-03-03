@@ -21,7 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ValidationForm } from '../common/ValidationForm';
 import { Button } from '@/components/ui/button';
-import { X, Plus, HelpCircle } from 'lucide-react';
+import { X, Plus, HelpCircle, Info, ChevronDown } from 'lucide-react';
 import { UserFeedback } from '@/types';
 import {
   Tooltip,
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface UserFeedbackFormProps {
   open: boolean;
@@ -59,6 +60,7 @@ export const UserFeedbackForm: React.FC<UserFeedbackFormProps> = ({
   const isEditing = !!initialData;
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [tagInput, setTagInput] = useState('');
+  const [showGuidance, setShowGuidance] = useState(true);
 
   const form = useForm<UserFeedbackFormValues>({
     defaultValues: {
@@ -111,17 +113,29 @@ export const UserFeedbackForm: React.FC<UserFeedbackFormProps> = ({
       onSubmit={handleFormSubmit}
       submitLabel={isEditing ? "Update" : "Save"}
     >
-      <Card className="bg-blue-50 border-blue-200 mb-4">
-        <CardContent className="pt-4 text-sm text-blue-700">
-          <p className="font-medium mb-2">Effective User Feedback Collection</p>
-          <ul className="list-disc pl-4 space-y-1">
+      <Collapsible
+        open={showGuidance}
+        onOpenChange={setShowGuidance}
+        className="mb-4"
+      >
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="flex w-full justify-between p-2 text-sm border border-amber-100 bg-amber-50 hover:bg-amber-100 text-amber-800">
+            <div className="flex items-center">
+              <Info className="h-4 w-4 mr-2 text-amber-600" />
+              <span className="font-medium">Effective User Feedback Collection</span>
+            </div>
+            <ChevronDown className={`h-4 w-4 transform transition-transform ${showGuidance ? 'rotate-180' : ''}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="p-3 border border-amber-100 border-t-0 bg-amber-50 rounded-b-md">
+          <ul className="list-disc pl-4 space-y-1 text-sm text-amber-700">
             <li>Capture feedback verbatim when possible</li>
             <li>Categorize feedback to identify patterns</li>
             <li>Assess impact to prioritize implementation</li>
             <li>Record your responses to close the feedback loop</li>
           </ul>
-        </CardContent>
-      </Card>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="grid grid-cols-2 gap-4">
         <FormField
