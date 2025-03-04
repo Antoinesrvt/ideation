@@ -4,7 +4,7 @@
 export class StorageService {
   private prefix: string;
 
-  constructor(prefix: string = import.meta.env.VITE_STORAGE_PREFIX || 'app_') {
+  constructor(prefix: string = process.env.NEXT_PUBLIC_STORAGE_PREFIX || 'app_') {
     this.prefix = prefix;
   }
 

@@ -12,7 +12,7 @@ export type JsonCompatible<T> = {
 // Database row types
 export type ProjectRow = Database['public']['Tables']['projects']['Row']
 export type ModuleRow = Database['public']['Tables']['modules']['Row']
-export type ProjectMemberRow = Database['public']['Tables']['project_members']['Row']
+export type ProjectMemberRow = Database['public']['Tables']['team_members']['Row']
 
 // Module types
 export type ModuleType = ModuleRow['type']
@@ -81,8 +81,8 @@ export interface ProjectMember extends ProjectMemberRow {
 // Insert and Update types
 export type ProjectInsertData = Database['public']['Tables']['projects']['Insert']
 export type ProjectUpdateData = Database['public']['Tables']['projects']['Update']
-export type ProjectMemberInsertData = Database['public']['Tables']['project_members']['Insert']
-export type ProjectMemberUpdateData = Database['public']['Tables']['project_members']['Update']
+export type ProjectMemberInsertData = Database['public']['Tables']['team_members']['Insert']
+export type ProjectMemberUpdateData = Database['public']['Tables']['team_members']['Update']
 
 // Type guards
 export function isProject(value: unknown): value is ProjectRow {
