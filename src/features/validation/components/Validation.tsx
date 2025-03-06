@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   Card, 
@@ -50,10 +50,12 @@ import {
 import { ProjectDetails, Experiment, ABTest, UserFeedback, Hypothesis } from '@/types';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { useValidation } from '@/hooks/useValidation';
+import { useProjectStore } from '@/store';
 
 interface ValidationProps {
   data?: ProjectDetails;
-  onUpdate: (data: Partial<ProjectDetails>) => void;
+  onUpdate?: (data: Partial<ProjectDetails>) => void;
 }
 
 interface ValidationData {
@@ -63,7 +65,16 @@ interface ValidationData {
   hypotheses: Hypothesis[];
 }
 
+
+
 export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
+  // Get the current project ID from the store
+  const { currentData } = useProjectStore();
+  const projectId = currentData.project?.id;
+  
+  // Use the validation hook
+  const validationData = useValidation(projectId);
+  
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
@@ -88,8 +99,17 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
     hypotheses: safeData.hypotheses.length
   };
 
+  // Helper function for when onUpdate is not provided
+  const updateData = (updatedData: Partial<ProjectDetails>) => {
+    if (onUpdate) {
+      onUpdate(updatedData);
+    } else {
+      console.log('No onUpdate provided. Would update with:', updatedData);
+    }
+  };
+
   const handleAddExperiment = (experiment: Experiment) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         experiments: [...safeData.experiments, experiment]
@@ -98,7 +118,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleUpdateExperiment = (updatedExperiment: Experiment) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         experiments: safeData.experiments.map(exp => 
@@ -109,7 +129,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleDeleteExperiment = (id: string) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         experiments: safeData.experiments.filter(exp => exp.id !== id)
@@ -118,7 +138,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleAddABTest = (test: ABTest) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         abTests: [...safeData.abTests, test]
@@ -127,7 +147,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleUpdateABTest = (updatedTest: ABTest) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         abTests: safeData.abTests.map(test => 
@@ -138,7 +158,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleDeleteABTest = (id: string) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         abTests: safeData.abTests.filter(test => test.id !== id)
@@ -147,7 +167,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleAddUserFeedback = (feedback: UserFeedback) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         userFeedback: [...safeData.userFeedback, feedback]
@@ -156,7 +176,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleUpdateUserFeedback = (updatedFeedback: UserFeedback) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         userFeedback: safeData.userFeedback.map(feedback => 
@@ -167,7 +187,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleDeleteUserFeedback = (id: string) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         userFeedback: safeData.userFeedback.filter(feedback => feedback.id !== id)
@@ -176,7 +196,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleAddHypothesis = (hypothesis: Hypothesis) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         hypotheses: [...safeData.hypotheses, hypothesis]
@@ -185,7 +205,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleUpdateHypothesis = (updatedHypothesis: Hypothesis) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         hypotheses: safeData.hypotheses.map(hypothesis => 
@@ -196,7 +216,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   };
 
   const handleDeleteHypothesis = (id: string) => {
-    onUpdate({
+    updateData({
       validation: {
         ...safeData,
         hypotheses: safeData.hypotheses.filter(hypothesis => hypothesis.id !== id)
@@ -645,8 +665,6 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
             </Button>
           </div>
 
-
-
           <Collapsible
             open={expandedHelp.learnings}
             onOpenChange={() => toggleHelp('learnings')}
@@ -782,8 +800,6 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               </div>
             </CollapsibleContent>
           </Collapsible>
-
-
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <ExperimentsList

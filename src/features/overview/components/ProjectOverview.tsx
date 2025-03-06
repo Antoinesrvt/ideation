@@ -509,7 +509,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => 
           <CardContent>
             <div className="flex flex-col space-y-4">
               <div>
-                <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-600">Health Score</span>
                   <span className="text-sm font-medium text-blue-600">{projectHealth}%</span>
                 </div>
@@ -666,8 +666,8 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => 
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       {/* Data Visualization Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -696,22 +696,22 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => 
                 <TooltipProvider key={section.id}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <div 
-                        className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer"
-                        onClick={() => setActiveSection(section.id as any)}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="flex items-center">
-                            {section.icon}
-                            <h3 className="font-medium ml-2">{section.name}</h3>
-                          </div>
+                <div 
+                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer"
+                  onClick={() => setActiveSection(section.id as any)}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center">
+                      {section.icon}
+                      <h3 className="font-medium ml-2">{section.name}</h3>
+                    </div>
                           <div className="flex items-center">
                             <span className="text-sm text-blue-600 font-medium mr-2">{completion}%</span>
                             <ChevronRight className="h-4 w-4 text-gray-400" />
                           </div>
-                        </div>
-                        <Progress value={completion} className="h-2 bg-gray-200" />
-                      </div>
+                  </div>
+                  <Progress value={completion} className="h-2 bg-gray-200" />
+                </div>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>Click to view and edit {section.name}</p>

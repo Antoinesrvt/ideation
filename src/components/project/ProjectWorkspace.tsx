@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAppStore } from '@/store';
+import { useProjectStore } from '@/store';
+import { useAIStore } from '@/hooks/useAIStore';
 import { useProject } from '@/hooks/useProject';
 import { Header } from '@/components/project/Header';
 import { Sidebar } from '@/components/project/Sidebar';
 import { BusinessModelCanvas } from '@/features/canvas/components/BusinessModelCanvas';
 import { GRPModel } from '@/features/grp/components/GRPModel';
 import { MarketAnalysis } from '@/features/market/components/MarketAnalysis';
-import { UserFlowDesign } from '@/features/product_design/components/ProductDesign';
+import { ProductDesign } from '@/features/product_design/components/ProductDesign';
 import { ProjectOverview } from '@/features/overview';
 import { DocumentGenerator } from '@/features/documents/components/DocumentGenerator';
 import { ExternalTools } from '@/features/tools/components/ExternalTools';
@@ -20,6 +21,10 @@ import { Button } from '@/components/ui/button';
 import { FinancialProjections } from '@/features/financials/components/FinancialProjections';
 import { TeamManagement } from '@/features/team/components/TeamManagement';
 import { Validation } from '@/features/validation/components/Validation';
+import { AIProjectWrapper } from '@/components/project/AIProjectWrapper';
+import { ProjectState } from '@/store/types';
+// Import Database type for proper typing
+import { Database } from '@/types/database';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -39,131 +44,55 @@ interface ProjectWorkspaceProps {
 export type ActiveSection = 'overview' | 'canvas' | 'grp' | 'market' | 'product-design' | 'validation' | 'financials' | 'team' | 'documents' | 'external-tools';
 
 export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
-  const { project, updateProject } = useProject(projectId);
+  // Get project data from API (will be used for initial loading and syncing)
+  const { project } = useProject(projectId);
+  
+  // Use our store for state management
+  const {
+    currentData,
+    isLoading: storeLoading,
+    error: storeError,
+    setCurrentData,
+    setProject,
+  } = useProjectStore();
+  
+  const { hasStagedChanges, comparisonMode } = useAIStore();
+
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
   
   // Set the current project in the store when it loads
   useEffect(() => {
     if (project.data) {
-      // Update any store data if needed
-      // This would connect to your existing store mechanism
+      // Initialize our store with the project data
+      if (project.data.id) {
+        setProject({
+          id: project.data.id,
+          name: project.data.name,
+          // Handle potential missing description safely
+          description: project.data.description || '',
+          owner_id: project.data.owner_id || '',
+          created_at: project.data.created_at || project.data.lastEdited,
+          updated_at: project.data.updated_at || project.data.lastEdited,
+          is_archived: project.data.is_archived || false,
+          industry: project.data.industry || null,
+          stage: project.data.stage || null,
+          metadata: project.data.metadata || {},
+          created_by: project.data.created_by || null
+        });
+      }
+
+      // The data loading is now handled by useProjectSync in our store
+      // which will load all the required data for each section
     }
-  }, [project.data]);
+  }, [project.data, setProject]);
   
   const handleExport = () => {
     // Export project functionality
     console.log('Exporting project...');
   };
   
-  const handleUpdateCanvas = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          canvas: {
-            ...project.data.canvas,
-            ...updates
-          }
-        }
-      });
-    } else {
-      console.warn('Cannot update canvas: project data is not available');
-      // TODO: Add proper error handling or user notification
-    }
-  };
-  
-  const handleUpdateGRP = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          grpModel: {
-            ...(project.data.grpModel || {}),
-            ...updates
-          }
-        }
-      });
-    } else {
-      console.warn('Cannot update GRP model: project data is not available');
-    }
-  };
-  
-  const handleUpdateMarket = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          marketAnalysis: {
-            ...(project.data.marketAnalysis || {}),
-            ...updates
-          }
-        }
-      });
-    } else {
-      console.warn('Cannot update market analysis: project data is not available');
-    }
-  };
-  
-  const handleUpdateUserFlow = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          userFlow: {
-            ...(project.data.userFlow || {}),
-            ...updates
-          }
-        }
-      });
-    } else {
-      console.warn('Cannot update user flow: project data is not available');
-    }
-  };
-
-  const handleUpdateFinancialProjections = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          financialProjections: {
-            ...(project.data.financialProjections || {}),
-            ...updates
-          }
-        }
-      });
-    }
-  }
-
-  const handleUpdateValidation = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          validation: {
-            ...(project.data.validation || {}),
-            ...updates
-          }
-        }
-      });
-    }
-  }
-
-  const handleUpdateTeam = (updates: any) => {
-    if (project.data) {
-      updateProject({
-        id: project.data.id,
-        data: {
-          team: {
-            ...(project.data.team || {}),
-            ...updates
-          }
-        }
-      });
-    }
-  }
-  
   // Show loading state
-  if (project.isLoading) {
+  if (project.isLoading || storeLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -175,13 +104,14 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   }
   
   // Show error state
-  if (project.error) {
+  if (project.error || storeError) {
+    const errorMessage = project.error?.toString() || storeError?.toString() || 'Unknown error';
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="bg-red-100 text-red-700 p-4 rounded-lg">
             <h1 className="text-xl font-bold">Error loading project</h1>
-            <p className="mt-2">{project.error.toString()}</p>
+            <p className="mt-2">{errorMessage}</p>
             <Button 
               variant="default" 
               className="mt-4"
@@ -195,98 +125,79 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     );
   }
   
+  // Make sure we have project data
+  if (!project.data || !currentData.project) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="bg-yellow-100 text-yellow-700 p-4 rounded-lg">
+            <h1 className="text-xl font-bold">Project not found</h1>
+            <p className="mt-2">The requested project could not be found.</p>
+            <Button 
+              variant="default" 
+              className="mt-4"
+              onClick={() => window.history.back()}
+            >
+              Go Back
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Get project information from our store
+  const projectDetails = currentData.project;
+  
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col w-full h-full min-h-screen bg-gray-50">
         {/* Header */}
-        {/* <Header onExport={handleExport} /> */}
-        
+        <Header onExport={handleExport} />
+
         {/* Main Content */}
         <main className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
-          {project.data && (
-            <Sidebar 
-              projectName={project.data.name}
-              lastEdited={project.data.lastEdited}
-              completion={project.data.completion}
-              activeSection={activeSection}
-              setActiveSection={setActiveSection}
-            />
-          )}
-          
+          <Sidebar
+            projectName={projectDetails.name || ""}
+            lastEdited={projectDetails.updated_at || new Date().toISOString()}
+            completion={project.data.completion || 0}
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+            hasStagedChanges={hasStagedChanges}
+            comparisonMode={comparisonMode}
+          />
+
           {/* Content Area */}
           <div className="flex-1 overflow-auto">
             <ErrorBoundary>
-              {activeSection === 'overview' && project.data && (
-                <ProjectOverview 
-                  project={project.data}
-                />
-              )}
-              
-              {activeSection === 'canvas' && (
-                <BusinessModelCanvas 
-                  data={project.data?.canvas}
-                  onUpdate={handleUpdateCanvas}
-                />
-              )}
-              
-              {activeSection === 'grp' && (
-                <GRPModel 
-                  data={project.data?.grpModel}
-                  onUpdate={handleUpdateGRP}
-                />
-              )}
-              
-              {activeSection === 'market' && (
-                <MarketAnalysis 
-                  data={project.data?.marketAnalysis}
-                  onUpdate={handleUpdateMarket}
-                />
-              )}
-              
-              {activeSection === 'product-design' && (
-                <UserFlowDesign 
-                  data={project.data?.userFlow}
-                  onUpdate={handleUpdateUserFlow}
-                />
-              )}
-              
+              <AIProjectWrapper>
+                {activeSection === "overview" && <ProjectOverview />}
 
-              {activeSection === 'validation' && (
-                <Validation 
-                  data={project.data ?? undefined}
-                  onUpdate={handleUpdateValidation}
-                />
-              )}
+                {activeSection === "canvas" && <BusinessModelCanvas />}
 
-              {activeSection === "financials" && (
-                <FinancialProjections 
-                  data={project.data?.financialProjections}
-                  onUpdate={handleUpdateFinancialProjections}
-                />
-              )}
+                {activeSection === "grp" && <GRPModel />}
 
-              {activeSection === 'team' && (
-                <TeamManagement 
-                  data={project.data?.team}
-                  onUpdate={handleUpdateTeam}
-                />
-              )}
-              
-              {activeSection === 'documents' && project.data && (
-                <DocumentGenerator 
-                  projectId={project.data.id}
-                  documents={project.data.documents || []}
-                />
-              )}
-              
-              {activeSection === 'external-tools' && (
-                <ExternalTools />
-              )}
+                {activeSection === "market" && <MarketAnalysis />}
+
+                {activeSection === "product-design" && <ProductDesign />}
+
+                {activeSection === "validation" && <Validation />}
+
+                {activeSection === "financials" && <FinancialProjections />}
+
+                {activeSection === "team" && <TeamManagement />}
+
+                {activeSection === "documents" && projectDetails && (
+                  <DocumentGenerator projectId={projectDetails.id} />
+                )}
+
+                {activeSection === "external-tools" && <ExternalTools />}
+              </AIProjectWrapper>
             </ErrorBoundary>
           </div>
         </main>
-        
+
         {/* Floating AI Chat */}
         <FloatingAIChat />
       </div>

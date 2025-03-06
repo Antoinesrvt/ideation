@@ -1,0 +1,89 @@
+:root {
+  /* Brand Colors - Refined Palette */
+  --primary-900: #4A0772;
+  --primary-800: #5D0991;
+  --primary-700: #7209B7;
+  --primary-600: #8A2BE2;
+  --primary-500: #9D4EDA;
+  --primary-400: #B57EDC;
+  --primary-300: #C9A0E4;
+  --primary-200: #E2C6F1;
+  --primary-100: #F3E5FB;
+  
+  --secondary-900: #0D5D6A;
+  --secondary-800: #0E7C8E;
+  --secondary-700: #1399B0;
+  --secondary-600: #30B3CC;
+  --secondary-500: #4CC9F0;
+  --secondary-400: #65D4F5;
+  --secondary-300: #89E0F8;
+  --secondary-200: #ADEEF9;
+  --secondary-100: #D5F5FD;
+  
+  --accent-900: #910838;
+  --accent-800: #B2144C;
+  --accent-700: #D1185D;
+  --accent-600: #F72585;
+  --accent-500: #F8539B;
+  --accent-400: #FA7FB6;
+  --accent-300: #FCADD1;
+  --accent-200: #FEDCEA;
+  --accent-100: #FFF0F7;
+  
+  --dark-900: #0F0F1A;
+  --dark-800: #1A1A2A;
+  --dark-700: #242445;
+  --dark-600: #36365A;
+  --dark-500: #484872;
+  --dark-400: #6B6B90;
+  --dark-300: #9090AE;
+  --dark-200: #BCBCCE;
+  --dark-100: #E5E5ED;
+  
+  --white: #FFFFFF;
+  --off-white: #F9FAFF;
+  
+  /* Typography */
+  --heading-font: 'Outfit', sans-serif;
+  --body-font: 'Inter', sans-serif;
+  --mono-font: 'JetBrains Mono', monospace;
+  
+  /* Spacing */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 10rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-2xl: 3rem;
+  --radius-full: 10000px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.16);
+  --shadow-xl: 0 32px 64px rgba(0, 0, 0, 0.2);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--primary-700), var(--primary-600));
+  --gradient-secondary: linear-gradient(135deg, var(--secondary-700), var(--secondary-500));
+  --gradient-accent: linear-gradient(135deg, var(--accent-700), var(--accent-500));
+  --gradient-dark: linear-gradient(135deg, var(--dark-800), var(--dark-700));
+  --gradient-mixed: linear-gradient(135deg, var(--primary-700), var(--accent-700));
+  
+  /* Animations */
+  --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-medium: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-slow: 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-bounce: 0.5s cubic-bezier(0.5, -0.5, 0.1, 1.5);
+} 

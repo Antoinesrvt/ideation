@@ -1,15 +1,41 @@
 import { useFeatureData } from './use-feature-data';
-import { useProject } from './useProject';
-import { BusinessModelCanvas, CanvasItem } from '@/types';
 import { useCallback } from 'react';
+import { Database } from '@/types/database';
+
+// Database types for canvas tables
+type CanvasSection = Database['public']['Tables']['canvas_sections']['Row'];
+type CanvasItem = Database['public']['Tables']['canvas_items']['Row'];
+
+// Combined type for all canvas data
+type BusinessModelCanvas = {
+  keyPartners: CanvasItem[];
+  keyActivities: CanvasItem[];
+  keyResources: CanvasItem[];
+  valuePropositions: CanvasItem[];
+  customerRelationships: CanvasItem[];
+  channels: CanvasItem[];
+  customerSegments: CanvasItem[];
+  costStructure: CanvasItem[];
+  revenueStreams: CanvasItem[];
+};
+
+// Base type for any canvas item
+type BaseItem = {
+  id: string;
+  project_id: string | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type CanvasModelItem = BaseItem & Omit<CanvasItem, keyof BaseItem>;
 
 /**
  * Hook for managing business model canvas data in a project
  * @param projectId - The ID of the current project
  */
 export function useBusinessModel(projectId: string | undefined) {
-  // Use the enhanced useFeatureData hook with proper typing
-  const featureData = useFeatureData<BusinessModelCanvas, CanvasItem>(
+  const featureData = useFeatureData<BusinessModelCanvas, CanvasModelItem>(
     projectId,
     'canvas',
     {
@@ -23,37 +49,36 @@ export function useBusinessModel(projectId: string | undefined) {
         customerSegments: [],
         costStructure: [],
         revenueStreams: []
-      },
-      // Optional related data we might want to include
-      relatedData: [
-        {
-          name: 'marketResearch',
-          feature: 'marketAnalysis',
-          property: 'customerInsights.personas',
-          transform: (segments) => segments?.filter((s: any) => s.validated)
-        }
-      ]
+      }
     }
   );
 
-  // Retrieve the useProject hook for directly updating the full canvas
-  const { updateFeatureData } = useProject(projectId);
-
   // Add an item to a specific section of the canvas
-  const addBlockItem = useCallback((
+  const addBlockItem = useCallback(async (
     section: keyof BusinessModelCanvas,
-    item: Omit<CanvasItem, 'id'>
+    item: Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'project_id'>
   ) => {
-    return featureData.addItem(item, section as string);
-  }, [featureData]);
+    if (!projectId) throw new Error('Project ID is required');
+    
+    // Convert section name to section_type format
+    const sectionType = section.replace(/([A-Z])/g, '_$1').toLowerCase();
+    
+    return featureData.addItem({
+      ...item,
+      project_id: projectId,
+      created_by: null,
+      created_at: null,
+      updated_at: null
+    }, section);
+  }, [featureData, projectId]);
 
   // Update an item in a specific section of the canvas
   const updateBlockItem = useCallback((
     section: keyof BusinessModelCanvas,
     id: string,
-    data: Partial<CanvasItem>
+    data: Partial<Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'project_id'>>
   ) => {
-    return featureData.updateItem(id, data, section as string);
+    return featureData.updateItem(id, data as Partial<CanvasModelItem>, section);
   }, [featureData]);
 
   // Delete an item from a specific section of the canvas
@@ -61,7 +86,7 @@ export function useBusinessModel(projectId: string | undefined) {
     section: keyof BusinessModelCanvas,
     id: string
   ) => {
-    return featureData.deleteItem(id, section as string);
+    return featureData.deleteItem(id, section);
   }, [featureData]);
 
   // Move an item between sections
@@ -70,7 +95,7 @@ export function useBusinessModel(projectId: string | undefined) {
     toSection: keyof BusinessModelCanvas,
     itemId: string
   ) => {
-    if (!featureData.data) return null;
+    if (!projectId || !featureData.data) return null;
     
     // Find the block to move
     const blockToMove = featureData.data[fromSection]?.find(
@@ -79,38 +104,26 @@ export function useBusinessModel(projectId: string | undefined) {
     
     if (!blockToMove) return null;
     
-    // Clone the item with updated section info
-    const updatedBlock = {
+    // Convert section name to section_type format
+    const toSectionType = toSection.replace(/([A-Z])/g, '_$1').toLowerCase();
+    
+    // Create a new item in the target section
+    const newItem = {
       ...blockToMove,
-      section: toSection
+      project_id: projectId,
+      created_by: null,
+      created_at: null,
+      updated_at: null
     };
     
-    // Add to the new section
-    await featureData.addItem(updatedBlock, toSection as string);
+    // Add to new section
+    await featureData.addItem(newItem, toSection);
     
-    // Remove from the old section
-    await featureData.deleteItem(itemId, fromSection as string);
+    // Remove from old section
+    await featureData.deleteItem(itemId, fromSection);
     
-    return updatedBlock;
-  }, [featureData]);
-
-  // Update the entire canvas at once
-  const updateEntireCanvas = useCallback(async (newCanvas: Partial<BusinessModelCanvas>) => {
-    if (!projectId) return null;
-    
-    const updatedCanvas = {
-      ...featureData.data,
-      ...newCanvas
-    };
-    
-    await updateFeatureData({
-      id: projectId,
-      feature: 'canvas',
-      data: updatedCanvas
-    });
-    
-    return updatedCanvas;
-  }, [projectId, featureData.data, updateFeatureData]);
+    return newItem;
+  }, [featureData, projectId]);
 
   // Get all items across the entire canvas
   const getAllCanvasItems = useCallback(() => {
@@ -119,10 +132,9 @@ export function useBusinessModel(projectId: string | undefined) {
     const allItems: CanvasItem[] = [];
     const canvas = featureData.data;
     
-    // Collect all items from each section
-    Object.keys(canvas).forEach(key => {
-      if (Array.isArray(canvas[key as keyof BusinessModelCanvas])) {
-        allItems.push(...(canvas[key as keyof BusinessModelCanvas] as CanvasItem[]));
+    Object.values(canvas).forEach(items => {
+      if (Array.isArray(items)) {
+        allItems.push(...items);
       }
     });
     
@@ -137,7 +149,6 @@ export function useBusinessModel(projectId: string | undefined) {
     const sectionCounts: Record<string, number> = {};
     let totalItems = 0;
     
-    // Count items in each section
     Object.keys(canvas).forEach(key => {
       if (Array.isArray(canvas[key as keyof BusinessModelCanvas])) {
         const count = (canvas[key as keyof BusinessModelCanvas] as CanvasItem[]).length;
@@ -146,14 +157,12 @@ export function useBusinessModel(projectId: string | undefined) {
       }
     });
     
-    // Calculate section with most and least items
     const sections = Object.keys(sectionCounts);
     const mostPopulatedSection = sections.reduce((a, b) => 
       sectionCounts[a] > sectionCounts[b] ? a : b, sections[0]);
     const leastPopulatedSection = sections.reduce((a, b) => 
       sectionCounts[a] < sectionCounts[b] ? a : b, sections[0]);
     
-    // Get counts by completion status
     const completedItems = getAllCanvasItems().filter(item => item.checked).length;
     const incompleteItems = totalItems - completedItems;
     
@@ -171,33 +180,13 @@ export function useBusinessModel(projectId: string | undefined) {
   }, [featureData.data, getAllCanvasItems]);
 
   return {
-    // Raw data
-    canvas: featureData.data,
+    data: featureData.data,
     isLoading: featureData.isLoading,
     error: featureData.error,
-    
-    // Related data
-    relatedMarketSegments: featureData.relatedData?.marketResearch || [],
-    
-    // Section data getters
-    keyPartners: featureData.data?.keyPartners || [],
-    keyActivities: featureData.data?.keyActivities || [],
-    keyResources: featureData.data?.keyResources || [],
-    valuePropositions: featureData.data?.valuePropositions || [],
-    customerRelationships: featureData.data?.customerRelationships || [],
-    channels: featureData.data?.channels || [],
-    customerSegments: featureData.data?.customerSegments || [],
-    costStructure: featureData.data?.costStructure || [],
-    revenueStreams: featureData.data?.revenueStreams || [],
-    
-    // Operations
     addBlockItem,
     updateBlockItem,
     deleteBlockItem,
     moveBlockItem,
-    updateEntireCanvas,
-    
-    // Analytics
     getAllCanvasItems,
     getCanvasAnalytics
   };

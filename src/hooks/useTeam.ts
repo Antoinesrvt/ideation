@@ -1,183 +1,162 @@
 import { useFeatureData } from './use-feature-data';
-import { TeamData, TeamMember, Task } from '@/features/team/components/TeamManagement';
 import { useCallback } from 'react';
+import { Database } from '@/types/database';
+
+// Database types for team tables
+type TeamMember = Database['public']['Tables']['team_members']['Row'];
+type TeamTask = Database['public']['Tables']['team_tasks']['Row'];
+type TeamResponsibilityMatrix = Database['public']['Tables']['team_responsibility_matrix']['Row'];
+
+// Combined type for all team data
+type TeamData = {
+  members: TeamMember[];
+  tasks: TeamTask[];
+  responsibilities: TeamResponsibilityMatrix[];
+};
+
+// Base type for any team item
+type BaseItem = {
+  id: string;
+  created_at: string | null;
+  updated_at: string | null;
+  project_id: string | null;
+  created_by: string | null;
+};
+
+// Type for any team item
+type TeamItem = BaseItem & (
+  | Omit<TeamMember, keyof BaseItem>
+  | Omit<TeamTask, keyof BaseItem>
+  | Omit<TeamResponsibilityMatrix, keyof BaseItem>
+);
 
 /**
  * Hook for managing team data in a project
  * @param projectId - The ID of the current project
  */
 export function useTeam(projectId: string | undefined) {
-  // Use the enhanced useFeatureData hook with proper typing
-  const featureData = useFeatureData<TeamData, { id: string } & Record<string, any>>(
+  const featureData = useFeatureData<TeamData, TeamItem>(
     projectId,
     'team',
     {
       defaultData: {
         members: [],
-        roles: [],
         tasks: [],
-        raci: []
+        responsibilities: []
       }
     }
   );
 
-  // Team Members operations
-  const addTeamMember = useCallback((member: Omit<TeamMember, 'id'>) => {
-    return featureData.addItem(member, 'members');
-  }, [featureData]);
+  // ===== Team Members =====
+  const addTeamMember = useCallback(async (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...member,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as TeamItem, 'members');
+  }, [featureData, projectId]);
 
-  const updateTeamMember = useCallback((id: string, data: Partial<TeamMember>) => {
-    return featureData.updateItem(id, data, 'members');
+  const updateTeamMember = useCallback((id: string, data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<TeamItem>, 'members');
   }, [featureData]);
 
   const deleteTeamMember = useCallback((id: string) => {
     return featureData.deleteItem(id, 'members');
   }, [featureData]);
 
-  // Roles operations
-  const addRole = useCallback((role: Omit<any, 'id'>) => {
-    return featureData.addItem(role, 'roles');
+  // ===== Team Tasks =====
+  const addTeamTask = useCallback(async (task: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...task,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as TeamItem, 'tasks');
+  }, [featureData, projectId]);
+
+  const updateTeamTask = useCallback((id: string, data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<TeamItem>, 'tasks');
   }, [featureData]);
 
-  const updateRole = useCallback((id: string, data: Partial<any>) => {
-    return featureData.updateItem(id, data, 'roles');
-  }, [featureData]);
-
-  const deleteRole = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'roles');
-  }, [featureData]);
-
-  // Tasks operations
-  const addTask = useCallback((task: Omit<Task, 'id'>) => {
-    return featureData.addItem(task, 'tasks');
-  }, [featureData]);
-
-  const updateTask = useCallback((id: string, data: Partial<Task>) => {
-    return featureData.updateItem(id, data, 'tasks');
-  }, [featureData]);
-
-  const deleteTask = useCallback((id: string) => {
+  const deleteTeamTask = useCallback((id: string) => {
     return featureData.deleteItem(id, 'tasks');
   }, [featureData]);
 
-  // RACI Matrix operations
-  const addRaciItem = useCallback((item: Omit<any, 'id'>) => {
-    return featureData.addItem(item, 'raci');
+  // ===== Team Responsibility Matrix =====
+  const addTeamResponsibility = useCallback(async (responsibility: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...responsibility,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as TeamItem, 'responsibilities');
+  }, [featureData, projectId]);
+
+  const updateTeamResponsibility = useCallback((id: string, data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<TeamItem>, 'responsibilities');
   }, [featureData]);
 
-  const updateRaciItem = useCallback((id: string, data: Partial<any>) => {
-    return featureData.updateItem(id, data, 'raci');
-  }, [featureData]);
-
-  const deleteRaciItem = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'raci');
+  const deleteTeamResponsibility = useCallback((id: string) => {
+    return featureData.deleteItem(id, 'responsibilities');
   }, [featureData]);
 
   // Advanced operations
+  const getTeamStats = useCallback(() => {
+    const { members, tasks } = featureData.data || { members: [], tasks: [] };
+    
+    const totalMembers = members.length;
+    const totalTasks = tasks.length;
+    const tasksPerMember = totalMembers > 0 ? totalTasks / totalMembers : 0;
+    
+    const tasksByStatus = tasks.reduce((acc, task) => {
+      const status = task.status || 'not-started';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalMembers,
+      totalTasks,
+      tasksPerMember,
+      tasksByStatus
+    };
+  }, [featureData.data]);
+
   const getTeamMemberTasks = useCallback((memberId: string) => {
-    const { tasks = [] } = featureData.data || { tasks: [] };
-    return tasks.filter((task: Task) => task.assignedTo.includes(memberId));
-  }, [featureData.data]);
-
-  const getTasksByStatus = useCallback(() => {
-    const { tasks = [] } = featureData.data || { tasks: [] };
-    const result: Record<string, Task[]> = {
-      not_started: [],
-      in_progress: [],
-      completed: [],
-      blocked: []
-    };
-
-    tasks.forEach((task: Task) => {
-      if (task.status in result) {
-        result[task.status].push(task);
-      } else {
-        result.not_started.push(task);
-      }
-    });
-
-    return result;
-  }, [featureData.data]);
-
-  const getTeamProgress = useCallback(() => {
-    const { tasks = [] } = featureData.data || { tasks: [] };
-    
-    if (tasks.length === 0) return 0;
-    
-    const completedTasks = tasks.filter((task: Task) => task.status === 'completed').length;
-    return (completedTasks / tasks.length) * 100;
-  }, [featureData.data]);
-
-  const getResponsibilityMatrix = useCallback(() => {
-    const { members = [], tasks = [], raci = [] } = featureData.data || { 
-      members: [], 
-      tasks: [], 
-      raci: [] 
-    };
-    
-    // Create a matrix of member IDs × tasks with RACI values
-    const matrix: Record<string, Record<string, string>> = {};
-    
-    members.forEach((member: TeamMember) => {
-      matrix[member.id] = {};
-      
-      tasks.forEach((task: Task) => {
-        // Default to empty
-        matrix[member.id][task.id] = '';
-        
-        // Check if task is assigned directly to member
-        if (task.assignedTo.includes(member.id)) {
-          matrix[member.id][task.id] = 'responsible';
-        }
-      });
-    });
-    
-    // Apply RACI assignments
-    raci.forEach((item: any) => {
-      item.assignments.forEach((assignment: any) => {
-        if (matrix[assignment.memberId] && matrix[assignment.memberId][item.activity]) {
-          matrix[assignment.memberId][item.activity] = assignment.type;
-        }
-      });
-    });
-    
-    return matrix;
+    const { tasks } = featureData.data || { tasks: [] };
+    return tasks.filter(task => task.team_member_id === memberId);
   }, [featureData.data]);
 
   return {
     // Raw data
-    team: featureData.data,
+    data: featureData.data,
     isLoading: featureData.isLoading,
     error: featureData.error,
     
-    // Team members
+    // Team Members
     members: featureData.data?.members || [],
     addTeamMember,
     updateTeamMember,
     deleteTeamMember,
     
-    // Roles
-    roles: featureData.data?.roles || [],
-    addRole,
-    updateRole,
-    deleteRole,
-    
-    // Tasks
+    // Team Tasks
     tasks: featureData.data?.tasks || [],
-    addTask,
-    updateTask,
-    deleteTask,
+    addTeamTask,
+    updateTeamTask,
+    deleteTeamTask,
     
-    // RACI Matrix
-    raci: featureData.data?.raci || [],
-    addRaciItem,
-    updateRaciItem,
-    deleteRaciItem,
+    // Team Responsibility Matrix
+    responsibilities: featureData.data?.responsibilities || [],
+    addTeamResponsibility,
+    updateTeamResponsibility,
+    deleteTeamResponsibility,
     
     // Advanced operations
+    getTeamStats,
     getTeamMemberTasks,
-    getTasksByStatus,
-    getTeamProgress,
-    getResponsibilityMatrix
   };
 } 

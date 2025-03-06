@@ -20,17 +20,20 @@ import {
 
 interface DocumentGeneratorProps {
   projectId: string;
-  documents: Document[];
+  documents?: Document[];
 }
 
 export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
   projectId,
-  documents
+  documents: propDocuments
 }) => {
-  const { generateDocument, deleteDocument } = useDocuments(projectId);
+  const { documents: hookDocuments, generateDocument, deleteDocument } = useDocuments(projectId);
   const [generating, setGenerating] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState<{[key: string]: boolean}>({});
   
+  // Use provided documents from props if available, otherwise use the ones from the hook
+  const documents = propDocuments || hookDocuments.data || [];
+
   const handleGenerateDocument = (type: 'business-plan' | 'pitch-deck' | 'financial-projections') => {
     setGenerating(type);
     generateDocument({ projectId, type });

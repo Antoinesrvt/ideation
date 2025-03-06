@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSupabase } from '@/context/supabase-context'
 import { ModuleType } from '@/types/project'
-import { Tables } from '@/types/database'
+import { Database } from '@/types/database'
 
-export type DocumentTemplate = Tables['document_templates']['Row']
+export type DocumentTemplate = Database['public']['Tables']['document_templates']['Row']
 
 export function useTemplates(moduleType: ModuleType) {
   const { supabase } = useSupabase()

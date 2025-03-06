@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Tabs,
   TabsContent,
@@ -77,6 +77,8 @@ import {
 } from '@/components/ui/tooltip';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useTeam } from '@/hooks/useTeam';
+import { useProjectStore } from '@/store';
 
 // Types for team data
 export interface TeamData {
@@ -126,203 +128,75 @@ interface RaciAssignment {
   type: 'responsible' | 'accountable' | 'consulted' | 'informed';
 }
 
-interface TeamManagementProps {
-  data?: TeamData;
-  onUpdate: (data: Partial<TeamData>) => void;
+// Helper function to map database team members to UI team members
+function mapDBTeamMembersToUI(dbMembers: any[]): TeamMember[] {
+  return dbMembers.map(member => ({
+    id: member.id,
+    name: member.name || '',
+    email: member.contact_info?.email || '',
+    role: member.role || '',
+    avatarUrl: member.avatar_url || undefined,
+    skills: member.expertise || [],
+    tasksAssigned: []
+  }));
 }
 
-// Sample data generator
-const generateSampleData = (): TeamData => {
-  return {
-    members: [
-      { 
-        id: '1', 
-        name: 'Alex Johnson', 
-        email: 'alex@example.com', 
-        role: 'Project Manager', 
-        avatarUrl: '', 
-        skills: ['Leadership', 'Risk Management', 'Planning'],
-        tasksAssigned: ['1', '4'] 
-      },
-      { 
-        id: '2', 
-        name: 'Sam Williams', 
-        email: 'sam@example.com', 
-        role: 'UI/UX Designer', 
-        avatarUrl: '', 
-        skills: ['UI Design', 'Figma', 'User Research'],
-        tasksAssigned: ['2'] 
-      },
-      { 
-        id: '3', 
-        name: 'Jordan Lee', 
-        email: 'jordan@example.com', 
-        role: 'Full Stack Developer', 
-        avatarUrl: '', 
-        skills: ['React', 'Node.js', 'TypeScript'],
-        tasksAssigned: ['3'] 
-      },
-      { 
-        id: '4', 
-        name: 'Taylor Smith', 
-        email: 'taylor@example.com', 
-        role: 'Product Owner', 
-        avatarUrl: '', 
-        skills: ['Product Strategy', 'Market Analysis', 'Stakeholder Management'],
-        tasksAssigned: ['5'] 
-      },
-    ],
-    roles: [
-      {
-        id: '1',
-        title: 'Project Manager',
-        description: 'Oversees the entire project execution and delivery',
-        responsibilities: [
-          'Create and manage project plans',
-          'Facilitate team meetings',
-          'Manage risks and issues',
-          'Track progress and report to stakeholders'
-        ],
-        requiredSkills: ['Leadership', 'Risk Management', 'Planning', 'Communication']
-      },
-      {
-        id: '2',
-        title: 'UI/UX Designer',
-        description: 'Creates the visual design and user experience',
-        responsibilities: [
-          'Design user interfaces',
-          'Create wireframes and prototypes',
-          'Conduct user research',
-          'Maintain design system'
-        ],
-        requiredSkills: ['UI Design', 'Figma', 'User Research', 'Creative Thinking']
-      },
-      {
-        id: '3',
-        title: 'Full Stack Developer',
-        description: 'Builds and maintains both frontend and backend systems',
-        responsibilities: [
-          'Develop frontend components',
-          'Implement APIs and backend services',
-          'Write tests and documentation',
-          'Review code'
-        ],
-        requiredSkills: ['React', 'Node.js', 'TypeScript', 'Git']
-      },
-      {
-        id: '4',
-        title: 'Product Owner',
-        description: 'Represents user needs and business requirements',
-        responsibilities: [
-          'Define product roadmap',
-          'Prioritize backlog items',
-          'Validate product increments',
-          'Engage with stakeholders'
-        ],
-        requiredSkills: ['Product Strategy', 'Market Analysis', 'Stakeholder Management']
-      },
-    ],
-    tasks: [
-      {
-        id: '1',
-        title: 'Project Plan Creation',
-        description: 'Create a detailed project plan with milestones and deliverables',
-        assignedTo: ['1'],
-        dueDate: '2023-12-31',
-        status: 'in_progress',
-        priority: 'high',
-        progress: 40
-      },
-      {
-        id: '2',
-        title: 'Design System Development',
-        description: 'Create a comprehensive design system for the application',
-        assignedTo: ['2'],
-        dueDate: '2023-12-15',
-        status: 'in_progress',
-        priority: 'high',
-        progress: 60
-      },
-      {
-        id: '3',
-        title: 'API Implementation',
-        description: 'Implement backend APIs for the application',
-        assignedTo: ['3'],
-        dueDate: '2023-12-20',
-        status: 'not_started',
-        priority: 'medium',
-        progress: 0
-      },
-      {
-        id: '4',
-        title: 'Team Weekly Sync',
-        description: 'Facilitate weekly team synchronization meeting',
-        assignedTo: ['1'],
-        dueDate: '2023-12-10',
-        status: 'not_started',
-        priority: 'medium',
-        progress: 0
-      },
-      {
-        id: '5',
-        title: 'Product Requirements Documentation',
-        description: 'Document detailed product requirements',
-        assignedTo: ['4'],
-        dueDate: '2023-12-05',
-        status: 'completed',
-        priority: 'high',
-        progress: 100
-      },
-    ],
-    raci: [
-      {
-        id: '1',
-        activity: 'Project Planning',
-        assignments: [
-          { memberId: '1', type: 'responsible' },
-          { memberId: '4', type: 'accountable' },
-          { memberId: '2', type: 'consulted' },
-          { memberId: '3', type: 'consulted' }
-        ]
-      },
-      {
-        id: '2',
-        activity: 'UI/UX Design',
-        assignments: [
-          { memberId: '2', type: 'responsible' },
-          { memberId: '1', type: 'accountable' },
-          { memberId: '4', type: 'consulted' },
-          { memberId: '3', type: 'informed' }
-        ]
-      },
-      {
-        id: '3',
-        activity: 'Backend Development',
-        assignments: [
-          { memberId: '3', type: 'responsible' },
-          { memberId: '1', type: 'accountable' },
-          { memberId: '2', type: 'informed' },
-          { memberId: '4', type: 'informed' }
-        ]
-      },
-      {
-        id: '4',
-        activity: 'Product Release',
-        assignments: [
-          { memberId: '1', type: 'responsible' },
-          { memberId: '4', type: 'accountable' },
-          { memberId: '2', type: 'consulted' },
-          { memberId: '3', type: 'consulted' }
-        ]
-      },
-    ]
-  };
-};
+// Helper function to map database tasks to UI tasks
+function mapDBTasksToUI(dbTasks: any[]): Task[] {
+  return dbTasks.map(task => ({
+    id: task.id,
+    title: task.title || '',
+    description: task.description || '',
+    assignedTo: task.team_member_id || [],
+    dueDate: task.due_date || new Date().toISOString(),
+    status: task.status || 'not_started',
+    progress: task.progress || 0,
+    priority: task.priority || 'medium'
+  }));
+}
+
+// Helper function to map database responsibilities to UI roles
+function mapDBResponsibilitiesToRoles(responsibilities: any[]): Role[] {
+  // This is a simplified mapping, you may need to adapt based on your data structure
+  const uniqueRoles = new Map<string, Role>();
+  
+  responsibilities.forEach(resp => {
+    if (resp.role && !uniqueRoles.has(resp.role)) {
+      uniqueRoles.set(resp.role, {
+        id: resp.id,
+        title: resp.role,
+        description: resp.description || '',
+        responsibilities: [resp.responsibility].filter(Boolean),
+        requiredSkills: resp.required_skills || []
+      });
+    } else if (resp.role && uniqueRoles.has(resp.role)) {
+      const role = uniqueRoles.get(resp.role);
+      if (role && resp.responsibility) {
+        role.responsibilities.push(resp.responsibility);
+      }
+    }
+  });
+  
+  return Array.from(uniqueRoles.values());
+}
+
+interface TeamManagementProps {
+  data?: TeamData;
+  onUpdate?: (data: Partial<TeamData>) => void;
+}
+
 
 export const TeamManagement: React.FC<TeamManagementProps> = ({
   data,
   onUpdate
 }) => {
+  // Get the current project ID from the store
+  const { currentData } = useProjectStore();
+  const projectId = currentData.project?.id;
+  
+  // Use the hook if no onUpdate provided
+  const teamData = useTeam(projectId);
+  
   const [newMemberDialogOpen, setNewMemberDialogOpen] = useState(false);
   const [newTaskDialogOpen, setNewTaskDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('members');
@@ -340,13 +214,39 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     raci: false
   });
   
-  // Ensure we have default values if data is undefined
-  const safeData: TeamData = {
-    members: data?.members || [],
-    roles: data?.roles || [],
-    tasks: data?.tasks || [],
-    raci: data?.raci || []
+  // Map database data to UI data
+  const hookData: TeamData = {
+    members: mapDBTeamMembersToUI(teamData.members || []),
+    tasks: mapDBTasksToUI(teamData.tasks || []),
+    roles: mapDBResponsibilitiesToRoles(teamData.responsibilities || []),
+    raci: [] // Initialize empty RACI data
   };
+  
+  // Ensure we have default values if data is undefined
+  const safeData: TeamData = data || hookData;
+  
+  // Function to handle updates when onUpdate is not provided
+  const handleDataUpdate = useCallback((updatedData: Partial<TeamData>) => {
+    if (onUpdate) {
+      onUpdate(updatedData);
+    } else if (projectId) {
+      // Handle updates using the hook functions
+      // This is a simplified implementation
+      if (updatedData.members) {
+        // For simplicity, we're not handling complex diff updates here
+        console.log('Would update members:', updatedData.members);
+      }
+      if (updatedData.tasks) {
+        console.log('Would update tasks:', updatedData.tasks);
+      }
+      if (updatedData.roles) {
+        console.log('Would update roles:', updatedData.roles);
+      }
+      if (updatedData.raci) {
+        console.log('Would update raci:', updatedData.raci);
+      }
+    }
+  }, [onUpdate, projectId]);
 
   // Calculate team statistics
   const teamStats = useMemo(() => {

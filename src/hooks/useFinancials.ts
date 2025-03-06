@@ -1,222 +1,197 @@
 import { useFeatureData } from './use-feature-data';
-import { useProject } from './useProject';
-import { FinancialData } from '@/features/financials/components/FinancialProjections';
 import { useCallback } from 'react';
+import { Database } from '@/types/database';
+
+// Database types for financial tables
+type RevenueStream = Database['public']['Tables']['financial_revenue_streams']['Row'];
+type CostStructure = Database['public']['Tables']['financial_cost_structure']['Row'];
+type PricingStrategy = Database['public']['Tables']['financial_pricing_strategies']['Row'];
+type FinancialProjection = Database['public']['Tables']['financial_projections']['Row'];
+
+// Combined type for all financial data
+type FinancialData = {
+  revenueStreams: RevenueStream[];
+  costStructure: CostStructure[];
+  pricingStrategies: PricingStrategy[];
+  projections: FinancialProjection[];
+};
+
+// Base type for any financial item
+type BaseItem = {
+  id: string;
+  created_at: string | null;
+  updated_at: string | null;
+  project_id: string | null;
+  created_by: string | null;
+};
+
+// Type for any financial item
+type FinancialItem = BaseItem & (
+  | Omit<RevenueStream, keyof BaseItem>
+  | Omit<CostStructure, keyof BaseItem>
+  | Omit<PricingStrategy, keyof BaseItem>
+  | Omit<FinancialProjection, keyof BaseItem>
+);
 
 /**
- * Hook for managing financial projection data in a project
+ * Hook for managing financial data in a project
  * @param projectId - The ID of the current project
  */
 export function useFinancials(projectId: string | undefined) {
-  // Use the enhanced useFeatureData hook with proper typing
-  const featureData = useFeatureData<FinancialData, 
-    { id: string } & Record<string, any>>(
+  const featureData = useFeatureData<FinancialData, FinancialItem>(
     projectId,
     'financialProjections',
     {
       defaultData: {
-        revenue: {
-          forecasts: [],
-          assumptions: []
-        },
-        costs: {
-          fixedCosts: [],
-          variableCosts: []
-        },
-        pricing: {
-          strategies: [],
-          competitorPrices: []
-        },
-        breakeven: {
-          unitSellingPrice: 0,
-          unitVariableCost: 0,
-          fixedCosts: 0
-        }
-      },
-      // Optional related data for financial context
-      relatedData: [
-        {
-          name: 'customerSegments',
-          feature: 'canvas',
-          property: 'customerSegments'
-        },
-        {
-          name: 'revenueStreams',
-          feature: 'canvas',
-          property: 'revenueStreams'
-        }
-      ]
+        revenueStreams: [],
+        costStructure: [],
+        pricingStrategies: [],
+        projections: []
+      }
     }
   );
 
-  // Revenue operations
-  const addRevenueForecast = useCallback((forecast: Omit<any, 'id'>) => {
-    return featureData.addItem(forecast, 'revenue.forecasts');
+  // ===== Revenue Streams =====
+  const addRevenueStream = useCallback(async (stream: Omit<RevenueStream, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...stream,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as FinancialItem, 'revenueStreams');
+  }, [featureData, projectId]);
+
+  const updateRevenueStream = useCallback((id: string, data: Partial<Omit<RevenueStream, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<FinancialItem>, 'revenueStreams');
   }, [featureData]);
 
-  const updateRevenueForecast = useCallback((id: string, data: Partial<any>) => {
-    return featureData.updateItem(id, data, 'revenue.forecasts');
+  const deleteRevenueStream = useCallback((id: string) => {
+    return featureData.deleteItem(id, 'revenueStreams');
   }, [featureData]);
 
-  const deleteRevenueForecast = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'revenue.forecasts');
+  // ===== Cost Structure =====
+  const addCostStructure = useCallback(async (cost: Omit<CostStructure, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...cost,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as FinancialItem, 'costStructure');
+  }, [featureData, projectId]);
+
+  const updateCostStructure = useCallback((id: string, data: Partial<Omit<CostStructure, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<FinancialItem>, 'costStructure');
   }, [featureData]);
 
-  const addRevenueAssumption = useCallback((assumption: Omit<any, 'id'>) => {
-    return featureData.addItem(assumption, 'revenue.assumptions');
+  const deleteCostStructure = useCallback((id: string) => {
+    return featureData.deleteItem(id, 'costStructure');
   }, [featureData]);
 
-  // Cost operations
-  const addFixedCost = useCallback((cost: Omit<any, 'id'>) => {
-    return featureData.addItem(cost, 'costs.fixedCosts');
-  }, [featureData]);
+  // ===== Pricing Strategies =====
+  const addPricingStrategy = useCallback(async (strategy: Omit<PricingStrategy, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...strategy,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as FinancialItem, 'pricingStrategies');
+  }, [featureData, projectId]);
 
-  const updateFixedCost = useCallback((id: string, data: Partial<any>) => {
-    return featureData.updateItem(id, data, 'costs.fixedCosts');
-  }, [featureData]);
-
-  const deleteFixedCost = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'costs.fixedCosts');
-  }, [featureData]);
-
-  const addVariableCost = useCallback((cost: Omit<any, 'id'>) => {
-    return featureData.addItem(cost, 'costs.variableCosts');
-  }, [featureData]);
-
-  // Pricing operations
-  const addPricingStrategy = useCallback((strategy: Omit<any, 'id'>) => {
-    return featureData.addItem(strategy, 'pricing.strategies');
-  }, [featureData]);
-
-  const updatePricingStrategy = useCallback((id: string, data: Partial<any>) => {
-    return featureData.updateItem(id, data, 'pricing.strategies');
+  const updatePricingStrategy = useCallback((id: string, data: Partial<Omit<PricingStrategy, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<FinancialItem>, 'pricingStrategies');
   }, [featureData]);
 
   const deletePricingStrategy = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'pricing.strategies');
+    return featureData.deleteItem(id, 'pricingStrategies');
   }, [featureData]);
 
-  const addCompetitorPrice = useCallback((competitor: Omit<any, 'id'>) => {
-    return featureData.addItem(competitor, 'pricing.competitorPrices');
+  // ===== Financial Projections =====
+  const addProjection = useCallback(async (projection: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...projection,
+      project_id: projectId,
+      created_at: null,
+      updated_at: null
+    } as FinancialItem, 'projections');
+  }, [featureData, projectId]);
+
+  const updateProjection = useCallback((id: string, data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>>) => {
+    return featureData.updateItem(id, data as Partial<FinancialItem>, 'projections');
   }, [featureData]);
 
-  // Break-even analysis
-  const updateBreakeven = useCallback(async (breakeven: Partial<any>) => {
-    if (!projectId || !featureData.data) return null;
-    
-    const updatedFinancials = {
-      ...featureData.data,
-      breakeven: {
-        ...featureData.data.breakeven,
-        ...breakeven
-      }
-    };
-    
-    // Use the project's updateFeatureData for nested updates
-    const { updateFeatureData } = useProject(projectId);
-    
-    await updateFeatureData({
-      id: projectId,
-      feature: 'financialProjections',
-      data: updatedFinancials
-    });
-    
-    return updatedFinancials.breakeven;
-  }, [projectId, featureData.data, useProject]);
+  const deleteProjection = useCallback((id: string) => {
+    return featureData.deleteItem(id, 'projections');
+  }, [featureData]);
 
-  // Calculate metrics based on current financial data
-  const calculateMetrics = useCallback(() => {
-    if (!featureData.data) return null;
-    
-    const financials = featureData.data;
-    
-    // Get total projected revenue
-    const totalProjectedRevenue = financials.revenue.forecasts.reduce(
-      (sum: number, forecast: any) => sum + (parseFloat(forecast.amount) || 0), 
-      0
-    );
-    
-    // Get total fixed costs
-    const totalFixedCosts = financials.costs.fixedCosts.reduce(
-      (sum: number, cost: any) => sum + (parseFloat(cost.amount) || 0), 
-      0
-    );
-    
-    // Get total variable costs (might require more complex calculation)
-    const totalVariableCosts = financials.costs.variableCosts.reduce(
-      (sum: number, cost: any) => sum + (parseFloat(cost.amount) || 0), 
-      0
-    );
-    
-    // Calculate profit margin
-    const totalCosts = totalFixedCosts + totalVariableCosts;
-    const projectedProfit = totalProjectedRevenue - totalCosts;
-    const profitMargin = totalProjectedRevenue > 0 
-      ? (projectedProfit / totalProjectedRevenue) * 100 
-      : 0;
-    
-    // Calculate breakeven units
-    const { unitSellingPrice, unitVariableCost, fixedCosts } = financials.breakeven;
-    const contributionMargin = unitSellingPrice - unitVariableCost;
-    const breakEvenUnits = contributionMargin > 0 
-      ? fixedCosts / contributionMargin 
-      : 0;
-    const breakEvenRevenue = breakEvenUnits * unitSellingPrice;
+  // Advanced operations
+  const calculateTotalRevenue = useCallback(() => {
+    const { revenueStreams } = featureData.data || { revenueStreams: [] };
+    return revenueStreams.reduce((total, stream) => {
+      const volume = stream.volume || 0;
+      const unitPrice = stream.unit_price || 0;
+      const growthRate = stream.growth_rate || 0;
+      return total + (volume * unitPrice * (1 + growthRate / 100));
+    }, 0);
+  }, [featureData.data]);
+
+  const calculateTotalCosts = useCallback(() => {
+    const { costStructure } = featureData.data || { costStructure: [] };
+    return costStructure.reduce((total, cost) => {
+      const amount = cost.amount || 0;
+      const growthRate = cost.growth_rate || 0;
+      return total + (amount * (1 + growthRate / 100));
+    }, 0);
+  }, [featureData.data]);
+
+  const getFinancialMetrics = useCallback(() => {
+    const totalRevenue = calculateTotalRevenue();
+    const totalCosts = calculateTotalCosts();
     
     return {
-      totalProjectedRevenue,
-      totalFixedCosts,
-      totalVariableCosts,
+      totalRevenue,
       totalCosts,
-      projectedProfit,
-      profitMargin,
-      contributionMargin,
-      breakEvenUnits,
-      breakEvenRevenue
+      grossProfit: totalRevenue - totalCosts,
+      grossMargin: totalRevenue > 0 ? ((totalRevenue - totalCosts) / totalRevenue) * 100 : 0
     };
-  }, [featureData.data]);
+  }, [calculateTotalRevenue, calculateTotalCosts]);
 
   return {
     // Raw data
-    financials: featureData.data,
+    data: featureData.data,
     isLoading: featureData.isLoading,
     error: featureData.error,
     
-    // Related data
-    customerSegments: featureData.relatedData?.customerSegments || [],
-    revenueStreams: featureData.relatedData?.revenueStreams || [],
+    // Revenue Streams
+    revenueStreams: featureData.data?.revenueStreams || [],
+    addRevenueStream,
+    updateRevenueStream,
+    deleteRevenueStream,
     
-    // Revenue methods
-    addRevenueForecast,
-    updateRevenueForecast,
-    deleteRevenueForecast,
-    addRevenueAssumption,
+    // Cost Structure
+    costStructure: featureData.data?.costStructure || [],
+    addCostStructure,
+    updateCostStructure,
+    deleteCostStructure,
     
-    // Cost methods
-    addFixedCost,
-    updateFixedCost,
-    deleteFixedCost,
-    addVariableCost,
-    
-    // Pricing methods
+    // Pricing Strategies
+    pricingStrategies: featureData.data?.pricingStrategies || [],
     addPricingStrategy,
     updatePricingStrategy,
     deletePricingStrategy,
-    addCompetitorPrice,
     
-    // Break-even methods
-    updateBreakeven,
+    // Financial Projections
+    projections: featureData.data?.projections || [],
+    addProjection,
+    updateProjection,
+    deleteProjection,
     
-    // Analytics
-    calculateMetrics,
-    
-    // Raw data access
-    revenueForecasts: featureData.data?.revenue.forecasts || [],
-    revenueAssumptions: featureData.data?.revenue.assumptions || [],
-    fixedCosts: featureData.data?.costs.fixedCosts || [],
-    variableCosts: featureData.data?.costs.variableCosts || [],
-    pricingStrategies: featureData.data?.pricing.strategies || [],
-    competitorPrices: featureData.data?.pricing.competitorPrices || [],
-    breakeven: featureData.data?.breakeven || {}
+    // Metrics
+    calculateTotalRevenue,
+    calculateTotalCosts,
+    getFinancialMetrics,
   };
 } 

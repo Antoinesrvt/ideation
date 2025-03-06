@@ -50,7 +50,7 @@ export function useSearch(projectId?: string, defaultOptions?: SearchOptions) {
   const [isSearching, setIsSearching] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
   const { project } = useProject(projectId);
-
+  
   // Search function that can be called with options
   const search = useCallback((query: string, options?: SearchOptions) => {
     if (!query || !project.data) {
@@ -198,10 +198,10 @@ function searchCanvas(
       items.forEach((item: CanvasItem) => {
         if (matches(item.text)) {
           results.push({
-            id: `canvas-${key}-${item.id}`,
-            title: item.text,
-            section: 'Business Model Canvas',
-            sectionId: 'canvas',
+              id: `canvas-${key}-${item.id}`,
+              title: item.text,
+              section: 'Business Model Canvas',
+              sectionId: 'canvas',
             content: item.text,
             status: item.checked ? 'completed' : 'pending'
           });
@@ -261,17 +261,17 @@ function searchGRPSection(
       if (titleMatch || descriptionMatch) {
         results.push({
           id: `grp-${sectionName}-${subsectionKey}-${item.id}`,
-          title: item.title || 'Untitled',
+                title: item.title || 'Untitled',
           section: `GRP Model - ${sectionName}`,
-          sectionId: 'grp',
+                sectionId: 'grp',
           content: item.description || '',
           status: item.percentage ? `${item.percentage}%` : undefined
+              });
+            }
         });
-      }
-    });
-  });
-}
-
+      });
+    }
+    
 /**
  * Search within the Market Analysis
  */
@@ -284,7 +284,7 @@ function searchMarketAnalysis(
   
   if (!marketAnalysis) return results;
   
-  // Search in personas
+      // Search in personas
   if (marketAnalysis.customerInsights?.personas) {
     marketAnalysis.customerInsights.personas.forEach((persona: CustomerPersona) => {
       const nameMatch = matches(persona.name);
@@ -295,18 +295,18 @@ function searchMarketAnalysis(
       
       if (nameMatch || roleMatch || demographicsMatch || goalsMatch || painPointsMatch) {
         results.push({
-          id: `market-persona-${persona.id}`,
-          title: persona.name || 'Unnamed Persona',
-          section: 'Market Analysis - Personas',
-          sectionId: 'market',
+            id: `market-persona-${persona.id}`,
+            title: persona.name || 'Unnamed Persona',
+            section: 'Market Analysis - Personas',
+            sectionId: 'market',
           content: persona.role || '',
           type: 'persona'
-        });
-      }
-    });
+          });
+        }
+      });
   }
-  
-  // Search in competitors
+      
+      // Search in competitors
   if (marketAnalysis.competitors) {
     marketAnalysis.competitors.forEach((competitor: Competitor) => {
       const nameMatch = matches(competitor.name);
@@ -316,10 +316,10 @@ function searchMarketAnalysis(
       
       if (nameMatch || strengthsMatch || weaknessesMatch || priceMatch) {
         results.push({
-          id: `market-competitor-${competitor.id}`,
-          title: competitor.name,
-          section: 'Market Analysis - Competitors',
-          sectionId: 'market',
+            id: `market-competitor-${competitor.id}`,
+            title: competitor.name,
+            section: 'Market Analysis - Competitors',
+            sectionId: 'market',
           content: `Price: ${competitor.price}, Strengths: ${competitor.strengths.join(', ')}, Weaknesses: ${competitor.weaknesses.join(', ')}`,
           type: 'competitor'
         });

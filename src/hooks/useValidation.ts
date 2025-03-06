@@ -1,6 +1,24 @@
 import { useFeatureData } from './use-feature-data';
-import { Experiment, ABTest, UserFeedback, Hypothesis, ValidationData } from '@/types';
 import { useCallback } from 'react';
+import { Database } from '@/types/database';
+
+// Database types for validation tables
+type ValidationExperiment = Database['public']['Tables']['validation_experiments']['Row'];
+type ValidationABTest = Database['public']['Tables']['validation_ab_tests']['Row'];
+type ValidationUserFeedback = Database['public']['Tables']['validation_user_feedback']['Row'];
+type ValidationHypothesis = Database['public']['Tables']['validation_hypotheses']['Row'];
+
+
+// Combined type for all validation data
+type ValidationData = {
+  experiments: ValidationExperiment[];
+  abTests: ValidationABTest[];
+  userFeedback: ValidationUserFeedback[];
+  hypotheses: ValidationHypothesis[];
+};
+
+// Type for any validation item
+type ValidationItem = ValidationExperiment | ValidationABTest | ValidationUserFeedback | ValidationHypothesis;
 
 /**
  * Hook for managing validation data in a project
@@ -8,8 +26,7 @@ import { useCallback } from 'react';
  */
 export function useValidation(projectId: string | undefined) {
   // Use the enhanced useFeatureData hook with proper typing
-  const featureData = useFeatureData<ValidationData, 
-    Experiment | ABTest | UserFeedback | Hypothesis>(
+  const featureData = useFeatureData<ValidationData, ValidationItem>(
     projectId,
     'validation',
     {
@@ -22,20 +39,19 @@ export function useValidation(projectId: string | undefined) {
     }
   );
 
-  // Helper to determine the type of an item
-  const getItemType = (item: any): 'experiment' | 'abTest' | 'userFeedback' | 'hypothesis' => {
-    if ('hypothesis' in item) return 'experiment';
-    if ('variantA' in item) return 'abTest';
-    if ('sentiment' in item) return 'userFeedback';
-    return 'hypothesis';
-  };
-
   // ===== Experiments =====
-  const addExperiment = useCallback((experiment: Omit<Experiment, 'id'>) => {
-    return featureData.addItem(experiment, 'experiments');
-  }, [featureData]);
+  const addExperiment = useCallback(async (experiment: Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...experiment,
+      project_id: projectId,
+      status: experiment.status || null,
+      created_at: null,
+      updated_at: null
+    }, 'experiments');
+  }, [featureData, projectId]);
 
-  const updateExperiment = useCallback((id: string, data: Partial<Experiment>) => {
+  const updateExperiment = useCallback((id: string, data: Partial<Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>>) => {
     return featureData.updateItem(id, data, 'experiments');
   }, [featureData]);
 
@@ -44,11 +60,18 @@ export function useValidation(projectId: string | undefined) {
   }, [featureData]);
 
   // ===== A/B Tests =====
-  const addABTest = useCallback((abTest: Omit<ABTest, 'id'>) => {
-    return featureData.addItem(abTest, 'abTests');
-  }, [featureData]);
+  const addABTest = useCallback(async (abTest: Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...abTest,
+      project_id: projectId,
+      status: abTest.status || null,
+      created_at: null,
+      updated_at: null
+    }, 'abTests');
+  }, [featureData, projectId]);
 
-  const updateABTest = useCallback((id: string, data: Partial<ABTest>) => {
+  const updateABTest = useCallback((id: string, data: Partial<Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>>) => {
     return featureData.updateItem(id, data, 'abTests');
   }, [featureData]);
 
@@ -57,11 +80,18 @@ export function useValidation(projectId: string | undefined) {
   }, [featureData]);
 
   // ===== User Feedback =====
-  const addUserFeedback = useCallback((feedback: Omit<UserFeedback, 'id'>) => {
-    return featureData.addItem(feedback, 'userFeedback');
-  }, [featureData]);
+  const addUserFeedback = useCallback(async (feedback: Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...feedback,
+      project_id: projectId,
+      status: feedback.status || null,
+      created_at: null,
+      updated_at: null
+    }, 'userFeedback');
+  }, [featureData, projectId]);
 
-  const updateUserFeedback = useCallback((id: string, data: Partial<UserFeedback>) => {
+  const updateUserFeedback = useCallback((id: string, data: Partial<Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>>) => {
     return featureData.updateItem(id, data, 'userFeedback');
   }, [featureData]);
 
@@ -70,11 +100,18 @@ export function useValidation(projectId: string | undefined) {
   }, [featureData]);
 
   // ===== Hypotheses =====
-  const addHypothesis = useCallback((hypothesis: Omit<Hypothesis, 'id'>) => {
-    return featureData.addItem(hypothesis, 'hypotheses');
-  }, [featureData]);
+  const addHypothesis = useCallback(async (hypothesis: Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>) => {
+    if (!projectId) throw new Error('Project ID is required');
+    return featureData.addItem({
+      ...hypothesis,
+      project_id: projectId,
+      status: hypothesis.status || null,
+      created_at: null,
+      updated_at: null
+    }, 'hypotheses');
+  }, [featureData, projectId]);
 
-  const updateHypothesis = useCallback((id: string, data: Partial<Hypothesis>) => {
+  const updateHypothesis = useCallback((id: string, data: Partial<Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>>) => {
     return featureData.updateItem(id, data, 'hypotheses');
   }, [featureData]);
 
@@ -94,7 +131,10 @@ export function useValidation(projectId: string | undefined) {
     const metrics = new Set<string>();
     experiments.forEach(exp => {
       if (exp.metrics) {
-        (Array.isArray(exp.metrics) ? exp.metrics : [exp.metrics]).forEach(metric => {
+        const metricsArray = typeof exp.metrics === 'string' 
+          ? JSON.parse(exp.metrics) 
+          : exp.metrics;
+        (Array.isArray(metricsArray) ? metricsArray : [metricsArray]).forEach(metric => {
           if (typeof metric === 'string') {
             metrics.add(metric);
           }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -55,8 +55,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useProjectStore } from "@/store";
+import { useAIStore } from "@/hooks/useAIStore";
+import { useParams } from "next/navigation";
+import { generateId } from "@/lib/utils";
+import { 
+  FinancialRevenueStream, 
+  FinancialCostStructure, 
+  FinancialPricingStrategy, 
+  FinancialProjection 
+} from "@/store/types";
+import { AIComparisonControls } from "@/components/ai/AIComparisonControls";
 
-// Types for financial data
+// Types for financial data in the UI
 export interface FinancialData {
   revenue: RevenueData;
   costs: CostData;
@@ -99,9 +110,9 @@ interface BreakevenData {
   unitSellingPrice: number;
   unitVariableCost: number;
   fixedCosts: number;
-  contributionMargin?: number;
-  breakEvenUnits?: number;
-  breakEvenRevenue?: number;
+  contributionMargin: number;
+  breakEvenUnits: number;
+  breakEvenRevenue: number;
 }
 
 interface PricingData {
@@ -124,269 +135,592 @@ interface CompetitorPrice {
   notes: string;
 }
 
-interface FinancialProjectionsProps {
-  data?: FinancialData;
-  onUpdate: (data: Partial<FinancialData>) => void;
-}
+// Helper functions for financial calculations
+const calculateAverageVariableCost = (costs: CostItem[]): number => {
+  if (!costs.length) return 0;
+  
+  const totalCost = costs.reduce((sum, cost) => sum + cost.amount, 0);
+  return totalCost / costs.length;
+};
 
-// Sample data generator
-const generateSampleData = (): FinancialData => {
-  return {
+const calculateTotalFixedCosts = (costs: CostItem[]): number => {
+  return costs.reduce((sum, cost) => {
+    // Annualize costs based on frequency
+    let annualAmount = cost.amount;
+    switch (cost.frequency) {
+      case 'monthly':
+        annualAmount *= 12;
+        break;
+      case 'quarterly':
+        annualAmount *= 4;
+        break;
+      case 'annually':
+        // Already annual
+        break;
+      case 'one-time':
+        // One-time costs are included as-is
+        break;
+    }
+    return sum + annualAmount;
+  }, 0);
+};
+
+// Map database types to UI types
+const mapToUIFormat = (sourceData: {
+  financialRevenueStreams: FinancialRevenueStream[],
+  financialCostStructure: FinancialCostStructure[],
+  financialPricingStrategies: FinancialPricingStrategy[],
+  financialProjections: FinancialProjection[]
+}): FinancialData => {
+  // Default empty data structure
+  const defaultData: FinancialData = {
     revenue: {
-      forecasts: [
-        { id: "1", period: "Month 1", amount: 10000, growthRate: 0 },
-        { id: "2", period: "Month 2", amount: 12000, growthRate: 20 },
-        { id: "3", period: "Month 3", amount: 15000, growthRate: 25 },
-        { id: "4", period: "Month 4", amount: 18000, growthRate: 20 },
-        { id: "5", period: "Month 5", amount: 20000, growthRate: 11 },
-        { id: "6", period: "Month 6", amount: 22000, growthRate: 10 },
-      ],
-      assumptions: [
-        { id: "1", description: "New product launch", impact: 20 },
-        { id: "2", description: "Seasonal demand increase", impact: 15 },
-        { id: "3", description: "Marketing campaign", impact: 25 },
-      ],
+      forecasts: [],
+      assumptions: []
     },
     costs: {
-      fixedCosts: [
-        {
-          id: "1",
-          category: "Rent",
-          description: "Office space",
-          amount: 2000,
-          frequency: "monthly",
-        },
-        {
-          id: "2",
-          category: "Salaries",
-          description: "Core team",
-          amount: 10000,
-          frequency: "monthly",
-        },
-        {
-          id: "3",
-          category: "Software",
-          description: "Subscriptions",
-          amount: 500,
-          frequency: "monthly",
-        },
-      ],
-      variableCosts: [
-        {
-          id: "1",
-          category: "Materials",
-          description: "Raw materials",
-          amount: 15,
-          frequency: "monthly",
-        },
-        {
-          id: "2",
-          category: "Shipping",
-          description: "Product delivery",
-          amount: 10,
-          frequency: "monthly",
-        },
-        {
-          id: "3",
-          category: "Commission",
-          description: "Sales commission",
-          amount: 50,
-          frequency: "monthly",
-        },
-      ],
+      fixedCosts: [],
+      variableCosts: []
     },
     breakeven: {
-      unitSellingPrice: 100,
-      unitVariableCost: 40,
-      fixedCosts: 15000,
-      contributionMargin: 60,
-      breakEvenUnits: 250,
-      breakEvenRevenue: 25000,
+      unitSellingPrice: 0,
+      unitVariableCost: 0,
+      fixedCosts: 0,
+      contributionMargin: 0,
+      breakEvenUnits: 0,
+      breakEvenRevenue: 0
     },
     pricing: {
-      strategies: [
-        {
-          id: "1",
-          name: "Premium",
-          description: "High-end market with premium features",
-          pricePoint: 199,
-          targetMarket: "Enterprise",
-        },
-        {
-          id: "2",
-          name: "Standard",
-          description: "Core product for general market",
-          pricePoint: 99,
-          targetMarket: "SMB",
-        },
-        {
-          id: "3",
-          name: "Basic",
-          description: "Entry-level offering",
-          pricePoint: 49,
-          targetMarket: "Startups",
-        },
-      ],
-      competitorPrices: [
-        {
-          id: "1",
-          competitor: "Competitor A",
-          price: 120,
-          notes: "Similar features, established brand",
-        },
-        {
-          id: "2",
-          competitor: "Competitor B",
-          price: 80,
-          notes: "Fewer features, aggressive pricing",
-        },
-        {
-          id: "3",
-          competitor: "Competitor C",
-          price: 150,
-          notes: "Premium positioning, more integrations",
-        },
-      ],
-    },
+      strategies: [],
+      competitorPrices: []
+    }
+  };
+
+  if (!sourceData) return defaultData;
+
+  // Map revenue streams to forecasts and assumptions
+  const forecasts: RevenueForecast[] = sourceData.financialRevenueStreams
+    .filter(stream => stream.type === 'recurring' || stream.type === 'one-time')
+    .map(stream => ({
+      id: stream.id,
+      period: stream.frequency || 'Monthly',
+      amount: stream.unit_price ? stream.unit_price * (stream.volume || 1) : 0,
+      growthRate: stream.growth_rate || undefined
+    }));
+
+  const assumptions: RevenueAssumption[] = sourceData.financialRevenueStreams
+    .filter(stream => stream.assumptions !== null && stream.assumptions !== '')
+    .map(stream => ({
+      id: stream.id,
+      description: stream.assumptions || stream.description || '',
+      impact: stream.unit_price || 0
+    }));
+
+  // Map cost structure to fixed and variable costs
+  const fixedCosts: CostItem[] = sourceData.financialCostStructure
+    .filter(cost => cost.type === 'fixed')
+    .map(cost => ({
+      id: cost.id,
+      category: cost.category || '',
+      description: cost.description || '',
+      amount: cost.amount || 0,
+      frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || "monthly"
+    }));
+
+  const variableCosts: CostItem[] = sourceData.financialCostStructure
+    .filter(cost => cost.type === 'variable')
+    .map(cost => ({
+      id: cost.id,
+      category: cost.category || '',
+      description: cost.description || '',
+      amount: cost.amount || 0,
+      frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || "monthly"
+    }));
+
+  // Create cost data structure
+  const costsMapped: CostData = {
+    fixedCosts,
+    variableCosts
+  };
+
+  // Map pricing strategies
+  const strategies: PricingStrategy[] = sourceData.financialPricingStrategies
+    .filter(strategy => strategy.strategy_type !== null)
+    .map(strategy => {
+      // Parse target price range if it exists
+      let pricePoint = 0;
+      if (strategy.target_price_range) {
+        try {
+          const priceRange = typeof strategy.target_price_range === 'string' 
+            ? JSON.parse(strategy.target_price_range) 
+            : strategy.target_price_range;
+          pricePoint = priceRange.min !== undefined ? priceRange.min : 0;
+        } catch (e) {
+          console.error('Failed to parse price range:', e);
+        }
+      }
+      
+      return {
+        id: strategy.id,
+        name: strategy.name || '',
+        description: strategy.description || '',
+        pricePoint,
+        targetMarket: strategy.considerations || ''
+      };
+    });
+
+  const competitorPrices: CompetitorPrice[] = sourceData.financialPricingStrategies
+    .filter(strategy => strategy.strategy_type === 'competitive')
+    .map(strategy => {
+      // Parse target price range if it exists
+      let price = 0;
+      if (strategy.target_price_range) {
+        try {
+          const priceRange = typeof strategy.target_price_range === 'string' 
+            ? JSON.parse(strategy.target_price_range) 
+            : strategy.target_price_range;
+          price = priceRange.max !== undefined ? priceRange.max : 0;
+        } catch (e) {
+          console.error('Failed to parse competitor price:', e);
+        }
+      }
+      
+      return {
+        id: strategy.id,
+        competitor: strategy.name || '',
+        price,
+        notes: strategy.description || ''
+      };
+    });
+
+  // Create pricing data structure
+  const pricingMapped: PricingData = {
+    strategies,
+    competitorPrices
+  };
+
+  // Map breakeven data from projections
+  let breakEvenUnits = 0;
+  let breakEvenRevenue = 0;
+  
+  // Find a projection with break_even data
+  const breakEvenProjection = sourceData.financialProjections.find(p => p.break_even);
+  
+  if (breakEvenProjection && breakEvenProjection.break_even) {
+    try {
+      const breakEvenData = typeof breakEvenProjection.break_even === 'string' 
+        ? JSON.parse(breakEvenProjection.break_even) 
+        : breakEvenProjection.break_even;
+      
+      breakEvenUnits = breakEvenData.units || 0;
+      breakEvenRevenue = breakEvenData.revenue || 0;
+    } catch (e) {
+      console.error('Failed to parse break-even data:', e);
+    }
+  }
+
+  // Get unit selling price from revenue streams
+  const avgUnitPrice = sourceData.financialRevenueStreams
+    .filter(stream => stream.unit_price)
+    .reduce((sum, stream, index, array) => sum + (stream.unit_price || 0) / array.length, 0);
+
+  // Create breakeven data structure
+  const breakevenMapped: BreakevenData = {
+    unitSellingPrice: avgUnitPrice,
+    unitVariableCost: calculateAverageVariableCost(costsMapped.variableCosts),
+    fixedCosts: calculateTotalFixedCosts(costsMapped.fixedCosts),
+    contributionMargin: 0, // Will be calculated below
+    breakEvenUnits,
+    breakEvenRevenue
+  };
+
+  // Calculate contribution margin
+  const unitPrice = breakevenMapped.unitSellingPrice;
+  const unitCost = breakevenMapped.unitVariableCost;
+  
+  breakevenMapped.contributionMargin = 
+    unitPrice > 0 
+      ? ((unitPrice - unitCost) / unitPrice) * 100
+      : 0;
+
+  return {
+    revenue: { forecasts, assumptions },
+    costs: costsMapped,
+    pricing: pricingMapped,
+    breakeven: breakevenMapped
   };
 };
 
-// Helper function to format currency
+// Calculate profit margin from financial data
+const calculateProfitMargin = (data: FinancialData): number => {
+  // Calculate total revenue
+  const totalRevenue = data.revenue.forecasts.reduce((sum, forecast) => sum + forecast.amount, 0);
+  
+  // Calculate total costs (fixed + variable)
+  const totalFixedCosts = calculateTotalFixedCosts(data.costs.fixedCosts);
+  const totalVariableCosts = data.costs.variableCosts.reduce((sum, cost) => sum + cost.amount, 0);
+  
+  if (totalRevenue === 0) return 0;
+  
+  const profit = totalRevenue - (totalFixedCosts + totalVariableCosts);
+  return (profit / totalRevenue) * 100;
+};
+
+// Estimate breakeven timeframe
+const getBreakevenTimeframe = (data: FinancialData): string => {
+  // If we don't have enough data, return "Unknown"
+  if (!data.breakeven.breakEvenUnits || data.revenue.forecasts.length === 0) {
+    return "Unknown";
+  }
+  
+  // Sort forecasts by period
+  const sortedForecasts = [...data.revenue.forecasts].sort((a, b) => {
+    // Assuming periods are in format "2023 Q1", "2023 Q2", etc.
+    return a.period.localeCompare(b.period);
+  });
+  
+  // Calculate cumulative units sold based on revenue and unit price
+  let cumulativeUnits = 0;
+  for (let i = 0; i < sortedForecasts.length; i++) {
+    const forecast = sortedForecasts[i];
+    const unitsSold = data.breakeven.unitSellingPrice > 0 
+      ? forecast.amount / data.breakeven.unitSellingPrice 
+      : 0;
+    
+    cumulativeUnits += unitsSold;
+    
+    if (cumulativeUnits >= data.breakeven.breakEvenUnits) {
+      return forecast.period;
+    }
+  }
+  
+  return "Beyond forecast period";
+};
+
+// Determine financial health status based on metrics
+const getFinancialHealth = (data: FinancialData): { status: string; color: string } => {
+  const profitMargin = calculateProfitMargin(data);
+  const hasForecastData = data.revenue.forecasts.length > 0;
+  const hasBreakevenData = data.breakeven.breakEvenUnits > 0;
+  const hasRevenueAssumptions = data.revenue.assumptions.length > 0;
+  
+  // If we don't have enough data, return "Incomplete"
+  if (!hasForecastData || !hasBreakevenData) {
+    return { status: "Incomplete", color: "text-orange-500" };
+  }
+  
+  // Evaluate financial health based on profit margin
+  if (profitMargin <= 0) {
+    return { status: "At Risk", color: "text-red-500" };
+  } else if (profitMargin < 10) {
+    return { status: "Concerning", color: "text-orange-500" };
+  } else if (profitMargin < 20) {
+    return { status: "Stable", color: "text-blue-500" };
+  } else {
+    return { status: "Healthy", color: "text-green-500" };
+  }
+};
+
+// Generate a unique ID for new items
+const generateUniqueId = (): string => {
+  return generateId();
+};
+
+// Format currency values
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(value);
 };
 
-// Helper functions for financial insights and analysis
-const calculateProfitMargin = (data: FinancialData): number => {
-  const totalRevenue = data.revenue.forecasts.reduce(
-    (sum, forecast) => sum + forecast.amount,
-    0
-  );
-  const totalCosts =
-    data.costs.fixedCosts.reduce((sum, cost) => sum + cost.amount, 0) +
-    data.costs.variableCosts.reduce((sum, cost) => sum + cost.amount, 0);
+export const FinancialProjections: React.FC = () => {
+  const { id: projectId } = useParams<{ id: string }>();
+  
+  const {
+    currentData,
+    comparisonMode,
+    stagedData,
+    addFinancialRevenueStream,
+    addFinancialCostStructure,
+    addFinancialPricingStrategy,
+    addFinancialProjection,
+    updateFinancialRevenueStream,
+    updateFinancialCostStructure,
+    updateFinancialPricingStrategy,
+    updateFinancialProjection,
+    deleteFinancialRevenueStream,
+    deleteFinancialCostStructure,
+    deleteFinancialPricingStrategy,
+    deleteFinancialProjection
+  } = useProjectStore();
 
-  return totalRevenue > 0
-    ? ((totalRevenue - totalCosts) / totalRevenue) * 100
-    : 0;
-};
+  const { acceptAIChanges, rejectAIChanges } = useAIStore();
 
-const getBreakevenTimeframe = (data: FinancialData): string => {
-  const monthlyRevenue =
-    data.revenue.forecasts.length > 0
-      ? data.revenue.forecasts[data.revenue.forecasts.length - 1].amount
-      : 0;
-  const totalFixedCosts = data.costs.fixedCosts.reduce(
-    (sum, cost) => sum + cost.amount,
-    0
-  );
-
-  if (monthlyRevenue <= 0) return "Insufficient data";
-
-  const months = Math.ceil(totalFixedCosts / monthlyRevenue);
-  return months <= 12
-    ? `${months} months`
-    : `${Math.round((months / 12) * 10) / 10} years`;
-};
-
-const getFinancialHealth = (
-  data: FinancialData
-): { status: string; color: string } => {
-  const profitMargin = calculateProfitMargin(data);
-
-  if (profitMargin > 20)
-    return { status: "Excellent", color: "bg-green-100 text-green-800" };
-  if (profitMargin > 10)
-    return { status: "Good", color: "bg-blue-100 text-blue-800" };
-  if (profitMargin > 0)
-    return { status: "Fair", color: "bg-yellow-100 text-yellow-800" };
-  return { status: "Needs Attention", color: "bg-red-100 text-red-800" };
-};
-
-export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
-  data,
-  onUpdate,
-}) => {
-  const safeData = data || generateSampleData();
-  const [activeBreakevenVolumeIndex, setActiveBreakevenVolumeIndex] = useState<
-    number | null
-  >(null);
-
-  // Financial health and insights
-  const profitMargin = calculateProfitMargin(safeData);
-  const breakevenTimeframe = getBreakevenTimeframe(safeData);
-  const financialHealth = getFinancialHealth(safeData);
-
-  // Calculate breakeven values
-  const calculateBreakeven = (data: BreakevenData): BreakevenData => {
-    const contributionMargin = data.unitSellingPrice - data.unitVariableCost;
-    const breakEvenUnits = data.fixedCosts / contributionMargin;
-    const breakEvenRevenue = breakEvenUnits * data.unitSellingPrice;
-
-    return {
-      ...data,
-      contributionMargin,
-      breakEvenUnits,
-      breakEvenRevenue,
+  // State for currently active tab
+  const [activeTab, setActiveTab] = useState("overview");
+  
+  // Map current data to UI format
+  const data = useMemo(() => mapToUIFormat({
+    financialRevenueStreams: currentData.financialRevenueStreams,
+    financialCostStructure: currentData.financialCostStructure,
+    financialPricingStrategies: currentData.financialPricingStrategies,
+    financialProjections: currentData.financialProjections
+  }), [currentData]);
+  
+  // Map staged data to UI format if in comparison mode
+  const stagedUIData = useMemo(() => {
+    if (!comparisonMode || !stagedData) return null;
+    
+    return mapToUIFormat({
+      financialRevenueStreams: stagedData.financialRevenueStreams,
+      financialCostStructure: stagedData.financialCostStructure,
+      financialPricingStrategies: stagedData.financialPricingStrategies,
+      financialProjections: stagedData.financialProjections
+    });
+  }, [comparisonMode, stagedData]);
+  
+  // Helper function to determine if an item is new/modified in comparison mode
+  const getItemStatus = (
+    section: 'revenue.forecasts' | 'revenue.assumptions' | 'costs.fixedCosts' | 'costs.variableCosts' | 'pricing.strategies' | 'pricing.competitorPrices',
+    itemId: string
+  ): 'new' | 'modified' | 'unchanged' | 'removed' => {
+    if (!comparisonMode || !stagedUIData) return 'unchanged';
+    
+    // Function to get the current item based on the section
+    const getCurrentItem = () => {
+      const [mainSection, subSection] = section.split('.');
+      
+      switch (section) {
+        case 'revenue.forecasts':
+          return data.revenue.forecasts.find(item => item.id === itemId);
+        case 'revenue.assumptions':
+          return data.revenue.assumptions.find(item => item.id === itemId);
+        case 'costs.fixedCosts':
+          return data.costs.fixedCosts.find(item => item.id === itemId);
+        case 'costs.variableCosts':
+          return data.costs.variableCosts.find(item => item.id === itemId);
+        case 'pricing.strategies':
+          return data.pricing.strategies.find(item => item.id === itemId);
+        case 'pricing.competitorPrices':
+          return data.pricing.competitorPrices.find(item => item.id === itemId);
+        default:
+          return undefined;
+      }
     };
+    
+    // Function to get the staged item based on the section
+    const getStagedItem = () => {
+      const [mainSection, subSection] = section.split('.');
+      
+      switch (section) {
+        case 'revenue.forecasts':
+          return stagedUIData.revenue.forecasts.find(item => item.id === itemId);
+        case 'revenue.assumptions':
+          return stagedUIData.revenue.assumptions.find(item => item.id === itemId);
+        case 'costs.fixedCosts':
+          return stagedUIData.costs.fixedCosts.find(item => item.id === itemId);
+        case 'costs.variableCosts':
+          return stagedUIData.costs.variableCosts.find(item => item.id === itemId);
+        case 'pricing.strategies':
+          return stagedUIData.pricing.strategies.find(item => item.id === itemId);
+        case 'pricing.competitorPrices':
+          return stagedUIData.pricing.competitorPrices.find(item => item.id === itemId);
+        default:
+          return undefined;
+      }
+    };
+    
+    const currentItem = getCurrentItem();
+    const stagedItem = getStagedItem();
+    
+    if (!currentItem && stagedItem) return 'new';
+    if (currentItem && !stagedItem) return 'removed';
+    if (currentItem && stagedItem) {
+      return JSON.stringify(currentItem) !== JSON.stringify(stagedItem) ? 'modified' : 'unchanged';
+    }
+    
+    return 'unchanged';
   };
-
-  // Event handlers
+  
+  // Handle adding a revenue forecast
   const handleAddRevenueForecast = () => {
-    const lastForecast =
-      safeData.revenue.forecasts[safeData.revenue.forecasts.length - 1];
-    const nextPeriod = `Month ${safeData.revenue.forecasts.length + 1}`;
-    const newAmount = lastForecast ? lastForecast.amount * 1.1 : 10000;
-
-    const newForecast: RevenueForecast = {
-      id: Math.random().toString(36).substring(2, 9),
-      period: nextPeriod,
-      amount: Math.round(newAmount),
-      growthRate: 10,
-    };
-
-    onUpdate({
-      revenue: {
-        ...safeData.revenue,
-        forecasts: [...safeData.revenue.forecasts, newForecast],
-      },
+    if (!projectId) return;
+    
+    addFinancialProjection({
+      id: generateUniqueId(),
+      title: `Month ${data.revenue.forecasts.length + 1}`,
+      project_id: projectId,
+      data: JSON.stringify({
+        amount: 0,
+        growth_rate: 0
+      }),
+      created_at: null,
+      created_by: null,
+      description: null,
+      scenario: null,
+      timeframe: null,
+      start_date: null,
+      break_even: null,
+      assumptions: null,
+      updated_at: null
     });
   };
-
+  
+  // Handle adding a revenue assumption
+  const handleAddRevenueAssumption = () => {
+    if (!projectId) return;
+    
+    addFinancialRevenueStream({
+      id: generateUniqueId(),
+      name: 'New Revenue Stream',
+      description: '',
+      project_id: projectId,
+      projections: JSON.stringify({
+        impact: 0
+      }),
+      created_at: null,
+      created_by: null,
+      type: null,
+      pricing_model: null,
+      unit_price: null,
+      volume: null,
+      frequency: null,
+      growth_rate: null,
+      assumptions: null,
+      updated_at: null
+    });
+  };
+  
+  // Handle adding a cost item
+  const handleAddCostItem = (type: 'fixed' | 'variable') => {
+    if (!projectId) return;
+    
+    addFinancialCostStructure({
+      id: generateUniqueId(),
+      category: type === 'fixed' ? 'Fixed Cost' : 'Variable Cost',
+      description: '',
+      amount: 0,
+      frequency: 'monthly',
+      project_id: projectId,
+      type: type,
+      name: type === 'fixed' ? 'New Fixed Cost' : 'New Variable Cost',
+      created_at: null,
+      created_by: null,
+      growth_rate: null,
+      projections: null,
+      assumptions: null,
+      updated_at: null
+    });
+  };
+  
+  // Handle adding a pricing strategy
   const handleAddPricingStrategy = () => {
-    const newStrategy: PricingStrategy = {
-      id: Math.random().toString(36).substring(2, 9),
-      name: "New Strategy",
-      description: "Enter strategy description",
-      pricePoint: 99,
-      targetMarket: "Target market",
+    if (!projectId) return;
+    
+    addFinancialPricingStrategy({
+      id: generateUniqueId(),
+      name: 'New Strategy',
+      description: '',
+      project_id: projectId,
+      target_price_range: JSON.stringify({
+        base: 0
+      }),
+      considerations: JSON.stringify({
+        target_market: ''
+      }),
+      created_at: null,
+      created_by: null,
+      strategy_type: null,
+      updated_at: null
+    });
+  };
+  
+  // Handle breakeven calculation updates
+  const updateBreakeven = (updates: Partial<BreakevenData>) => {
+    // Implementation...
+    console.log("Updating breakeven with:", updates);
+    
+    // Find an existing projection to update, or create a new one
+    const existingProjection = currentData.financialProjections.find(p => p.break_even);
+    
+    if (existingProjection) {
+      // Update the existing projection
+      updateFinancialProjection(existingProjection.id, {
+        break_even: JSON.stringify({
+          units: updates.breakEvenUnits || 0,
+          revenue: updates.breakEvenRevenue || 0,
+          months: 0 // Default months to breakeven
+        })
+      });
+    } else if (projectId) {
+      // Create a new projection with breakeven data
+      addFinancialProjection({
+        id: generateUniqueId(),
+        title: 'Breakeven Analysis',
+        project_id: projectId,
+        data: JSON.stringify({}),
+        break_even: JSON.stringify({
+          units: updates.breakEvenUnits || 0,
+          revenue: updates.breakEvenRevenue || 0,
+          months: 0 // Default months to breakeven
+        }),
+        created_at: null,
+        created_by: null,
+        description: null,
+        scenario: null,
+        timeframe: null,
+        start_date: null,
+        assumptions: null,
+        updated_at: null
+      });
+    }
+  };
+  
+  // Calculate breakeven data based on the inputs
+  const calculateBreakeven = (data: BreakevenData): BreakevenData => {
+    const { unitSellingPrice, unitVariableCost, fixedCosts } = data;
+    const contributionMarginValue = unitSellingPrice - unitVariableCost;
+    
+    // Calculate breakeven units and revenue
+    const breakEvenUnits = contributionMarginValue > 0 ? fixedCosts / contributionMarginValue : 0;
+    const breakEvenRevenue = breakEvenUnits * unitSellingPrice;
+    
+    // Return updated breakeven data with all required fields
+    return {
+      unitSellingPrice,
+      unitVariableCost,
+      fixedCosts,
+      contributionMargin: unitSellingPrice > 0 
+        ? (contributionMarginValue / unitSellingPrice) * 100 
+        : 0,
+      breakEvenUnits,
+      breakEvenRevenue
     };
-
-    onUpdate({
-      pricing: {
-        ...safeData.pricing,
-        strategies: [...safeData.pricing.strategies, newStrategy],
-      },
-    });
   };
-
+  
+  // Handle updating a specific breakeven field
   const handleUpdateBreakeven = (field: keyof BreakevenData, value: number) => {
-    const updatedBreakeven = calculateBreakeven({
-      ...safeData.breakeven,
-      [field]: value,
-    });
-
-    onUpdate({
-      breakeven: updatedBreakeven,
-    });
+    const updatedBreakeven = {
+      ...data.breakeven,
+      [field]: value
+    };
+    
+    // Recalculate breakeven values
+    const calculatedBreakeven = calculateBreakeven(updatedBreakeven);
+    
+    // Update the breakeven data
+    updateBreakeven(calculatedBreakeven);
   };
+  
+  // Financial health and insights
+  const profitMargin = calculateProfitMargin(data);
+  const breakevenTimeframe = getBreakevenTimeframe(data);
+  const financialHealth = getFinancialHealth(data);
 
-  // Chart color scheme
+  // Define chart color scheme
   const COLORS = [
     "#0088FE",
     "#00C49F",
@@ -505,7 +839,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(
-                safeData.revenue.forecasts.reduce(
+                data.revenue.forecasts.reduce(
                   (sum, forecast) => sum + forecast.amount,
                   0
                 )
@@ -513,7 +847,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
             </div>
             <div className="h-[60px] mt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={safeData.revenue.forecasts.slice(0, 6)}>
+                <LineChart data={data.revenue.forecasts.slice(0, 6)}>
                   <Line
                     type="monotone"
                     dataKey="amount"
@@ -689,7 +1023,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={safeData.revenue.forecasts}
+                      data={data.revenue.forecasts}
                       margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -733,7 +1067,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {safeData.revenue.forecasts.map((forecast) => (
+                    {data.revenue.forecasts.map((forecast) => (
                       <TableRow key={forecast.id}>
                         <TableCell>{forecast.period}</TableCell>
                         <TableCell>{formatCurrency(forecast.amount)}</TableCell>
@@ -772,7 +1106,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {safeData.revenue.assumptions.map((assumption) => (
+                {data.revenue.assumptions.map((assumption) => (
                   <div
                     key={assumption.id}
                     className="flex items-center justify-between border-b pb-3"
@@ -824,7 +1158,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                         data={[
                           {
                             name: "Fixed Costs",
-                            value: safeData.costs.fixedCosts.reduce(
+                            value: data.costs.fixedCosts.reduce(
                               (sum, item) => sum + item.amount,
                               0
                             ),
@@ -832,7 +1166,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                           {
                             name: "Variable Costs",
                             value:
-                              safeData.costs.variableCosts.reduce(
+                              data.costs.variableCosts.reduce(
                                 (sum, item) => sum + item.amount,
                                 0
                               ) * 100, // Assuming 100 units
@@ -862,7 +1196,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={[
-                        ...safeData.costs.fixedCosts.map((c) => ({
+                        ...data.costs.fixedCosts.map((c) => ({
                           category: c.category,
                           amount: c.amount,
                           type: "Fixed",
@@ -909,7 +1243,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {safeData.costs.fixedCosts.map((cost) => (
+                    {data.costs.fixedCosts.map((cost) => (
                       <TableRow key={cost.id}>
                         <TableCell>{cost.category}</TableCell>
                         <TableCell>{cost.description}</TableCell>
@@ -941,7 +1275,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {safeData.costs.variableCosts.map((cost) => (
+                    {data.costs.variableCosts.map((cost) => (
                       <TableRow key={cost.id}>
                         <TableCell>{cost.category}</TableCell>
                         <TableCell>{cost.description}</TableCell>
@@ -979,8 +1313,8 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                         dataKey="units"
                         domain={[
                           0,
-                          safeData.breakeven.breakEvenUnits
-                            ? safeData.breakeven.breakEvenUnits * 2
+                          data.breakeven.breakEvenUnits
+                            ? data.breakeven.breakEvenUnits * 2
                             : 500,
                         ]}
                         label={{
@@ -999,13 +1333,13 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                         data={[
                           { units: 0, value: 0 },
                           {
-                            units: safeData.breakeven.breakEvenUnits
-                              ? safeData.breakeven.breakEvenUnits * 2
+                            units: data.breakeven.breakEvenUnits
+                              ? data.breakeven.breakEvenUnits * 2
                               : 500,
                             value:
-                              (safeData.breakeven.breakEvenUnits
-                                ? safeData.breakeven.breakEvenUnits * 2
-                                : 500) * safeData.breakeven.unitSellingPrice,
+                              (data.breakeven.breakEvenUnits
+                                ? data.breakeven.breakEvenUnits * 2
+                                : 500) * data.breakeven.unitSellingPrice,
                           },
                         ]}
                         type="linear"
@@ -1017,17 +1351,17 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                       <Line
                         name="Total Cost"
                         data={[
-                          { units: 0, value: safeData.breakeven.fixedCosts },
+                          { units: 0, value: data.breakeven.fixedCosts },
                           {
-                            units: safeData.breakeven.breakEvenUnits
-                              ? safeData.breakeven.breakEvenUnits * 2
+                            units: data.breakeven.breakEvenUnits
+                              ? data.breakeven.breakEvenUnits * 2
                               : 500,
                             value:
-                              safeData.breakeven.fixedCosts +
-                              (safeData.breakeven.breakEvenUnits
-                                ? safeData.breakeven.breakEvenUnits * 2
+                              data.breakeven.fixedCosts +
+                              (data.breakeven.breakEvenUnits
+                                ? data.breakeven.breakEvenUnits * 2
                                 : 500) *
-                                safeData.breakeven.unitVariableCost,
+                                data.breakeven.unitVariableCost,
                           },
                         ]}
                         type="linear"
@@ -1036,17 +1370,17 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                         strokeWidth={2}
                         dot={false}
                       />
-                      {safeData.breakeven.breakEvenUnits && (
+                      {data.breakeven.breakEvenUnits && (
                         <Line
                           name="Break-even Point"
                           data={[
                             {
-                              units: safeData.breakeven.breakEvenUnits,
+                              units: data.breakeven.breakEvenUnits,
                               value: 0,
                             },
                             {
-                              units: safeData.breakeven.breakEvenUnits,
-                              value: safeData.breakeven.breakEvenRevenue,
+                              units: data.breakeven.breakEvenUnits,
+                              value: data.breakeven.breakEvenRevenue,
                             },
                           ]}
                           type="linear"
@@ -1079,7 +1413,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
                     <Input
                       type="number"
-                      value={safeData.breakeven.unitSellingPrice}
+                      value={data.breakeven.unitSellingPrice}
                       onChange={(e) =>
                         handleUpdateBreakeven(
                           "unitSellingPrice",
@@ -1098,7 +1432,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
                     <Input
                       type="number"
-                      value={safeData.breakeven.unitVariableCost}
+                      value={data.breakeven.unitVariableCost}
                       onChange={(e) =>
                         handleUpdateBreakeven(
                           "unitVariableCost",
@@ -1115,7 +1449,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
                     <Input
                       type="number"
-                      value={safeData.breakeven.fixedCosts}
+                      value={data.breakeven.fixedCosts}
                       onChange={(e) =>
                         handleUpdateBreakeven(
                           "fixedCosts",
@@ -1131,7 +1465,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     <span className="text-sm">Contribution Margin:</span>
                     <span className="font-medium">
                       {formatCurrency(
-                        safeData.breakeven.contributionMargin || 0
+                        data.breakeven.contributionMargin || 0
                       )}
                     </span>
                   </div>
@@ -1139,14 +1473,14 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     <span className="text-sm">Break-even Units:</span>
                     <span className="font-medium">
                       {Math.ceil(
-                        safeData.breakeven.breakEvenUnits || 0
+                        data.breakeven.breakEvenUnits || 0
                       ).toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Break-even Revenue:</span>
                     <span className="font-medium">
-                      {formatCurrency(safeData.breakeven.breakEvenRevenue || 0)}
+                      {formatCurrency(data.breakeven.breakEvenRevenue || 0)}
                     </span>
                   </div>
                 </div>
@@ -1203,12 +1537,12 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={[
-                        ...safeData.pricing.strategies.map((s) => ({
+                        ...data.pricing.strategies.map((s) => ({
                           name: s.name,
                           price: s.pricePoint,
                           type: "Your Strategies",
                         })),
-                        ...safeData.pricing.competitorPrices.map((c) => ({
+                        ...data.pricing.competitorPrices.map((c) => ({
                           name: c.competitor,
                           price: c.price,
                           type: "Competitors",
@@ -1248,7 +1582,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {safeData.pricing.strategies.map((strategy) => (
+                    {data.pricing.strategies.map((strategy) => (
                       <TableRow key={strategy.id}>
                         <TableCell>
                           <div>
@@ -1287,7 +1621,7 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {safeData.pricing.competitorPrices.map((competitor) => (
+                    {data.pricing.competitorPrices.map((competitor) => (
                       <TableRow key={competitor.id}>
                         <TableCell>{competitor.competitor}</TableCell>
                         <TableCell>
@@ -1305,6 +1639,15 @@ export const FinancialProjections: React.FC<FinancialProjectionsProps> = ({
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* Add comparison mode controls if needed */}
+      {comparisonMode && (
+        <AIComparisonControls 
+          onApply={() => acceptAIChanges()} 
+          onReject={() => rejectAIChanges()} 
+          isComparingChanges={true}
+        />
+      )}
     </div>
   );
 };

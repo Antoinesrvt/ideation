@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,24 +8,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, Edit, HelpCircle, Lightbulb, PlusCircle, Trash2, Smartphone, Laptop } from 'lucide-react';
-import { BusinessModelCanvas as BusinessModelCanvasType, CanvasItem } from '@/types';
 import { useForm, FormProvider } from 'react-hook-form';
+import { useBusinessModel } from '@/hooks/useBusinessModel';
+import { useProjectStore } from '@/store';
+import { Database } from '@/types/database';
+import { useParams } from 'next/navigation';
+
+// Import types from database
+type CanvasItem = Database['public']['Tables']['canvas_items']['Row'];
 
 // Extend the CanvasItem interface for our internal use
 interface ExtendedCanvasItem extends CanvasItem {
   details?: string;
   priority?: string;
+  status?: 'new' | 'modified' | 'unchanged' | 'removed';
 }
+
+// Define type for new items that can be added
+type NewCanvasItem = Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'project_id'>;
 
 // Define the form values interface
 interface FormValues {
   text: string;
   details: string;
-}
-
-interface BusinessModelCanvasProps {
-  data?: BusinessModelCanvasType;
-  onUpdate: (data: Partial<BusinessModelCanvasType>) => void;
 }
 
 // Guidance information for each section
@@ -123,12 +128,14 @@ const sectionGuidance = {
   }
 };
 
-export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({ 
-  data,
-  onUpdate
-}) => {
-  const [activeSection, setActiveSection] = useState<keyof BusinessModelCanvasType | null>(null);
-  const [editingItem, setEditingItem] = useState<{ section: keyof BusinessModelCanvasType; item: ExtendedCanvasItem } | null>(null);
+export const BusinessModelCanvas: React.FC = () => {
+  const params = useParams();
+  const projectId = typeof params.id === 'string' ? params.id : undefined;
+  const { data, addBlockItem, updateBlockItem, deleteBlockItem } = useBusinessModel(projectId);
+  const { comparisonMode, currentData, stagedData } = useProjectStore();
+  
+  const [activeSection, setActiveSection] = useState<keyof typeof data | null>(null);
+  const [editingItem, setEditingItem] = useState<{ section: keyof typeof data; item: ExtendedCanvasItem } | null>(null);
   
   const form = useForm<FormValues>({
     defaultValues: {
@@ -137,7 +144,8 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
     }
   });
   
-  const safeData = data || {
+  // Create a default canvas when no data exists
+  const defaultCanvas = {
     keyPartners: [],
     keyActivities: [],
     keyResources: [],
@@ -149,50 +157,113 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
     revenueStreams: []
   };
   
+  // Use the correct data source based on comparison mode
+  const safeData = useMemo(() => {
+    if (!data) return defaultCanvas;
+    return data;
+  }, [data]);
+  
   // Check if any content exists in the canvas
   const hasContent = Object.values(safeData).some(section => section && section.length > 0);
   
-  const handleAddItem = (section: keyof BusinessModelCanvasType) => {
-    const newItem: CanvasItem = {
-      id: Math.random().toString(36).substring(2, 9),
-      text: '',
-      checked: false
-    };
+  // Maps canvas items to display with visual indicators for comparison mode
+  const mapCanvasItemsToDisplay = (section: keyof typeof safeData): ExtendedCanvasItem[] => {
+    if (!comparisonMode || !stagedData) {
+      return safeData[section] as ExtendedCanvasItem[];
+    }
     
-    onUpdate({
-      [section]: [...(safeData[section] || []), newItem]
+    // In comparison mode, we need to mark items as new/modified/removed
+    const currentItems = currentData.canvasItems.filter(item => {
+      // Find the section for this item
+      const sectionObj = currentData.canvasSections.find(s => s.id === item.section_id);
+      const sectionType = sectionObj?.section_type;
+      // Map section_type to the camelCase key in our BusinessModelCanvas
+      const sectionKey = sectionType?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      return sectionKey === section;
     });
     
-    // Start editing the new item
-    setEditingItem({ section, item: newItem as ExtendedCanvasItem });
+    const stagedItems = stagedData.canvasItems.filter(item => {
+      // Find the section for this item
+      const sectionObj = stagedData.canvasSections.find(s => s.id === item.section_id);
+      const sectionType = sectionObj?.section_type;
+      // Map section_type to the camelCase key in our BusinessModelCanvas
+      const sectionKey = sectionType?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      return sectionKey === section;
+    });
+    
+    // Mark items as new, modified, or unchanged
+    return stagedItems.map(item => {
+      const currentItem = currentItems.find(i => i.id === item.id);
+      let status: 'new' | 'modified' | 'unchanged' = 'unchanged';
+      
+      if (!currentItem) {
+        status = 'new';
+      } else if (JSON.stringify(currentItem) !== JSON.stringify(item)) {
+        status = 'modified';
+      }
+      
+      return {
+        ...item,
+        status,
+      };
+    });
+  };
+  
+  const handleAddItem = (section: keyof typeof safeData) => {
+    if (!projectId) return;
+    
+    const newItem: NewCanvasItem = {
+      text: '',
+      checked: false,
+      color: null,
+      tags: null,
+      order_index: null,
+      section_id: null,
+    };
+    
+    // Add the item to the section
+    addBlockItem(section, newItem)
+      .then(() => {
+        // We don't need the returned item from addBlockItem
+        // The data will be updated via the store automatically
+        // Just create a temporary item for editing
+        const tempItem: ExtendedCanvasItem = {
+          ...newItem,
+          id: 'temp-' + Date.now(), // Temporary ID just for UI purposes
+          project_id: projectId,
+          created_at: null,
+          created_by: null,
+          updated_at: null
+        };
+        
+        setEditingItem({ 
+          section, 
+          item: tempItem
+        });
+      })
+      .catch(error => {
+        console.error('Failed to add item:', error);
+    });
   };
   
   const handleUpdateItem = (
-    section: keyof BusinessModelCanvasType,
+    section: keyof typeof safeData,
     itemId: string,
     updates: Partial<CanvasItem>
   ) => {
-    const sectionItems = safeData[section] || [];
-    
-    onUpdate({
-      [section]: sectionItems.map(item => 
-        item.id === itemId ? { ...item, ...updates } : item
-      )
-    });
+    if (!projectId) return;
+    updateBlockItem(section, itemId, updates);
   };
   
-  const handleRemoveItem = (section: keyof BusinessModelCanvasType, itemId: string) => {
-    const sectionItems = safeData[section] || [];
-    
-    onUpdate({
-      [section]: sectionItems.filter(item => item.id !== itemId)
-    });
+  const handleRemoveItem = (section: keyof typeof safeData, itemId: string) => {
+    if (!projectId) return;
+    deleteBlockItem(section, itemId);
   };
   
   const saveItemChanges = (values: FormValues) => {
-    if (!editingItem) return;
+    if (!editingItem || !projectId) return;
     
-    // Only update the text property in the official CanvasItem
+    // Only update supported properties from the database type
     handleUpdateItem(
       editingItem.section,
       editingItem.item.id,
@@ -201,39 +272,43 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
       }
     );
     
-    // We'll need to maintain details separately in the future
-    // if we want to persist them
-    
     setEditingItem(null);
   };
   
-  const renderCanvasItems = (section: keyof BusinessModelCanvasType) => {
-    const items = safeData[section] || [];
+  const renderCanvasItems = (section: keyof typeof safeData) => {
+    const items = mapCanvasItemsToDisplay(section);
     
     return (
       <>
         <div className="space-y-2 mb-2">
           {items.map(item => {
-            // Cast to extended item for UI purposes only
-            const extendedItem = item as ExtendedCanvasItem;
+            // Get status classes for comparison mode
+            let statusClass = '';
+            if (comparisonMode && stagedData) {
+              if (item.status === 'new') {
+                statusClass = 'bg-green-50 border-green-200';
+              } else if (item.status === 'modified') {
+                statusClass = 'bg-yellow-50 border-yellow-200';
+              }
+            }
             
             return (
-              <div 
-                key={item.id}
-                className={`p-2 ${item.checked ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'} rounded-md flex items-start group hover:shadow-sm transition-all duration-200`}
-              >
+          <div 
+            key={item.id}
+                className={`p-2 ${item.checked ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'} ${statusClass} rounded-md flex items-start group hover:shadow-sm transition-all duration-200`}
+          >
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm ${!item.text && 'text-gray-500 italic'}`}>
-                    {item.text || `Add ${section.replace(/([A-Z])/g, ' $1').toLowerCase()}...`}
-                  </p>
-                  {extendedItem.details && (
-                    <p className="text-xs text-gray-500 mt-1 truncate">{extendedItem.details}</p>
-                  )}
-                </div>
+              {item.text || `Add ${section.replace(/([A-Z])/g, ' $1').toLowerCase()}...`}
+            </p>
+                  {item.details && (
+                    <p className="text-xs text-gray-500 mt-1 truncate">{item.details}</p>
+            )}
+          </div>
                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                   <button
                     className="p-1 hover:bg-gray-200 rounded"
-                    onClick={() => setEditingItem({ section, item: extendedItem })}
+                    onClick={() => setEditingItem({ section, item })}
                   >
                     <Edit className="h-3 w-3 text-gray-500" />
                   </button>
@@ -250,26 +325,24 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
                     <Trash2 className="h-3 w-3 text-red-500" />
                   </button>
                 </div>
-              </div>
+          </div>
             );
           })}
         </div>
-        
         <Button 
-          variant="outline" 
-          size="sm" 
-          className="w-full flex items-center justify-center text-gray-500"
+          variant="ghost" 
+          className="w-full border border-dashed border-gray-300 hover:border-gray-400 flex items-center justify-center text-gray-500 hover:text-gray-700"
           onClick={() => handleAddItem(section)}
         >
-          <PlusCircle className="h-3 w-3 mr-1" />
-          <span className="text-xs">Add {section.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+          <PlusCircle className="h-4 w-4 mr-2" />
+          <span>Add Item</span>
         </Button>
       </>
     );
   };
   
   // Render a section with a tooltip containing guidance
-  const renderSection = (section: keyof BusinessModelCanvasType, className: string = "") => {
+  const renderSection = (section: keyof typeof safeData, className: string = "") => {
     const guidance = sectionGuidance[section];
     
     return (
@@ -292,7 +365,7 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </div>
+        </div>
           <CardDescription className="text-xs hidden lg:block">
             {guidance.description.split("?")[0]}?
           </CardDescription>
@@ -369,8 +442,8 @@ export const BusinessModelCanvas: React.FC<BusinessModelCanvasProps> = ({
       
       <div className="mb-6 flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Business Model Canvas</h2>
-          <p className="text-gray-600">Map out all the essential components of your business model</p>
+        <h2 className="text-2xl font-bold text-gray-900">Business Model Canvas</h2>
+        <p className="text-gray-600">Map out all the essential components of your business model</p>
         </div>
         <TooltipProvider>
           <Tooltip>

@@ -1,0 +1,221 @@
+.why-section {
+  position: relative;
+  padding-top: var(--space-3xl);
+  padding-bottom: var(--space-3xl);
+  overflow: hidden;
+}
+
+.section-header {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto var(--space-xl);
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  background: rgba(76, 201, 240, 0.1);
+  color: var(--secondary-700);
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(76, 201, 240, 0.2);
+}
+
+.section-title {
+  margin-bottom: var(--space-md);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.section-description {
+  font-size: 1.2rem;
+  color: var(--dark-600);
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-lg);
+  margin-top: var(--space-2xl);
+}
+
+.feature-card {
+  position: relative;
+  padding: var(--space-xl);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+  transform: translateZ(0);
+  transition: transform 0.3s ease-out;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px) rotateX(2deg) rotateY(-2deg);
+}
+
+.feature-card:before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  z-index: -1;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+  transform: translateZ(-1px);
+  transition: all var(--transition-medium);
+}
+
+.feature-card:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  z-index: -2;
+  background: linear-gradient(220deg, 
+    rgba(114, 9, 183, 0.05),
+    rgba(76, 201, 240, 0.05),
+    rgba(247, 37, 133, 0.05)
+  );
+  transform: translateZ(-2px);
+  transition: all var(--transition-medium);
+}
+
+.feature-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-lg);
+  position: relative;
+}
+
+.feature-icon-svg {
+  width: 32px;
+  height: 32px;
+  color: var(--primary-700);
+  transition: all var(--transition-medium);
+}
+
+.feature-card:hover .feature-icon-svg {
+  transform: scale(1.1);
+  color: var(--primary-600);
+}
+
+.ai-icon .feature-icon-svg {
+  color: var(--accent-600);
+}
+
+.data-icon .feature-icon-svg {
+  color: var(--secondary-600);
+}
+
+.feature-card:hover .feature-icon-bg {
+  background: var(--gradient-primary);
+}
+
+.feature-card:hover .feature-icon span {
+  color: white;
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.ai-icon .feature-icon-bg {
+  background: rgba(247, 37, 133, 0.1);
+}
+
+.ai-icon span {
+  color: var(--accent-600);
+}
+
+.feature-card.ai-icon:hover .feature-icon-bg {
+  background: var(--gradient-accent);
+}
+
+.data-icon .feature-icon-bg {
+  background: rgba(76, 201, 240, 0.1);
+}
+
+.data-icon span {
+  color: var(--secondary-700);
+}
+
+.feature-card.data-icon:hover .feature-icon-bg {
+  background: var(--gradient-secondary);
+}
+
+.feature-title {
+  font-size: 1.6rem;
+  margin-bottom: var(--space-sm);
+  color: var(--dark-800);
+  transition: all var(--transition-medium);
+}
+
+.feature-card:hover .feature-title {
+  transform: translateY(-5px);
+  color: var(--primary-700);
+}
+
+.feature-description {
+  color: var(--dark-600);
+  margin-bottom: var(--space-lg);
+}
+
+.feature-list {
+  margin-top: auto;
+  padding-left: 1.5rem;
+  list-style: none;
+}
+
+.feature-list li {
+  margin-bottom: var(--space-sm);
+  position: relative;
+  color: var(--dark-600);
+}
+
+.feature-list li:before {
+  content: "";
+  position: absolute;
+  left: -1.5rem;
+  top: 0.5rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-700);
+  transition: all var(--transition-medium);
+}
+
+.feature-card:hover .feature-list li:before {
+  transform: scale(1.5);
+}
+
+.feature-card.ai-icon:hover .feature-list li:before {
+  background: var(--accent-600);
+}
+
+.feature-card.data-icon:hover .feature-list li:before {
+  background: var(--secondary-700);
+}
+
+@media (max-width: 992px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+} 

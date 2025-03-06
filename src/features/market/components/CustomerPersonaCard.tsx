@@ -8,11 +8,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 interface CustomerPersonaCardProps {
   persona: CustomerPersona;
   onEdit?: (id: string) => void;
+  onUpdate?: (updated: CustomerPersona) => void;
+  onDelete?: () => void;
+  readOnly?: boolean;
 }
 
 export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({ 
   persona,
-  onEdit 
+  onEdit,
+  onUpdate,
+  onDelete,
+  readOnly = false
 }) => {
   // Calculate completeness of persona profile
   const calculateCompleteness = () => {
@@ -121,15 +127,30 @@ export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({
         </div>
       </div>
       
-      <Button 
-        variant="ghost" 
-        size="sm"
-        className="mt-4 text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
-        onClick={() => onEdit && onEdit(persona.id)}
-      >
-        <Edit className="h-3.5 w-3.5" />
-        Edit Persona
-      </Button>
+      {!readOnly && (
+        <div className="flex justify-between mt-4">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
+            onClick={() => onEdit && onEdit(persona.id)}
+          >
+            <Edit className="h-3.5 w-3.5" />
+            Edit Persona
+          </Button>
+          
+          {onDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-red-600 flex items-center gap-1 hover:bg-red-50 px-2.5 py-1.5"
+              onClick={onDelete}
+            >
+              Delete
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

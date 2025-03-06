@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { Project, ProjectDetails } from '@/types';
+import { useProjectStore } from './project-store';
+import type { ProjectState, ProjectStore } from './types';
 
 interface AppState {
   // Current project
@@ -57,3 +59,6 @@ export const useAppStore = create<AppState>()(
     }),
   }))
 );
+
+export { useProjectStore };
+export type { ProjectState, ProjectStore };

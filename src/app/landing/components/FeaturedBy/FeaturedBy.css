@@ -1,0 +1,44 @@
+.featured-by {
+  padding: var(--space-lg) 0;
+  position: relative;
+}
+
+.featured-title {
+  text-align: center;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dark-500);
+  margin-bottom: var(--space-md);
+}
+
+.logos-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xl);
+}
+
+.logo-item {
+  opacity: 0.7;
+  filter: grayscale(1);
+  transition: all var(--transition-medium);
+  max-width: 120px;
+}
+
+.logo-item:hover {
+  opacity: 1;
+  filter: grayscale(0);
+  transform: translateY(-5px);
+}
+
+@media (max-width: 768px) {
+  .logos-container {
+    gap: var(--space-lg);
+  }
+  
+  .logo-item {
+    max-width: 100px;
+  }
+} 
