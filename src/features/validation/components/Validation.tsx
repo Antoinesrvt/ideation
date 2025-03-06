@@ -47,33 +47,49 @@ import {
   ArrowRight,
   Plus
 } from 'lucide-react';
-import { ProjectDetails, Experiment, ABTest, UserFeedback, Hypothesis } from '@/types';
+import { 
+  ValidationExperiment,
+  ValidationABTest,
+  ValidationUserFeedback,
+  ValidationHypothesis
+} from '@/store/types';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useValidation } from '@/hooks/useValidation';
 import { useProjectStore } from '@/store';
+import { Progress } from '@/components/ui/progress';
 
-interface ValidationProps {
-  data?: ProjectDetails;
-  onUpdate?: (data: Partial<ProjectDetails>) => void;
-}
 
 interface ValidationData {
-  experiments: Experiment[];
-  abTests: ABTest[];
-  userFeedback: UserFeedback[];
-  hypotheses: Hypothesis[];
+  experiments: ValidationExperiment[];
+  abTests: ValidationABTest[];
+  userFeedback: ValidationUserFeedback[];
+  hypotheses: ValidationHypothesis[];
 }
 
-
-
-export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
+export const Validation: React.FC = () => {
   // Get the current project ID from the store
   const { currentData } = useProjectStore();
   const projectId = currentData.project?.id;
   
   // Use the validation hook
-  const validationData = useValidation(projectId);
+  const {
+    data: validationData,
+    isLoading,
+    error,
+    addExperiment,
+    updateExperiment,
+    deleteExperiment,
+    addABTest,
+    updateABTest,
+    deleteABTest,
+    addUserFeedback,
+    updateUserFeedback,
+    deleteUserFeedback,
+    addHypothesis,
+    updateHypothesis,
+    deleteHypothesis
+  } = useValidation(projectId);
   
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -84,187 +100,11 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
   const [userFeedbackFormOpen, setUserFeedbackFormOpen] = useState(false);
   const [hypothesisFormOpen, setHypothesisFormOpen] = useState(false);
   
-  // Ensure we have default values if data is undefined
-  const safeData: ValidationData = {
-    experiments: data?.validation?.experiments || [],
-    abTests: data?.validation?.abTests || [],
-    userFeedback: data?.validation?.userFeedback || [],
-    hypotheses: data?.validation?.hypotheses || []
-  };
-
   const counts = {
-    experiments: safeData.experiments.length,
-    abTests: safeData.abTests.length,
-    feedback: safeData.userFeedback.length,
-    hypotheses: safeData.hypotheses.length
-  };
-
-  // Helper function for when onUpdate is not provided
-  const updateData = (updatedData: Partial<ProjectDetails>) => {
-    if (onUpdate) {
-      onUpdate(updatedData);
-    } else {
-      console.log('No onUpdate provided. Would update with:', updatedData);
-    }
-  };
-
-  const handleAddExperiment = (experiment: Experiment) => {
-    updateData({
-      validation: {
-        ...safeData,
-        experiments: [...safeData.experiments, experiment]
-      }
-    });
-  };
-
-  const handleUpdateExperiment = (updatedExperiment: Experiment) => {
-    updateData({
-      validation: {
-        ...safeData,
-        experiments: safeData.experiments.map(exp => 
-          exp.id === updatedExperiment.id ? updatedExperiment : exp
-        )
-      }
-    });
-  };
-
-  const handleDeleteExperiment = (id: string) => {
-    updateData({
-      validation: {
-        ...safeData,
-        experiments: safeData.experiments.filter(exp => exp.id !== id)
-      }
-    });
-  };
-
-  const handleAddABTest = (test: ABTest) => {
-    updateData({
-      validation: {
-        ...safeData,
-        abTests: [...safeData.abTests, test]
-      }
-    });
-  };
-
-  const handleUpdateABTest = (updatedTest: ABTest) => {
-    updateData({
-      validation: {
-        ...safeData,
-        abTests: safeData.abTests.map(test => 
-          test.id === updatedTest.id ? updatedTest : test
-        )
-      }
-    });
-  };
-
-  const handleDeleteABTest = (id: string) => {
-    updateData({
-      validation: {
-        ...safeData,
-        abTests: safeData.abTests.filter(test => test.id !== id)
-      }
-    });
-  };
-
-  const handleAddUserFeedback = (feedback: UserFeedback) => {
-    updateData({
-      validation: {
-        ...safeData,
-        userFeedback: [...safeData.userFeedback, feedback]
-      }
-    });
-  };
-
-  const handleUpdateUserFeedback = (updatedFeedback: UserFeedback) => {
-    updateData({
-      validation: {
-        ...safeData,
-        userFeedback: safeData.userFeedback.map(feedback => 
-          feedback.id === updatedFeedback.id ? updatedFeedback : feedback
-        )
-      }
-    });
-  };
-
-  const handleDeleteUserFeedback = (id: string) => {
-    updateData({
-      validation: {
-        ...safeData,
-        userFeedback: safeData.userFeedback.filter(feedback => feedback.id !== id)
-      }
-    });
-  };
-
-  const handleAddHypothesis = (hypothesis: Hypothesis) => {
-    updateData({
-      validation: {
-        ...safeData,
-        hypotheses: [...safeData.hypotheses, hypothesis]
-      }
-    });
-  };
-
-  const handleUpdateHypothesis = (updatedHypothesis: Hypothesis) => {
-    updateData({
-      validation: {
-        ...safeData,
-        hypotheses: safeData.hypotheses.map(hypothesis => 
-          hypothesis.id === updatedHypothesis.id ? updatedHypothesis : hypothesis
-        )
-      }
-    });
-  };
-
-  const handleDeleteHypothesis = (id: string) => {
-    updateData({
-      validation: {
-        ...safeData,
-        hypotheses: safeData.hypotheses.filter(hypothesis => hypothesis.id !== id)
-      }
-    });
-  };
-  
-  const getStatusSummary = () => {
-    const summary = {
-      experimentsByStatus: {} as Record<string, number>,
-      testsByStatus: {} as Record<string, number>,
-      feedbackByStatus: {} as Record<string, number>,
-      hypothesesByStatus: {} as Record<string, number>,
-      validatedHypotheses: 0,
-      completedExperiments: 0,
-      completedTests: 0,
-      processedFeedback: 0
-    };
-
-    safeData.experiments.forEach(exp => {
-      summary.experimentsByStatus[exp.status] = (summary.experimentsByStatus[exp.status] || 0) + 1;
-      if (exp.status === 'completed') {
-        summary.completedExperiments++;
-      }
-    });
-
-    safeData.abTests.forEach(test => {
-      summary.testsByStatus[test.status] = (summary.testsByStatus[test.status] || 0) + 1;
-      if (test.status === 'completed') {
-        summary.completedTests++;
-      }
-    });
-
-    safeData.userFeedback.forEach(feedback => {
-      summary.feedbackByStatus[feedback.status] = (summary.feedbackByStatus[feedback.status] || 0) + 1;
-      if (feedback.status === 'implemented') {
-        summary.processedFeedback++;
-      }
-    });
-
-    safeData.hypotheses.forEach(hyp => {
-      summary.hypothesesByStatus[hyp.status] = (summary.hypothesesByStatus[hyp.status] || 0) + 1;
-      if (hyp.status === 'validated') {
-        summary.validatedHypotheses++;
-      }
-    });
-
-    return summary;
+    experiments: validationData.experiments.length,
+    abTests: validationData.abTests.length,
+    feedback: validationData.userFeedback.length,
+    hypotheses: validationData.hypotheses.length
   };
 
   const [expandedHelp, setExpandedHelp] = useState<{
@@ -290,7 +130,36 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
     }));
   };
 
+  const getStatusSummary = () => {
+    const summary = {
+      experiments: {
+        total: validationData.experiments.length,
+        completed: validationData.experiments.filter(e => e.status === 'completed').length,
+        inProgress: validationData.experiments.filter(e => e.status === 'in-progress').length
+      },
+      abTests: {
+        total: validationData.abTests.length,
+        completed: validationData.abTests.filter(t => t.status === 'completed').length,
+        running: validationData.abTests.filter(t => t.status === 'running').length
+      },
+      userFeedback: {
+        total: validationData.userFeedback.length,
+        implemented: validationData.userFeedback.filter(f => f.status === 'implemented').length,
+        pending: validationData.userFeedback.filter(f => f.status === 'new' || f.status === 'in-review').length
+      },
+      hypotheses: {
+        total: validationData.hypotheses.length,
+        validated: validationData.hypotheses.filter(h => h.status === 'validated').length,
+        invalidated: validationData.hypotheses.filter(h => h.status === 'invalidated').length
+      }
+    };
+
+    return summary;
+  };
+
   const renderOverview = () => {
+    const summary = getStatusSummary();
+
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
@@ -319,7 +188,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                 <span>Hypotheses</span>
                 <div className="flex items-center">
                   <span className="text-sm mr-2">
-                    {getStatusSummary().validatedHypotheses}/{counts.hypotheses}
+                    {summary.hypotheses.validated}/{counts.hypotheses}
                   </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -327,7 +196,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                       style={{
                         width: `${
                           counts.hypotheses > 0
-                            ? (getStatusSummary().validatedHypotheses /
+                            ? (summary.hypotheses.validated /
                                 counts.hypotheses) *
                               100
                             : 0
@@ -341,8 +210,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                 <span>Experiments</span>
                 <div className="flex items-center">
                   <span className="text-sm mr-2">
-                    {getStatusSummary().completedExperiments}/
-                    {counts.experiments}
+                    {summary.experiments.completed}/{counts.experiments}
                   </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -350,7 +218,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                       style={{
                         width: `${
                           counts.experiments > 0
-                            ? (getStatusSummary().completedExperiments /
+                            ? (summary.experiments.completed /
                                 counts.experiments) *
                               100
                             : 0
@@ -364,7 +232,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                 <span>A/B Tests</span>
                 <div className="flex items-center">
                   <span className="text-sm mr-2">
-                    {getStatusSummary().completedTests}/{counts.abTests}
+                    {summary.abTests.completed}/{counts.abTests}
                   </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -372,7 +240,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                       style={{
                         width: `${
                           counts.abTests > 0
-                            ? (getStatusSummary().completedTests /
+                            ? (summary.abTests.completed /
                                 counts.abTests) *
                               100
                             : 0
@@ -386,7 +254,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                 <span>Feedback</span>
                 <div className="flex items-center">
                   <span className="text-sm mr-2">
-                    {getStatusSummary().processedFeedback}/{counts.feedback}
+                    {summary.userFeedback.implemented}/{counts.feedback}
                   </span>
                   <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -394,7 +262,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                       style={{
                         width: `${
                           counts.feedback > 0
-                            ? (getStatusSummary().processedFeedback /
+                            ? (summary.userFeedback.implemented /
                                 counts.feedback) *
                               100
                             : 0
@@ -482,6 +350,18 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
     );
   };
   
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error.message}</div>;
+  }
+
+  if (!projectId) {
+    return <div>No project selected</div>;
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
@@ -653,14 +533,14 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
                 <div>
                   <h3 className="font-medium text-lg">Hypotheses</h3>
                   <p className="text-sm text-gray-600">
-                    A hypothesis is a testable statement about what you believe to be true. Good hypotheses are specific, 
-                    measurable, and falsifiable.
+                    Start with clear hypotheses about your product and market assumptions.
+                    These will guide your experiments and validation efforts.
                   </p>
                 </div>
               </div>
             </div>
             <Button onClick={() => setHypothesisFormOpen(true)} size="sm">
-              <PlusCircle className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" />
               New Hypothesis
             </Button>
           </div>
@@ -721,34 +601,26 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <HypothesesList
-              hypotheses={
-                searchQuery
-                  ? safeData.hypotheses.filter(
-                      (h: Hypothesis) =>
-                        h.statement
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        h.assumptions.some((a: string) =>
-                          a.toLowerCase().includes(searchQuery.toLowerCase())
-                        ) ||
-                        h.validationMethod
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        h.evidence.some((e: string) =>
-                          e.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
-                    )
-                  : safeData.hypotheses
-              }
-              onUpdate={handleUpdateHypothesis}
-              onDelete={handleDeleteHypothesis}
+              hypotheses={validationData.hypotheses}
+              onUpdate={(hypothesis) => updateHypothesis({ 
+                id: hypothesis.id, 
+                data: {
+                  statement: hypothesis.statement,
+                  assumptions: hypothesis.assumptions,
+                  validation_method: hypothesis.validation_method,
+                  status: hypothesis.status,
+                  confidence: hypothesis.confidence,
+                  evidence: hypothesis.evidence
+                }
+              })}
+              onDelete={deleteHypothesis}
             />
           </ScrollArea>
 
           <HypothesisForm
             open={hypothesisFormOpen}
             onOpenChange={setHypothesisFormOpen}
-            onSubmit={handleAddHypothesis}
+            onSubmit={addHypothesis}
           />
         </TabsContent>
 
@@ -767,7 +639,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               </div>
             </div>
             <Button onClick={() => setExperimentFormOpen(true)} size="sm">
-              <PlusCircle className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" />
               New Experiment
             </Button>
           </div>
@@ -803,31 +675,16 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <ExperimentsList
-              experiments={
-                searchQuery
-                  ? safeData.experiments.filter(
-                      (e: Experiment) =>
-                        e.title
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        e.description
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        e.hypothesis
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase())
-                    )
-                  : safeData.experiments
-              }
-              onUpdate={handleUpdateExperiment}
-              onDelete={handleDeleteExperiment}
+              experiments={validationData.experiments}
+              onUpdate={({ id, data }) => updateExperiment({ id, data })}
+              onDelete={deleteExperiment}
             />
           </ScrollArea>
 
           <ExperimentForm
             open={experimentFormOpen}
             onOpenChange={setExperimentFormOpen}
-            onSubmit={handleAddExperiment}
+            onSubmit={addExperiment}
           />
         </TabsContent>
 
@@ -846,7 +703,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               </div>
             </div>
             <Button onClick={() => setABTestFormOpen(true)} size="sm">
-              <PlusCircle className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" />
               New A/B Test
             </Button>
           </div>
@@ -882,34 +739,16 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <ABTestsList
-              tests={
-                searchQuery
-                  ? safeData.abTests.filter(
-                      (t: ABTest) =>
-                        t.title
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        t.description
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        t.variantA
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        t.variantB
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase())
-                    )
-                  : safeData.abTests
-              }
-              onUpdate={handleUpdateABTest}
-              onDelete={handleDeleteABTest}
+              tests={validationData.abTests}
+              onUpdate={({ id, data }) => updateABTest({ id, data })}
+              onDelete={deleteABTest}
             />
           </ScrollArea>
 
           <ABTestForm
             open={abTestFormOpen}
             onOpenChange={setABTestFormOpen}
-            onSubmit={handleAddABTest}
+            onSubmit={addABTest}
           />
         </TabsContent>
 
@@ -928,7 +767,7 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
               </div>
             </div>
             <Button onClick={() => setUserFeedbackFormOpen(true)} size="sm">
-              <PlusCircle className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1" />
               New Feedback
             </Button>
           </div>
@@ -964,31 +803,16 @@ export const Validation: React.FC<ValidationProps> = ({ data, onUpdate }) => {
 
           <ScrollArea className="h-[calc(100vh-280px)]">
             <UserFeedbackList
-              feedback={
-                searchQuery
-                  ? safeData.userFeedback.filter(
-                      (f: UserFeedback) =>
-                        f.source
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        f.content
-                          .toLowerCase()
-                          .includes(searchQuery.toLowerCase()) ||
-                        f.tags.some((tag: string) =>
-                          tag.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
-                    )
-                  : safeData.userFeedback
-              }
-              onUpdate={handleUpdateUserFeedback}
-              onDelete={handleDeleteUserFeedback}
+              feedback={validationData.userFeedback}
+              onUpdate={({ id, data }) => updateUserFeedback({ id, data })}
+              onDelete={deleteUserFeedback}
             />
           </ScrollArea>
 
           <UserFeedbackForm
             open={userFeedbackFormOpen}
             onOpenChange={setUserFeedbackFormOpen}
-            onSubmit={handleAddUserFeedback}
+            onSubmit={addUserFeedback}
           />
         </TabsContent>
       </Tabs>

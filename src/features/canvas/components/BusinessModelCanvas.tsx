@@ -25,7 +25,7 @@ interface ExtendedCanvasItem extends CanvasItem {
 }
 
 // Define type for new items that can be added
-type NewCanvasItem = Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'project_id'>;
+type NewCanvasItem = Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'project_id'> & { created_by: string | null };
 
 // Define the form values interface
 interface FormValues {
@@ -131,7 +131,7 @@ const sectionGuidance = {
 export const BusinessModelCanvas: React.FC = () => {
   const params = useParams();
   const projectId = typeof params.id === 'string' ? params.id : undefined;
-  const { data, addBlockItem, updateBlockItem, deleteBlockItem } = useBusinessModel(projectId);
+  const { data, addItem, updateItem, deleteItem } = useBusinessModel(projectId);
   const { comparisonMode, currentData, stagedData } = useProjectStore();
   
   const [activeSection, setActiveSection] = useState<keyof typeof data | null>(null);
@@ -219,15 +219,16 @@ export const BusinessModelCanvas: React.FC = () => {
       tags: null,
       order_index: null,
       section_id: null,
+      created_by: null,
     };
-    
-    // Add the item to the section
-    addBlockItem(section, newItem)
-      .then(() => {
-        // We don't need the returned item from addBlockItem
-        // The data will be updated via the store automatically
-        // Just create a temporary item for editing
-        const tempItem: ExtendedCanvasItem = {
+
+    try {
+      // Add the item to the section
+      addItem(section, newItem)
+      // We don't need the returned item from addBlockItem
+      // The data will be updated via the store automatically
+      // Just create a temporary item for editing
+      const tempItem: ExtendedCanvasItem = {
           ...newItem,
           id: 'temp-' + Date.now(), // Temporary ID just for UI purposes
           project_id: projectId,
@@ -240,24 +241,23 @@ export const BusinessModelCanvas: React.FC = () => {
           section, 
           item: tempItem
         });
-      })
-      .catch(error => {
-        console.error('Failed to add item:', error);
-    });
+    } catch (error) {
+      console.error('Failed to add item:', error);
+    }
   };
   
   const handleUpdateItem = (
     section: keyof typeof safeData,
     itemId: string,
-    updates: Partial<CanvasItem>
+    updates: Partial<NewCanvasItem>
   ) => {
     if (!projectId) return;
-    updateBlockItem(section, itemId, updates);
+    updateItem(section, itemId, updates);
   };
   
   const handleRemoveItem = (section: keyof typeof safeData, itemId: string) => {
     if (!projectId) return;
-    deleteBlockItem(section, itemId);
+    deleteItem(section, itemId);
   };
   
   const saveItemChanges = (values: FormValues) => {

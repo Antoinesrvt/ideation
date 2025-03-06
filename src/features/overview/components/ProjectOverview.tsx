@@ -2,17 +2,8 @@ import React, { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { 
   ProjectDetails, 
-  GRPModel, 
   GRPItem,
-  CanvasItem,
   CustomerPersona as Persona,
-  Competitor,
-  Feature,
-  MarketTrend,
-  Experiment,
-  ABTest,
-  UserFeedback,
-  Hypothesis
 } from '@/types';
 import { 
   Layers, 
@@ -55,205 +46,13 @@ interface ProjectOverviewProps {
 export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => {
   const { setActiveSection } = useAppStore();
   
-  // Calculate section completion percentages
-  const getSectionCompletion = (section: string) => {
-    switch (section) {
-      case 'canvas':
-        if (!project.canvas) return 0;
-        const canvasItems = Object.values(project.canvas).flat();
-        const completedCanvasItems = canvasItems.filter(item => item.checked).length;
-        return canvasItems.length > 0 ? Math.round((completedCanvasItems / canvasItems.length) * 100) : 0;
-      
-      case 'grp':
-        if (!project.grpModel) return 0;
-        
-        // Calculate GRP model completion based on entered data
-        let totalItems = 0;
-        let completedItems = 0;
-        
-        // In the existing GRP model, count items with descriptions
-        if (project.grpModel) {
-          // Generation section
-          if (project.grpModel.generation) {
-            totalItems += countGRPSectionItems(project.grpModel.generation);
-            completedItems += countCompletedGRPItems(project.grpModel.generation);
-          }
-          
-          // Remuneration section
-          if (project.grpModel.remuneration) {
-            totalItems += countGRPSectionItems(project.grpModel.remuneration);
-            completedItems += countCompletedGRPItems(project.grpModel.remuneration);
-          }
-          
-          // Partage section
-          if (project.grpModel.partage) {
-            totalItems += countGRPSectionItems(project.grpModel.partage);
-            completedItems += countCompletedGRPItems(project.grpModel.partage);
-          }
-        }
-        
-        return totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-      
-      case 'market':
-        if (!project.marketAnalysis) return 0;
-        
-        let marketTotalItems = 0;
-        let marketCompletedItems = 0;
-        
-        // Count personas
-        if (project.marketAnalysis.customerInsights?.personas) {
-          const personas = project.marketAnalysis.customerInsights.personas;
-          marketTotalItems += personas.length * 3; // Name, role, demographics are key fields
-          
-          personas.forEach(persona => {
-            if (persona.name) marketCompletedItems++;
-            if (persona.role) marketCompletedItems++;
-            if (persona.demographics) marketCompletedItems++;
-          });
-        }
-        
-        // Count competitors
-        if (project.marketAnalysis.competitors) {
-          const competitors = project.marketAnalysis.competitors;
-          marketTotalItems += competitors.length * 3; // Name, strengths, weaknesses are key fields
-          
-          competitors.forEach(competitor => {
-            if (competitor.name) marketCompletedItems++;
-            if (competitor.strengths && competitor.strengths.length > 0) marketCompletedItems++;
-            if (competitor.weaknesses && competitor.weaknesses.length > 0) marketCompletedItems++;
-          });
-        }
-        
-        // Count trends if available
-        if (project.marketAnalysis.trends) {
-          marketTotalItems += project.marketAnalysis.trends.length * 2;
-          project.marketAnalysis.trends.forEach(trend => {
-            if (trend.name) marketCompletedItems++;
-            if (trend.description) marketCompletedItems++;
-          });
-        }
-        
-        return marketTotalItems > 0 ? Math.round((marketCompletedItems / marketTotalItems) * 100) : 0;
-      
-      case 'userflow':
-        if (!project.userFlow) return 0;
-        
-        let userFlowTotalItems = 0;
-        let userFlowCompletedItems = 0;
-        
-        // Count features
-        if (project.userFlow.features) {
-          userFlowTotalItems += project.userFlow.features.length * 2; // Name and description are key fields
-          
-          project.userFlow.features.forEach(feature => {
-            if (feature.name) userFlowCompletedItems++;
-            if (feature.description) userFlowCompletedItems++;
-          });
-        }
-        
-        // Count wireframes if available
-        if (project.userFlow.wireframes) {
-          userFlowTotalItems += project.userFlow.wireframes.length;
-          project.userFlow.wireframes.forEach(wireframe => {
-            if (wireframe.name) userFlowCompletedItems++;
-          });
-        }
-        
-        // Count journey stages if available
-        if (project.userFlow.journey?.stages) {
-          userFlowTotalItems += project.userFlow.journey.stages.length * 2;
-          project.userFlow.journey.stages.forEach(stage => {
-            if (stage.name) userFlowCompletedItems++;
-            if (stage.description) userFlowCompletedItems++;
-          });
-        }
-        
-        return userFlowTotalItems > 0 ? Math.round((userFlowCompletedItems / userFlowTotalItems) * 100) : 0;
-      
-      case 'documents':
-        return project.documents && project.documents.length > 0 ? 
-          Math.min(100, project.documents.length * 25) : 0; // Each document counts as 25% up to 100%
-          
-      case 'validation':
-        if (!project.validation) return 0;
-        
-        let validationTotal = 0;
-        let validationCompleted = 0;
-        
-        // Count experiments
-        if (project.validation.experiments) {
-          validationTotal += project.validation.experiments.length;
-          validationCompleted += project.validation.experiments.filter(
-            exp => exp.status === 'completed'
-          ).length;
-        }
-        
-        // Count A/B tests
-        if (project.validation.abTests) {
-          validationTotal += project.validation.abTests.length;
-          validationCompleted += project.validation.abTests.filter(
-            test => test.status === 'completed'
-          ).length;
-        }
-        
-        // Count user feedback
-        if (project.validation.userFeedback) {
-          validationTotal += project.validation.userFeedback.length;
-          validationCompleted += project.validation.userFeedback.filter(
-            feedback => feedback.status === 'implemented' || feedback.status === 'accepted'
-          ).length;
-        }
-        
-        // Count hypotheses
-        if (project.validation.hypotheses) {
-          validationTotal += project.validation.hypotheses.length;
-          validationCompleted += project.validation.hypotheses.filter(
-            hypothesis => hypothesis.status === 'validated' || hypothesis.status === 'invalidated'
-          ).length;
-        }
-        
-        return validationTotal > 0 ? Math.round((validationCompleted / validationTotal) * 100) : 0;
-      
-      default:
-        return 0;
-    }
-  };
   
-  // Helper function to count the total number of items in a GRP section
-  const countGRPSectionItems = (section: Record<string, GRPItem[]>) => {
-    return Object.values(section).reduce((total, items) => total + items.length, 0);
-  };
-  
-  // Helper function to count completed GRP items (those with descriptions)
-  const countCompletedGRPItems = (section: Record<string, GRPItem[]>) => {
-    return Object.values(section).flat().filter(item => !!item.description).length;
-  };
-
-  // Calculate project health score based on various factors
-  const getProjectHealthScore = () => {
-    const sectionScores = [
-      getSectionCompletion('canvas'),
-      getSectionCompletion('grp'),
-      getSectionCompletion('market'),
-      getSectionCompletion('userflow'),
-      getSectionCompletion('validation')
-    ];
-    
-    // Calculate weighted average, giving more weight to market analysis and validation
-    const weightedTotal = sectionScores[0] * 0.15 + 
-                          sectionScores[1] * 0.15 + 
-                          sectionScores[2] * 0.25 + 
-                          sectionScores[3] * 0.15 + 
-                          sectionScores[4] * 0.3;
-    
-    return Math.round(weightedTotal);
-  };
   
   // Determine project phase based on completion percentages
   const getProjectPhase = () => {
     const overallCompletion = project.completion;
-    const validationProgress = getSectionCompletion('validation');
-    const marketAnalysisProgress = getSectionCompletion('market');
+    const validationProgress = 0;
+    const marketAnalysisProgress = 0;
     
     if (overallCompletion < 25) return 'Concept';
     if (overallCompletion < 50) return 'Development';
@@ -264,65 +63,73 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({ project }) => 
   
   // Get prioritized recommended actions based on current state
   const getRecommendedActions = () => {
-    const actions = [];
+    const actions: {
+      id: string;
+      title: string;
+      description: string;
+      icon: React.ReactNode;
+      priority: number;
+      section: string;
+    }[] = [];
     
-    if (getSectionCompletion('canvas') < 70) {
-      actions.push({
-        id: 'canvas-action',
-        title: 'Complete your business model canvas',
-        description: 'Define your key value propositions and customer segments',
-        icon: <Layers className="h-5 w-5 text-blue-600" />,
-        priority: 1,
-        section: 'canvas'
-      });
-    }
+    // if (0 < 70) {
+    //   actions.push({
+    //     id: 'canvas-action',
+    //     title: 'Complete your business model canvas',
+    //     description: 'Define your key value propositions and customer segments',
+    //     icon: <Layers className="h-5 w-5 text-blue-600" />,
+    //     priority: 1,
+    //     section: 'canvas'
+    //   });
+    // }
     
-    if (getSectionCompletion('market') < 60) {
-      actions.push({
-        id: 'market-action',
-        title: 'Develop your market analysis',
-        description: 'Research competitors and identify customer personas',
-        icon: <Target className="h-5 w-5 text-green-600" />,
-        priority: getSectionCompletion('canvas') > 50 ? 1 : 2,
-        section: 'market'
-      });
-    }
+    // if (getSectionCompletion('market') < 60) {
+    //   actions.push({
+    //     id: 'market-action',
+    //     title: 'Develop your market analysis',
+    //     description: 'Research competitors and identify customer personas',
+    //     icon: <Target className="h-5 w-5 text-green-600" />,
+    //     priority: getSectionCompletion('canvas') > 50 ? 1 : 2,
+    //     section: 'market'
+    //   });
+    // }
     
-    // If validation is missing or low, prioritize it highly if other areas are progressed
-    if (getSectionCompletion('validation') < 40 && getSectionCompletion('canvas') > 50) {
-      actions.push({
-        id: 'validation-action',
-        title: 'Test your core assumptions',
-        description: 'Set up experiments to validate your business model',
-        icon: <Beaker className="h-5 w-5 text-indigo-600" />,
-        priority: 1,
-        section: 'validation'
-      });
-    }
+    // // If validation is missing or low, prioritize it highly if other areas are progressed
+    // if (getSectionCompletion('validation') < 40 && getSectionCompletion('canvas') > 50) {
+    //   actions.push({
+    //     id: 'validation-action',
+    //     title: 'Test your core assumptions',
+    //     description: 'Set up experiments to validate your business model',
+    //     icon: <Beaker className="h-5 w-5 text-indigo-600" />,
+    //     priority: 1,
+    //     section: 'validation'
+    //   });
+    // }
     
-    if (getSectionCompletion('userflow') < 50 && getSectionCompletion('canvas') > 40) {
-      actions.push({
-        id: 'userflow-action',
-        title: 'Design your user flows',
-        description: 'Map out key user journeys and features',
-        icon: <Users className="h-5 w-5 text-purple-600" />,
-        priority: 2,
-        section: 'product-design'
-      });
-    }
+    // if (getSectionCompletion('userflow') < 50 && getSectionCompletion('canvas') > 40) {
+    //   actions.push({
+    //     id: 'userflow-action',
+    //     title: 'Design your user flows',
+    //     description: 'Map out key user journeys and features',
+    //     icon: <Users className="h-5 w-5 text-purple-600" />,
+    //     priority: 2,
+    //     section: 'product-design'
+    //   });
+    // }
     
-    if (getSectionCompletion('documents') < 30 && project.completion > 60) {
-      actions.push({
-        id: 'documents-action',
-        title: 'Generate key documents',
-        description: 'Create a business plan and pitch deck',
-        icon: <FileText className="h-5 w-5 text-red-600" />,
-        priority: 3,
-        section: 'documents'
-      });
-    }
+    // if (getSectionCompletion('documents') < 30 && project.completion > 60) {
+    //   actions.push({
+    //     id: 'documents-action',
+    //     title: 'Generate key documents',
+    //     description: 'Create a business plan and pitch deck',
+    //     icon: <FileText className="h-5 w-5 text-red-600" />,
+    //     priority: 3,
+    //     section: 'documents'
+    //   });
+    // }
     
     // Sort by priority
+    
     return actions.sort((a, b) => a.priority - b.priority).slice(0, 3);
   };
 

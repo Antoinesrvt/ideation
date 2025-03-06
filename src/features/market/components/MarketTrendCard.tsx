@@ -1,19 +1,17 @@
 import React from 'react';
-import { MarketTrend } from '@/types';
+import { ArrowDown, ArrowUp, ArrowRight, TrendingUp, Edit, Info, Trash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ArrowDown, ArrowUp, ArrowRight, TrendingUp, Edit, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MarketTrendCardProps } from '../types';
 
-interface MarketTrendCardProps {
-  trend: MarketTrend;
-  onEdit?: (id: string) => void;
-}
-
-export const MarketTrendCard: React.FC<MarketTrendCardProps> = ({ 
+export function MarketTrendCard({ 
   trend,
-  onEdit 
-}) => {
+  onEdit,
+  onUpdate,
+  onDelete,
+  readOnly = false
+}: MarketTrendCardProps) {
   const getDirectionIcon = (direction: 'upward' | 'downward' | 'stable') => {
     switch (direction) {
       case 'upward':
@@ -56,29 +54,42 @@ export const MarketTrendCard: React.FC<MarketTrendCardProps> = ({
     return 'Low impact';
   };
   
+  // Ensure direction and type are valid values
+  const direction: 'upward' | 'downward' | 'stable' = 
+    trend.direction === 'upward' ? 'upward' :
+    trend.direction === 'downward' ? 'downward' : 
+    'stable';
+    
+  const type: 'opportunity' | 'threat' | 'neutral' = 
+    trend.trend_type === 'opportunity' ? 'opportunity' :
+    trend.trend_type === 'threat' ? 'threat' : 
+    'neutral';
+  
   return (
-    <div 
-      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-      onClick={() => onEdit && onEdit(trend.id)}
-    >
+    <div className={`bg-white border rounded-lg p-4 transition-shadow ${
+      trend.status === 'new' ? 'border-green-300 shadow-green-100' :
+      trend.status === 'modified' ? 'border-yellow-300 shadow-yellow-100' :
+      trend.status === 'removed' ? 'border-red-300 shadow-red-100' :
+      'border-gray-200 hover:shadow-md'
+    }`}>
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center">
           <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center mr-3">
             <TrendingUp className={`h-5 w-5 ${
-              trend.type === 'opportunity' ? 'text-blue-600' : 
-              trend.type === 'threat' ? 'text-red-600' : 'text-gray-600'
+              type === 'opportunity' ? 'text-blue-600' : 
+              type === 'threat' ? 'text-red-600' : 'text-gray-600'
             }`} />
           </div>
           <div>
             <h3 className="font-semibold">{trend.name || 'Unnamed Trend'}</h3>
             <div className="flex items-center text-sm text-gray-500">
-              {getDirectionIcon(trend.direction)}
-              <span className="ml-1">{getDirectionText(trend.direction)}</span>
+              {getDirectionIcon(direction)}
+              <span className="ml-1">{getDirectionText(direction)}</span>
             </div>
           </div>
         </div>
-        <Badge variant="outline" className={`${getTypeColor(trend.type)}`}>
-          {trend.type.charAt(0).toUpperCase() + trend.type.slice(1)}
+        <Badge variant="outline" className={`${getTypeColor(type)}`}>
+          {type.charAt(0).toUpperCase() + type.slice(1)}
         </Badge>
       </div>
       
@@ -97,7 +108,7 @@ export const MarketTrendCard: React.FC<MarketTrendCardProps> = ({
           </TooltipProvider>
         </div>
         <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-          {getTrendImpact(trend.type, trend.direction)}
+          {getTrendImpact(type, direction)}
         </p>
       </div>
       
@@ -133,14 +144,46 @@ export const MarketTrendCard: React.FC<MarketTrendCardProps> = ({
         </div>
       )}
       
-      <Button 
-        variant="ghost" 
-        size="sm"
-        className="text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
-      >
-        <Edit className="h-3.5 w-3.5" />
-        Edit Trend
-      </Button>
+      {trend.sources && trend.sources.length > 0 && (
+        <div className="mb-3">
+          <p className="text-sm font-medium text-gray-700 mb-1">Sources</p>
+          <div className="flex flex-wrap gap-1">
+            {trend.sources.map((source, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {source}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {!readOnly && (
+        <div className="flex justify-between">
+          {onEdit && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
+              onClick={() => onEdit(trend.id)}
+            >
+              <Edit className="h-3.5 w-3.5" />
+              Edit Trend
+            </Button>
+          )}
+          
+          {onDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-red-600 flex items-center gap-1 hover:bg-red-50 px-2.5 py-1.5"
+              onClick={() => onDelete(trend.id)}
+            >
+              <Trash className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
-};
+}

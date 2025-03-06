@@ -56,7 +56,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     setProject,
   } = useProjectStore();
   
-  const { hasStagedChanges, comparisonMode } = useAIStore();
+  const { hasStagedChanges } = useAIStore();
 
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
   
@@ -67,12 +67,12 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       if (project.data.id) {
         setProject({
           id: project.data.id,
-          name: project.data.name,
+          title: project.data.title,
           // Handle potential missing description safely
           description: project.data.description || '',
           owner_id: project.data.owner_id || '',
-          created_at: project.data.created_at || project.data.lastEdited,
-          updated_at: project.data.updated_at || project.data.lastEdited,
+          created_at: project.data.created_at,
+          updated_at: project.data.updated_at,
           is_archived: project.data.is_archived || false,
           industry: project.data.industry || null,
           stage: project.data.stage || null,
@@ -159,20 +159,19 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         <main className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           <Sidebar
-            projectName={projectDetails.name || ""}
+            projectName={projectDetails.title || ""}
             lastEdited={projectDetails.updated_at || new Date().toISOString()}
-            completion={project.data.completion || 0}
+            completion={0} //TODO: add real completion
             activeSection={activeSection}
             setActiveSection={setActiveSection}
-            hasStagedChanges={hasStagedChanges}
-            comparisonMode={comparisonMode}
           />
 
           {/* Content Area */}
           <div className="flex-1 overflow-auto">
             <ErrorBoundary>
               <AIProjectWrapper>
-                {activeSection === "overview" && <ProjectOverview />}
+                {activeSection === "overview" && <div>Overview</div> //<ProjectOverview />
+                }
 
                 {activeSection === "canvas" && <BusinessModelCanvas />}
 

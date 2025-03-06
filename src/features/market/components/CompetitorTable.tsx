@@ -1,6 +1,5 @@
 import React from 'react';
-import { PlusCircle, Info, Edit, ArrowUpDown, ExternalLink } from 'lucide-react';
-import { Competitor } from '@/types';
+import { PlusCircle, Info, Edit, ArrowUpDown, ExternalLink, Trash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,20 +11,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CompetitorTableProps } from '../types';
 
-interface CompetitorTableProps {
-  competitors: Competitor[];
-  onAddCompetitor: () => void;
-  onEditCompetitor?: (id: string) => void;
-}
-
-export const CompetitorTable: React.FC<CompetitorTableProps> = ({ 
+export function CompetitorTable({ 
   competitors,
-  onAddCompetitor,
-  onEditCompetitor 
-}) => {
+  onAdd,
+  onEdit,
+  onUpdate,
+  onDelete,
+  readOnly = false
+}: CompetitorTableProps) {
   // Function to determine if there is a pricing advantage
-  const hasPricingAdvantage = (price: string) => {
+  const hasPricingAdvantage = (price: string | null) => {
     if (!price) return false;
     // This is simplistic - in a real app, you would compare against your product pricing
     return price.toLowerCase().includes('high') || price.includes('$$$');
@@ -47,18 +44,25 @@ export const CompetitorTable: React.FC<CompetitorTableProps> = ({
             </Tooltip>
           </TooltipProvider>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex items-center gap-1"
-          onClick={onAddCompetitor}
-        >
-          <PlusCircle className="h-3.5 w-3.5" />
-          Add Competitor
-        </Button>
+        {!readOnly && onAdd && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center gap-1"
+            onClick={onAdd}
+          >
+            <PlusCircle className="h-3.5 w-3.5" />
+            Add Competitor
+          </Button>
+        )}
       </div>
       
-      <div className="rounded-md border">
+      <div className={`rounded-md border ${
+        competitors.some(c => c.status === 'new') ? 'border-green-300' :
+        competitors.some(c => c.status === 'modified') ? 'border-yellow-300' :
+        competitors.some(c => c.status === 'removed') ? 'border-red-300' :
+        'border-gray-200'
+      }`}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -113,21 +117,26 @@ export const CompetitorTable: React.FC<CompetitorTableProps> = ({
                   </TooltipProvider>
                 </div>
               </TableHead>
-              <TableHead className="w-[80px]">Actions</TableHead>
+              {!readOnly && <TableHead className="w-[80px]">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {competitors.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                  No competitors added yet. Click "Add Competitor" to begin your competitive analysis.
+                <TableCell colSpan={readOnly ? 4 : 5} className="text-center py-4 text-gray-500">
+                  No competitors added yet. {!readOnly && 'Click "Add Competitor" to begin your competitive analysis.'}
                 </TableCell>
               </TableRow>
             ) : (
               competitors.map(competitor => (
                 <TableRow 
                   key={competitor.id}
-                  className="hover:bg-gray-50"
+                  className={`hover:bg-gray-50 ${
+                    competitor.status === 'new' ? 'bg-green-50' :
+                    competitor.status === 'modified' ? 'bg-yellow-50' :
+                    competitor.status === 'removed' ? 'bg-red-50' :
+                    ''
+                  }`}
                 >
                   <TableCell className="font-medium">
                     {competitor.name || 'Unnamed competitor'}
@@ -174,16 +183,32 @@ export const CompetitorTable: React.FC<CompetitorTableProps> = ({
                       <span className="text-gray-500 italic">Unknown</span>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-blue-600"
-                      onClick={() => onEditCompetitor && onEditCompetitor(competitor.id)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+                  {!readOnly && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {onEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-blue-600"
+                            onClick={() => onEdit(competitor.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {onDelete && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-red-600"
+                            onClick={() => onDelete(competitor.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             )}
@@ -204,4 +229,4 @@ export const CompetitorTable: React.FC<CompetitorTableProps> = ({
       </div>
     </div>
   );
-};
+}

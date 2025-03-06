@@ -37,7 +37,10 @@ export default async function RootLayout({
           <QueryProvider>
             <SupabaseProvider initialSession={session?.user ?? null}>
               <ProjectProvider>
-                <ModuleProvider>{children}</ModuleProvider>
+                {/* <ModuleProvider> */}
+                  {children}
+
+                {/* </ModuleProvider> */}
               </ProjectProvider>
             </SupabaseProvider>
           </QueryProvider>

@@ -1,197 +1,460 @@
-import { useFeatureData } from './use-feature-data';
-import { useCallback } from 'react';
-import { Database } from '@/types/database';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { FinancialsService, FinancialsData } from '@/lib/services/features/financials-service';
+import { useProjectStore, ChangeType } from '@/store';
+import type { 
+  FinancialRevenueStream,
+  FinancialCostStructure,
+  FinancialPricingStrategy,
+  FinancialProjection
+} from '@/store/types';
 
-// Database types for financial tables
-type RevenueStream = Database['public']['Tables']['financial_revenue_streams']['Row'];
-type CostStructure = Database['public']['Tables']['financial_cost_structure']['Row'];
-type PricingStrategy = Database['public']['Tables']['financial_pricing_strategies']['Row'];
-type FinancialProjection = Database['public']['Tables']['financial_projections']['Row'];
+// Create service instance
+const financialsService = new FinancialsService(createClient());
 
-// Combined type for all financial data
-type FinancialData = {
-  revenueStreams: RevenueStream[];
-  costStructure: CostStructure[];
-  pricingStrategies: PricingStrategy[];
-  projections: FinancialProjection[];
-};
+export interface UseFinancialsReturn {
+  data: FinancialsData;
+  isLoading: boolean;
+  error: Error | null;
 
-// Base type for any financial item
-type BaseItem = {
+  // Revenue Streams
+  addRevenueStream: (stream: Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateRevenueStream: (params: { id: string; data: Partial<Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deleteRevenueStream: (id: string) => void;
+
+  // Cost Structure
+  addCostStructure: (cost: Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateCostStructure: (params: { id: string; data: Partial<Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deleteCostStructure: (id: string) => void;
+
+  // Pricing Strategies
+  addPricingStrategy: (strategy: Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>) => void;
+  updatePricingStrategy: (params: { id: string; data: Partial<Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deletePricingStrategy: (id: string) => void;
+
+  // Financial Projections
+  addProjection: (projection: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateProjection: (params: { id: string; data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deleteProjection: (id: string) => void;
+  
+  // Diff helpers
+  getRevenueStreamChangeType: (id: string) => ChangeType;
+  getCostStructureChangeType: (id: string) => ChangeType;
+  getPricingStrategyChangeType: (id: string) => ChangeType;
+  getProjectionChangeType: (id: string) => ChangeType;
+  isDiffMode: boolean;
+}
+
+// Helper interface for service responses
+interface FinancialItemResponse {
   id: string;
-  created_at: string | null;
-  updated_at: string | null;
-  project_id: string | null;
-  created_by: string | null;
-};
+  project_id: string;
+  created_at: string;
+  updated_at: string;
+  [key: string]: any;
+}
 
-// Type for any financial item
-type FinancialItem = BaseItem & (
-  | Omit<RevenueStream, keyof BaseItem>
-  | Omit<CostStructure, keyof BaseItem>
-  | Omit<PricingStrategy, keyof BaseItem>
-  | Omit<FinancialProjection, keyof BaseItem>
-);
+export function useFinancials(projectId: string | undefined): UseFinancialsReturn {
+  const queryClient = useQueryClient();
+  const store = useProjectStore();
+  const { comparisonMode } = store;
 
-/**
- * Hook for managing financial data in a project
- * @param projectId - The ID of the current project
- */
-export function useFinancials(projectId: string | undefined) {
-  const featureData = useFeatureData<FinancialData, FinancialItem>(
-    projectId,
-    'financialProjections',
-    {
-      defaultData: {
-        revenueStreams: [],
-        costStructure: [],
-        pricingStrategies: [],
-        projections: []
+  // Query keys for different data types
+  const queryKeys = {
+    all: ['financials', projectId] as const,
+    revenueStreams: ['financials', projectId, 'revenueStreams'] as const,
+    costStructure: ['financials', projectId, 'costStructure'] as const,
+    pricingStrategies: ['financials', projectId, 'pricingStrategies'] as const,
+    projections: ['financials', projectId, 'projections'] as const,
+  };
+
+  // Main query to fetch all financials data
+  const { data: queryData, isLoading, error } = useQuery({
+    queryKey: queryKeys.all,
+    queryFn: async () => {
+      if (!projectId) throw new Error('Project ID is required');
+      const result = await financialsService.getAllFinancialsData(projectId);
+      
+      // Update store with fetched data
+      if (result) {
+        store.setFinancialRevenueStreams(result.revenueStreams);
+        store.setFinancialCostStructure(result.costStructure);
+        store.setFinancialPricingStrategies(result.pricingStrategies);
+        store.setFinancialProjections(result.projections);
       }
+      
+      return result;
+    },
+    enabled: !!projectId
+  });
+
+  // Get data from store (current or staged based on comparison mode)
+  const storeData = comparisonMode && store.stagedData
+    ? {
+        financialRevenueStreams: store.stagedData.financialRevenueStreams,
+        financialCostStructure: store.stagedData.financialCostStructure,
+        financialPricingStrategies: store.stagedData.financialPricingStrategies,
+        financialProjections: store.stagedData.financialProjections
+      }
+    : {
+        financialRevenueStreams: store.currentData.financialRevenueStreams,
+        financialCostStructure: store.currentData.financialCostStructure,
+        financialPricingStrategies: store.currentData.financialPricingStrategies,
+        financialProjections: store.currentData.financialProjections
+      };
+
+  // Transform store data to the expected format
+  const transformedData: FinancialsData = {
+    revenueStreams: storeData.financialRevenueStreams,
+    costStructure: storeData.financialCostStructure,
+    pricingStrategies: storeData.financialPricingStrategies,
+    projections: storeData.financialProjections
+  };
+
+  // === Revenue Streams Mutations ===
+  const addRevenueStreamMutation = useMutation({
+    mutationFn: async (stream: Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      // Create a temporary item for optimistic updates
+      const tempStream: FinancialRevenueStream = {
+        id: `temp-${Date.now()}`,
+        // project_id: projectId,
+        ...stream,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Optimistic update in the store
+      store.addFinancialRevenueStream(tempStream);
+      
+      // Then update Supabase
+      const result = await financialsService.addRevenueStream(projectId, stream);
+      
+      // Update store with real ID from Supabase
+      if (result) {
+        store.deleteFinancialRevenueStream(tempStream.id);
+        store.addFinancialRevenueStream(result);
+      }
+      
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to add revenue stream:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
     }
-  );
+  });
 
-  // ===== Revenue Streams =====
-  const addRevenueStream = useCallback(async (stream: Omit<RevenueStream, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...stream,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as FinancialItem, 'revenueStreams');
-  }, [featureData, projectId]);
+  const updateRevenueStreamMutation = useMutation({
+    mutationFn: async (params: { id: string; data: Partial<Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>> }) => {
+      // Optimistic update in store
+      store.updateFinancialRevenueStream(params.id, params.data);
+      
+      // Then update Supabase
+      return financialsService.updateRevenueStream(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to update revenue stream:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updateRevenueStream = useCallback((id: string, data: Partial<Omit<RevenueStream, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<FinancialItem>, 'revenueStreams');
-  }, [featureData]);
+  const deleteRevenueStreamMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Optimistic update in store
+      store.deleteFinancialRevenueStream(id);
+      
+      // Then update Supabase
+      return financialsService.deleteRevenueStream(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to delete revenue stream:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const deleteRevenueStream = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'revenueStreams');
-  }, [featureData]);
+  // === Cost Structure Mutations ===
+  const addCostStructureMutation = useMutation({
+    mutationFn: async (cost: Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      // Create a temporary item for optimistic updates
+      const tempCost: FinancialCostStructure = {
+        id: `temp-${Date.now()}`,
+        // project_id: projectId,
+        ...cost,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Optimistic update in the store
+      store.addFinancialCostStructure(tempCost);
+      
+      // Then update Supabase
+      const result = await financialsService.addCostStructure(projectId, cost);
+      
+      // Update store with real ID from Supabase
+      if (result) {
+        store.deleteFinancialCostStructure(tempCost.id);
+        store.addFinancialCostStructure(result);
+      }
+      
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to add cost structure:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  // ===== Cost Structure =====
-  const addCostStructure = useCallback(async (cost: Omit<CostStructure, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...cost,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as FinancialItem, 'costStructure');
-  }, [featureData, projectId]);
+  const updateCostStructureMutation = useMutation({
+    mutationFn: async (params: { id: string; data: Partial<Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>> }) => {
+      // Optimistic update in store
+      store.updateFinancialCostStructure(params.id, params.data);
+      
+      // Then update Supabase
+      return financialsService.updateCostStructure(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to update cost structure:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updateCostStructure = useCallback((id: string, data: Partial<Omit<CostStructure, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<FinancialItem>, 'costStructure');
-  }, [featureData]);
+  const deleteCostStructureMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Optimistic update in store
+      store.deleteFinancialCostStructure(id);
+      
+      // Then update Supabase
+      return financialsService.deleteCostStructure(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to delete cost structure:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const deleteCostStructure = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'costStructure');
-  }, [featureData]);
+  // === Pricing Strategies Mutations ===
+  const addPricingStrategyMutation = useMutation({
+    mutationFn: async (strategy: Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      // Create a temporary item for optimistic updates
+      const tempStrategy: FinancialPricingStrategy = {
+        id: `temp-${Date.now()}`,
+        // project_id: projectId,
+        ...strategy,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Optimistic update in the store
+      store.addFinancialPricingStrategy(tempStrategy);
+      
+      // Then update Supabase
+      const result = await financialsService.addPricingStrategy(projectId, strategy);
+      
+      // Update store with real ID from Supabase
+      if (result) {
+        store.deleteFinancialPricingStrategy(tempStrategy.id);
+        store.addFinancialPricingStrategy(result);
+      }
+      
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to add pricing strategy:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  // ===== Pricing Strategies =====
-  const addPricingStrategy = useCallback(async (strategy: Omit<PricingStrategy, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...strategy,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as FinancialItem, 'pricingStrategies');
-  }, [featureData, projectId]);
+  const updatePricingStrategyMutation = useMutation({
+    mutationFn: async (params: { id: string; data: Partial<Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>> }) => {
+      // Optimistic update in store
+      store.updateFinancialPricingStrategy(params.id, params.data);
+      
+      // Then update Supabase
+      return financialsService.updatePricingStrategy(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to update pricing strategy:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updatePricingStrategy = useCallback((id: string, data: Partial<Omit<PricingStrategy, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<FinancialItem>, 'pricingStrategies');
-  }, [featureData]);
+  const deletePricingStrategyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Optimistic update in store
+      store.deleteFinancialPricingStrategy(id);
+      
+      // Then update Supabase
+      return financialsService.deletePricingStrategy(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to delete pricing strategy:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const deletePricingStrategy = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'pricingStrategies');
-  }, [featureData]);
+  // === Financial Projections Mutations ===
+  const addProjectionMutation = useMutation({
+    mutationFn: async (projection: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      // Create a temporary item for optimistic updates
+      const tempProjection: FinancialProjection = {
+        id: `temp-${Date.now()}`,
+        // project_id: projectId,  
+        ...projection,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      // Optimistic update in the store
+      store.addFinancialProjection(tempProjection);
+      
+      // Then update Supabase
+      const result = await financialsService.addProjection(projectId, projection);
+      
+      // Update store with real ID from Supabase
+      if (result.data) {
+        store.deleteFinancialProjection(tempProjection.id);
+        store.addFinancialProjection(result.data as FinancialProjection);
+      }
+      
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to add projection:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  // ===== Financial Projections =====
-  const addProjection = useCallback(async (projection: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...projection,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as FinancialItem, 'projections');
-  }, [featureData, projectId]);
+  const updateProjectionMutation = useMutation({
+    mutationFn: async (params: { id: string; data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>> }) => {
+      // Optimistic update in store
+      store.updateFinancialProjection(params.id, params.data);
+      
+      // Then update Supabase
+      return financialsService.updateProjection(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to update projection:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updateProjection = useCallback((id: string, data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<FinancialItem>, 'projections');
-  }, [featureData]);
-
-  const deleteProjection = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'projections');
-  }, [featureData]);
-
-  // Advanced operations
-  const calculateTotalRevenue = useCallback(() => {
-    const { revenueStreams } = featureData.data || { revenueStreams: [] };
-    return revenueStreams.reduce((total, stream) => {
-      const volume = stream.volume || 0;
-      const unitPrice = stream.unit_price || 0;
-      const growthRate = stream.growth_rate || 0;
-      return total + (volume * unitPrice * (1 + growthRate / 100));
-    }, 0);
-  }, [featureData.data]);
-
-  const calculateTotalCosts = useCallback(() => {
-    const { costStructure } = featureData.data || { costStructure: [] };
-    return costStructure.reduce((total, cost) => {
-      const amount = cost.amount || 0;
-      const growthRate = cost.growth_rate || 0;
-      return total + (amount * (1 + growthRate / 100));
-    }, 0);
-  }, [featureData.data]);
-
-  const getFinancialMetrics = useCallback(() => {
-    const totalRevenue = calculateTotalRevenue();
-    const totalCosts = calculateTotalCosts();
-    
-    return {
-      totalRevenue,
-      totalCosts,
-      grossProfit: totalRevenue - totalCosts,
-      grossMargin: totalRevenue > 0 ? ((totalRevenue - totalCosts) / totalRevenue) * 100 : 0
-    };
-  }, [calculateTotalRevenue, calculateTotalCosts]);
+  const deleteProjectionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Optimistic update in store
+      store.deleteFinancialProjection(id);
+      
+      // Then update Supabase
+      return financialsService.deleteProjection(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    },
+    onError: (error) => {
+      console.error('Failed to delete projection:', error);
+      // Refresh data to get correct state
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
+  
+  // Diff helpers
+  const getRevenueStreamChangeType = (id: string): ChangeType => 
+    store.getItemChangeType('financialRevenueStreams', id);
+  
+  const getCostStructureChangeType = (id: string): ChangeType => 
+    store.getItemChangeType('financialCostStructure', id);
+  
+  const getPricingStrategyChangeType = (id: string): ChangeType => 
+    store.getItemChangeType('financialPricingStrategies', id);
+  
+  const getProjectionChangeType = (id: string): ChangeType => 
+    store.getItemChangeType('financialProjections', id);
 
   return {
-    // Raw data
-    data: featureData.data,
-    isLoading: featureData.isLoading,
-    error: featureData.error,
-    
+    data: transformedData || queryData || {
+      revenueStreams: [],
+      costStructure: [],
+      pricingStrategies: [],
+      projections: []
+    },
+    isLoading,
+    error: error as Error | null,
+
     // Revenue Streams
-    revenueStreams: featureData.data?.revenueStreams || [],
-    addRevenueStream,
-    updateRevenueStream,
-    deleteRevenueStream,
-    
+    addRevenueStream: addRevenueStreamMutation.mutate,
+    updateRevenueStream: updateRevenueStreamMutation.mutate,
+    deleteRevenueStream: deleteRevenueStreamMutation.mutate,
+
     // Cost Structure
-    costStructure: featureData.data?.costStructure || [],
-    addCostStructure,
-    updateCostStructure,
-    deleteCostStructure,
-    
+    addCostStructure: addCostStructureMutation.mutate,
+    updateCostStructure: updateCostStructureMutation.mutate,
+    deleteCostStructure: deleteCostStructureMutation.mutate,
+
     // Pricing Strategies
-    pricingStrategies: featureData.data?.pricingStrategies || [],
-    addPricingStrategy,
-    updatePricingStrategy,
-    deletePricingStrategy,
-    
+    addPricingStrategy: addPricingStrategyMutation.mutate,
+    updatePricingStrategy: updatePricingStrategyMutation.mutate,
+    deletePricingStrategy: deletePricingStrategyMutation.mutate,
+
     // Financial Projections
-    projections: featureData.data?.projections || [],
-    addProjection,
-    updateProjection,
-    deleteProjection,
+    addProjection: addProjectionMutation.mutate,
+    updateProjection: updateProjectionMutation.mutate,
+    deleteProjection: deleteProjectionMutation.mutate,
     
-    // Metrics
-    calculateTotalRevenue,
-    calculateTotalCosts,
-    getFinancialMetrics,
+    // Diff helpers
+    getRevenueStreamChangeType,
+    getCostStructureChangeType,
+    getPricingStrategyChangeType,
+    getProjectionChangeType,
+    isDiffMode: comparisonMode,
   };
 } 

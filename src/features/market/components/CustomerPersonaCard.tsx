@@ -1,32 +1,24 @@
 import React from 'react';
-import { ChevronRight, Users, Edit, Info } from 'lucide-react';
-import { CustomerPersona } from '@/types';
+import { Users, Edit, Info, Trash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CustomerPersonaCardProps } from '../types';
 
-interface CustomerPersonaCardProps {
-  persona: CustomerPersona;
-  onEdit?: (id: string) => void;
-  onUpdate?: (updated: CustomerPersona) => void;
-  onDelete?: () => void;
-  readOnly?: boolean;
-}
-
-export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({ 
+export function CustomerPersonaCard({ 
   persona,
   onEdit,
   onUpdate,
   onDelete,
   readOnly = false
-}) => {
+}: CustomerPersonaCardProps) {
   // Calculate completeness of persona profile
   const calculateCompleteness = () => {
     let score = 0;
     if (persona.name) score += 20;
     if (persona.role) score += 20;
     if (persona.demographics) score += 20;
-    if (persona.painPoints && persona.painPoints.length > 0) score += 20;
+    if (persona.pain_points && persona.pain_points.length > 0) score += 20;
     if (persona.goals && persona.goals.length > 0) score += 20;
     return score;
   };
@@ -34,7 +26,12 @@ export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({
   const completeness = calculateCompleteness();
   
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div className={`bg-white border rounded-lg p-4 transition-shadow ${
+      persona.status === 'new' ? 'border-green-300 shadow-green-100' :
+      persona.status === 'modified' ? 'border-yellow-300 shadow-yellow-100' :
+      persona.status === 'removed' ? 'border-red-300 shadow-red-100' :
+      'border-gray-200 hover:shadow-md'
+    }`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -89,8 +86,8 @@ export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({
             </TooltipProvider>
           </div>
           <div className="flex flex-wrap gap-1">
-            {persona.painPoints && persona.painPoints.length > 0 
-              ? persona.painPoints.map((point, index) => (
+            {persona.pain_points && persona.pain_points.length > 0 
+              ? persona.pain_points.map((point, index) => (
                 <Badge key={index} variant="secondary" className="bg-red-50 text-red-700 hover:bg-red-100">
                   {point}
                 </Badge>
@@ -133,7 +130,7 @@ export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({
             variant="ghost" 
             size="sm"
             className="text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
-            onClick={() => onEdit && onEdit(persona.id)}
+            onClick={() => onEdit?.(persona.id)}
           >
             <Edit className="h-3.5 w-3.5" />
             Edit Persona
@@ -144,8 +141,9 @@ export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({
               variant="ghost" 
               size="sm"
               className="text-red-600 flex items-center gap-1 hover:bg-red-50 px-2.5 py-1.5"
-              onClick={onDelete}
+              onClick={() => onDelete(persona.id)}
             >
+              <Trash className="h-3.5 w-3.5" />
               Delete
             </Button>
           )}
@@ -153,4 +151,4 @@ export const CustomerPersonaCard: React.FC<CustomerPersonaCardProps> = ({
       )}
     </div>
   );
-};
+}

@@ -8,7 +8,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter
+  DialogFooter,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { 
   Form, 
@@ -51,15 +52,17 @@ import {
   CheckCircle2,
   CheckSquare,
   XCircle,
-  PlusCircle
+  PlusCircle,
+  Plus,
+  Trash
 } from 'lucide-react';
-import { UserFeedback } from '@/types';
+import { ValidationUserFeedback } from '@/store/types';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 
 interface UserFeedbackListProps {
-  feedback: UserFeedback[];
-  onUpdate: (feedback: UserFeedback) => void;
+  feedback: ValidationUserFeedback[];
+  onUpdate: (params: { id: string; data: Partial<Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>> }) => void;
   onDelete: (id: string) => void;
 }
 
@@ -75,14 +78,10 @@ interface UserFeedbackFormValues {
   tags: string[];
 }
 
-export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({ 
-  feedback, 
-  onUpdate,
-  onDelete
-}) => {
+export function UserFeedbackList({ feedback, onUpdate, onDelete }: UserFeedbackListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingFeedback, setEditingFeedback] = useState<UserFeedback | null>(null);
-  const [newTag, setNewTag] = useState('');
+  const [editingFeedback, setEditingFeedback] = useState<ValidationUserFeedback | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   
   const form = useForm<UserFeedbackFormValues>({
     defaultValues: {
@@ -98,33 +97,40 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     }
   });
   
-  const handleEdit = (item: UserFeedback) => {
+  const handleEdit = (item: ValidationUserFeedback) => {
     setEditingFeedback(item);
+    
     form.reset({
       source: item.source || '',
       date: item.date || '',
-      type: item.type || 'suggestion',
+      type: (item.type as UserFeedbackFormValues['type']) || 'suggestion',
       content: item.content || '',
-      sentiment: item.sentiment || 'neutral',
-      impact: item.impact || 'medium',
-      status: item.status || 'new',
+      sentiment: (item.sentiment as UserFeedbackFormValues['sentiment']) || 'neutral',
+      impact: (item.impact as UserFeedbackFormValues['impact']) || 'medium',
+      status: (item.status as UserFeedbackFormValues['status']) || 'new',
       response: item.response || '',
       tags: item.tags || []
     });
+    
+    setTags(item.tags || []);
     setIsDialogOpen(true);
   };
   
   const handleSave = (values: UserFeedbackFormValues) => {
     if (!editingFeedback) return;
-    
-    const updatedFeedback: UserFeedback = {
-      ...editingFeedback,
-      ...values
-    };
-    
-    onUpdate(updatedFeedback);
+
+    onUpdate({
+      id: editingFeedback.id,
+      data: {
+        ...values,
+        tags
+      }
+    });
+
     setIsDialogOpen(false);
     setEditingFeedback(null);
+    form.reset();
+    setTags([]);
   };
   
   const handleDelete = (id: string) => {
@@ -133,12 +139,10 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     }
   };
   
-  const getSentimentColor = (sentiment: UserFeedback['sentiment']) => {
+  const getSentimentColor = (sentiment: ValidationUserFeedback['sentiment']) => {
     switch (sentiment) {
       case 'positive':
         return 'bg-green-100 text-green-800';
-      case 'neutral':
-        return 'bg-gray-100 text-gray-800';
       case 'negative':
         return 'bg-red-100 text-red-800';
       default:
@@ -146,7 +150,7 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     }
   };
   
-  const getSentimentIcon = (sentiment: UserFeedback['sentiment']) => {
+  const getSentimentIcon = (sentiment: ValidationUserFeedback['sentiment']) => {
     switch (sentiment) {
       case 'positive':
         return <ThumbsUp className="h-3 w-3" />;
@@ -157,24 +161,22 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     }
   };
   
-  const getStatusColor = (status: UserFeedback['status']) => {
+  const getStatusColor = (status: ValidationUserFeedback['status']) => {
     switch (status) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'in-review':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'accepted':
+      case 'implemented':
         return 'bg-green-100 text-green-800';
+      case 'accepted':
+        return 'bg-blue-100 text-blue-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
-      case 'implemented':
-        return 'bg-purple-100 text-purple-800';
+      case 'in-review':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
   
-  const getStatusIcon = (status: UserFeedback['status']) => {
+  const getStatusIcon = (status: ValidationUserFeedback['status']) => {
     switch (status) {
       case 'new':
         return <MessageSquare className="h-3 w-3" />;
@@ -191,10 +193,10 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     }
   };
   
-  const getTypeColor = (type: UserFeedback['type']) => {
+  const getTypeColor = (type: ValidationUserFeedback['type']) => {
     switch (type) {
       case 'feature-request':
-        return 'bg-indigo-100 text-indigo-800';
+        return 'bg-purple-100 text-purple-800';
       case 'bug-report':
         return 'bg-red-100 text-red-800';
       case 'testimonial':
@@ -208,7 +210,7 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     }
   };
   
-  const getImpactColor = (impact: UserFeedback['impact']) => {
+  const getImpactColor = (impact: ValidationUserFeedback['impact']) => {
     switch (impact) {
       case 'high':
         return 'bg-red-100 text-red-800';
@@ -222,28 +224,19 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
   };
   
   const handleAddTag = () => {
-    if (!newTag.trim()) return;
-    
-    const currentTags = form.getValues().tags || [];
-    if (!currentTags.includes(newTag.trim())) {
-      form.setValue('tags', [...currentTags, newTag.trim()]);
+    const tag = window.prompt('Enter a new tag:');
+    if (tag && !tags.includes(tag)) {
+      setTags([...tags, tag]);
     }
-    setNewTag('');
   };
   
   const handleRemoveTag = (tag: string) => {
-    const currentTags = form.getValues().tags || [];
-    form.setValue('tags', currentTags.filter(t => t !== tag));
+    setTags(tags.filter(t => t !== tag));
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
@@ -306,14 +299,14 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
                 </TableCell>
                 <TableCell>
                   <Badge className={getTypeColor(item.type)}>
-                    {item.type.replace('-', ' ')}
+                    {item.type?.replace('-', ' ')}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col text-sm">
                     <span className="font-medium">{item.source || "Unknown"}</span>
                     <span className="text-gray-500 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" /> {formatDate(item.date)}
+                      <Calendar className="h-3 w-3" /> {formatDate(item.date || undefined)}
                     </span>
                   </div>
                 </TableCell>
@@ -321,7 +314,7 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
                   <Badge className={getStatusColor(item.status)}>
                     <span className="flex items-center gap-1">
                       {getStatusIcon(item.status)}
-                      {item.status.replace('-', ' ')}
+                      {item.status?.replace('-', ' ')}
                     </span>
                   </Badge>
                 </TableCell>
@@ -339,7 +332,7 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
                       size="icon"
                       onClick={() => handleDelete(item.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
                 </TableCell>
@@ -351,10 +344,10 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
 
       {/* Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingFeedback ? 'Edit Feedback' : 'New User Feedback'}
+              {editingFeedback?.id ? 'Edit User Feedback' : 'Add User Feedback'}
             </DialogTitle>
           </DialogHeader>
           
@@ -541,15 +534,9 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
                 <div className="flex gap-2">
                   <Input 
                     placeholder="Add tag"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
+                    value={tags.join(', ')}
+                    onChange={(e) => setTags(e.target.value.split(','))}
                     className="flex-1"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
                   />
                   <Button 
                     type="button" 
@@ -561,7 +548,7 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {form.watch('tags')?.map((tag) => (
+                  {tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                       {tag}
                       <Button
@@ -571,7 +558,7 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
                         className="h-4 w-4 p-0 ml-1"
                         onClick={() => handleRemoveTag(tag)}
                       >
-                        <XCircle className="h-3 w-3" />
+                        <Trash className="h-3 w-3 text-red-500" />
                       </Button>
                     </Badge>
                   ))}
@@ -587,4 +574,4 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
       </Dialog>
     </div>
   );
-}; 
+} 

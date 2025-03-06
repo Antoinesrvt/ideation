@@ -47,8 +47,8 @@ export const GlobalSearch: React.FC = () => {
       
       {isOpen && query && (
         <div className="absolute top-full left-0 right-0 bg-white border rounded-md mt-1 shadow-lg z-50 max-h-80 overflow-y-auto">
-          {results.length > 0 ? (
-            results.map(result => (
+          {results.results.length > 0 ? (
+            results.results.map(result => (
               <div 
                 key={result.id} 
                 className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"

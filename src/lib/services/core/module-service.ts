@@ -222,11 +222,10 @@ export class ModuleService extends BaseSupabaseService {
    */
   async updateModule(moduleId: string, data: ModuleUpdateData): Promise<DbModule> {
     return this.handleDatabaseOperation<DbModule>(
-      async () => {
-        const result = await this.supabase
-          .from('modules')
-          .update({
-            ...data,
+      async () => this.supabase
+        .from('modules')
+        .update({
+          ...data,
             last_activity_at: new Date().toISOString()
           })
           .eq('id', moduleId)

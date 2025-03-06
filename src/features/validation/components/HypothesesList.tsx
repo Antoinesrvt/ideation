@@ -50,7 +50,7 @@ import {
   PlusCircle,
   Percent
 } from 'lucide-react';
-import { Hypothesis } from '@/types';
+import { ValidationHypothesis as Hypothesis } from '@/store/types';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -96,8 +96,8 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
     form.reset({
       statement: hypothesis.statement || '',
       assumptions: hypothesis.assumptions || [],
-      validationMethod: hypothesis.validationMethod || '',
-      status: hypothesis.status || 'unvalidated',
+      validationMethod: hypothesis.validation_method || '',
+      status: (hypothesis.status as 'validated' | 'invalidated' | 'unvalidated') || 'unvalidated',
       confidence: hypothesis.confidence || 0,
       evidence: hypothesis.evidence || []
     });
@@ -113,7 +113,7 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
     const updatedHypothesis: Hypothesis = {
       ...editingHypothesis,
       ...values,
-      updatedAt: now
+      updated_at: now
     };
     
     onUpdate(updatedHypothesis);
@@ -223,7 +223,7 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {hypotheses.map(hypothesis => (
+            {hypotheses.map((hypothesis: Hypothesis) => (
               <TableRow key={hypothesis.id}>
                 <TableCell>
                   <div className="flex flex-col">
@@ -232,7 +232,7 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
                       <div className="mt-1">
                         <span className="text-xs text-gray-500 mb-1">Key assumptions:</span>
                         <ul className="list-disc list-inside text-xs text-gray-600 ml-1 space-y-0.5">
-                          {hypothesis.assumptions.slice(0, 2).map((assumption, i) => (
+                          {hypothesis.assumptions.slice(0, 2).map((assumption: string, i: number) => (
                             <li key={i} className="line-clamp-1">{assumption}</li>
                           ))}
                           {hypothesis.assumptions.length > 2 && (
@@ -244,7 +244,7 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
                       </div>
                     )}
                     <span className="text-xs text-gray-500 mt-1">
-                      Updated {formatDate(hypothesis.updatedAt)}
+                      Updated {formatDate(hypothesis.updated_at ?? undefined)}
                     </span>
                   </div>
                 </TableCell>
@@ -261,21 +261,21 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
                     <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div 
                         className={`h-full ${
-                          hypothesis.confidence < 30 ? 'bg-red-500' :
-                          hypothesis.confidence < 70 ? 'bg-yellow-500' :
+                          (hypothesis.confidence ?? 0) < 30 ? 'bg-red-500' :
+                          (hypothesis.confidence ?? 0) < 70 ? 'bg-yellow-500' :
                           'bg-green-500'
                         }`}
                         style={{ width: `${hypothesis.confidence}%` }}
                       ></div>
                     </div>
-                    <span className={`text-xs mt-1 ${getConfidenceColor(hypothesis.confidence)}`}>
-                      {hypothesis.confidence}% - {getConfidenceLevel(hypothesis.confidence)}
+                    <span className={`text-xs mt-1 ${getConfidenceColor(hypothesis.confidence ?? 0)}`}>
+                      {hypothesis.confidence}% - {getConfidenceLevel(hypothesis.confidence ?? 0)}
                     </span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    {hypothesis.validationMethod || "Not specified"}
+                    {hypothesis.validation_method || "Not specified"}
                   </div>
                 </TableCell>
                 <TableCell>

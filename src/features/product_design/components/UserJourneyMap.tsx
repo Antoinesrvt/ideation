@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, PlusCircle, HelpCircle, AlertTriangle, UserCheck, Lightbulb, Info } from 'lucide-react';
-import { UserJourney, JourneyStage } from '@/types';
+import {ProductJourneyStage} from '@/store/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/collapsible";
 
 interface UserJourneyMapProps {
-  journey: UserJourney;
+  stages: ProductJourneyStage[];
   selectedStage: string | null;
   onSelectStage: (stageId: string) => void;
   onAddStage: () => void;
@@ -24,7 +24,7 @@ interface UserJourneyMapProps {
 }
 
 export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({ 
-  journey,
+  stages,
   selectedStage,
   onSelectStage,
   onAddStage,
@@ -32,12 +32,12 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
 }) => {
   const [showHelp, setShowHelp] = useState(false);
 
-  const getSelectedStage = (): JourneyStage | undefined => {
-    return journey.stages.find(stage => stage.id === selectedStage);
+  const getSelectedStage = (): ProductJourneyStage | undefined => {
+    return stages.find((stage) => stage.id === selectedStage);
   };
-
+  
   const getStageNumber = (stageId: string): number => {
-    const index = journey.stages.findIndex(stage => stage.id === stageId);
+    const index = stages.findIndex((stage) => stage.id === stageId);
     return index + 1;
   };
 
@@ -54,11 +54,11 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
       <TooltipProvider>
 
         {/* Journey Timeline */}
-        {journey.stages.length > 0 && (
+        {stages.length > 0 && (
           <>
             <div className="absolute h-1 bg-gray-200 top-8 left-8 right-8 z-0"></div>
             <div className="relative z-10 flex justify-between px-4">
-              {journey.stages.map((stage, index) => (
+              {stages.map((stage, index) => (
                 <div 
                   key={stage.id} 
                   className="text-center cursor-pointer group"
@@ -68,7 +68,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                     <TooltipTrigger asChild>
                       <div 
                         className={`w-10 h-10 rounded-full ${
-                          getStageColor(stage.completed)
+                          getStageColor(stage.completed || false)
                         } mx-auto flex items-center justify-center text-white mb-2 transition-transform group-hover:scale-110`}
                       >
                         {stage.completed ? <Check className="h-5 w-5" /> : index + 1}
@@ -80,8 +80,8 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                       <p className="text-xs mt-1">{`Status: ${stage.completed ? 'Completed' : 'Pending'}`}</p>
                     </TooltipContent>
                   </Tooltip>
-                  <h4 className={`font-medium text-sm ${getStageTextColor(stage.completed)}`}>{stage.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{stage.description.substring(0, 20)}{stage.description.length > 20 ? '...' : ''}</p>
+                  <h4 className={`font-medium text-sm ${getStageTextColor(stage.completed || false)}`}>{stage.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">{stage.description?.substring(0, 20) || ''}{stage.description?.length || 0 > 20 ? '...' : ''}</p>
                   
                   {stage.completed && (
                     <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200 text-xs mt-1">
@@ -147,7 +147,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                     </HoverCardContent>
                   </HoverCard>
                 </div>
-                <ul className="mt-2 space-y-2">
+                {/* <ul className="mt-2 space-y-2">
                   {getSelectedStage()?.actions.map((action, index) => (
                     <li key={index} className="text-sm flex items-start bg-white p-2 rounded border border-blue-50">
                       <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
@@ -158,7 +158,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                     <PlusCircle className="h-4 w-4 mr-2 mt-0.5" />
                     Add action...
                   </li>
-                </ul>
+                </ul> */}
               </div>
               <div className="bg-red-50 p-4 rounded-lg border border-red-100">
                 <div className="flex items-center justify-between mb-3">
@@ -177,7 +177,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                     </HoverCardContent>
                   </HoverCard>
                 </div>
-                <div className="mt-2 space-y-2">
+                {/* <div className="mt-2 space-y-2">
                   {getSelectedStage()?.painPoints.map((painPoint, index) => (
                     <div key={index} className="bg-white border border-red-100 p-3 rounded text-sm">
                       <div className="flex items-start">
@@ -196,7 +196,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                     <PlusCircle className="h-4 w-4 mr-2" />
                     Add Pain Point
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
             

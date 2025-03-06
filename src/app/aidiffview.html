@@ -1,0 +1,3867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kickoff - Enhanced AI Change Management</title>
+  <style>
+    :root {
+      /* Core Colors */
+      --primary: hsl(273, 91%, 42%);
+      --primary-glow: hsla(273, 91%, 42%, 0.3);
+      --primary-dark: hsl(273, 91%, 32%);
+      --primary-light: hsl(273, 91%, 60%);
+      --secondary: hsl(198, 86%, 61%);
+      --accent: hsl(339, 94%, 58%);
+      --insight: hsl(140, 86%, 61%);
+      --dark: hsl(240, 19%, 14%);
+      --light: hsl(240, 60%, 99%);
+      
+      /* Status Colors */
+      --status-added: hsl(142, 76%, 47%);
+      --status-added-bg: hsla(142, 76%, 47%, 0.1);
+      --status-added-glow: hsla(142, 76%, 47%, 0.3);
+      --status-modified: hsl(217, 91%, 60%);
+      --status-modified-bg: hsla(217, 91%, 60%, 0.1);
+      --status-modified-glow: hsla(217, 91%, 60%, 0.3);
+      --status-removed: hsl(355, 90%, 61%);
+      --status-removed-bg: hsla(355, 90%, 61%, 0.1);
+      --status-removed-glow: hsla(355, 90%, 61%, 0.3);
+      --status-unchanged: hsl(220, 9%, 46%);
+      --status-unchanged-bg: hsla(220, 9%, 46%, 0.1);
+      
+      /* Environment Colors */
+      --sandbox-bg: hsla(217, 91%, 95%, 0.7);
+      --sandbox-border: hsla(217, 91%, 60%, 0.3);
+      --sandbox-highlight: hsla(217, 91%, 60%, 0.1);
+      
+      /* Semantic Colors */
+      --bg-primary: hsl(240, 50%, 99%);
+      --bg-surface: hsl(0, 0%, 100%);
+      --text-primary: hsl(240, 20%, 10%);
+      --text-secondary: hsl(240, 10%, 40%);
+      
+      /* Animation Timings */
+      --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-medium: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-slow: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --easing-bounce: cubic-bezier(0.87, -0.41, 0.19, 1.44);
+    }
+    
+    @font-face {
+      font-family: 'Outfit';
+      src: url('https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.0.2/fonts/bootstrap-icons.woff2') format('woff2');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 600;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .title {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    
+    /* Enhanced Workspace Environment */
+    .ai-workspace {
+      position: relative;
+      width: 100%;
+      background: var(--bg-surface);
+      border-radius: 24px;
+      padding: 3rem 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      transition: background var(--transition-slow);
+    }
+    
+    .ai-workspace.sandbox-mode {
+      background: var(--sandbox-bg);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1), 0 0 0 2px var(--sandbox-border);
+    }
+    
+    .ambient-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-slow);
+    }
+    
+    .ambient-bg.active {
+      opacity: 1;
+    }
+    
+    .ambient-gradient {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, 
+                  rgba(114, 9, 183, 0.03),
+                  rgba(255, 255, 255, 0) 70%);
+      z-index: 0;
+      opacity: 0;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .ambient-gradient.active {
+      opacity: 1;
+      animation: ambient-pulse 8s infinite alternate ease-in-out;
+    }
+    
+    @keyframes ambient-pulse {
+      0% {
+        opacity: 0.05;
+        background-position: 25% 25%;
+      }
+      50% {
+        opacity: 0.2;
+      }
+      100% {
+        opacity: 0.05;
+        background-position: 75% 75%;
+      }
+    }
+    
+    .light-rays {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      transform: translateX(-50%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .light-rays.active {
+      opacity: 0.4;
+      animation: rays-rotate 20s infinite linear;
+    }
+    
+    .light-ray {
+      position: absolute;
+      top: -50%;
+      left: 50%;
+      width: 2px;
+      height: 200%;
+      background: linear-gradient(to bottom, 
+                  transparent, 
+                  rgba(114, 9, 183, 0.1),
+                  rgba(114, 9, 183, 0.2),
+                  rgba(114, 9, 183, 0.1),
+                  transparent);
+      transform: translateX(-50%) rotate(var(--angle));
+      transform-origin: center center;
+      opacity: 0.3;
+    }
+    
+    @keyframes rays-rotate {
+      from {
+        transform: translateX(-50%) rotate(0deg);
+      }
+      to {
+        transform: translateX(-50%) rotate(360deg);
+      }
+    }
+    
+    .workspace-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 700px;
+      background: linear-gradient(to bottom right, #f8f9ff, #eef1ff);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all var(--transition-medium);
+      z-index: 1;
+      transform-style: preserve-3d;
+      perspective: 1200px;
+    }
+    
+    .workspace-container.ai-active {
+      box-shadow: 0 0 0 1px rgba(114, 9, 183, 0.2), 
+                  0 0 30px rgba(114, 9, 183, 0.1);
+    }
+    
+    .workspace-container.sandbox-mode {
+      box-shadow: 0 0 0 2px var(--sandbox-border),
+                  0 20px 50px rgba(0, 0, 0, 0.15);
+    }
+    
+    .workspace-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: white;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      z-index: 10;
+      position: relative;
+      transition: all var(--transition-medium);
+    }
+    
+    .workspace-header.sandbox-mode {
+      background: var(--sandbox-highlight);
+      border-bottom: 1px solid var(--sandbox-border);
+    }
+    
+    .workspace-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .workspace-title-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: white;
+      font-size: 0.9rem;
+    }
+    
+    .workspace-controls {
+      display: flex;
+      gap: 0.8rem;
+    }
+    
+    .workspace-control {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    
+    .workspace-control:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .workspace-control.sandbox-indicator {
+      background: var(--sandbox-highlight);
+      border: 1px solid var(--sandbox-border);
+      color: var(--primary);
+      padding-left: 0.8rem;
+    }
+    
+    .sandbox-pulse {
+      width: 8px;
+      height: 8px;
+      background: var(--secondary);
+      border-radius: 50%;
+      margin-right: 0.3rem;
+      animation: sandbox-pulse 2s infinite;
+    }
+    
+    @keyframes sandbox-pulse {
+      0%, 100% {
+        opacity: 0.5;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.3);
+      }
+    }
+    
+    .workspace-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    /* Main Content Area */
+    .content-area {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      position: relative;
+      z-index: 2;
+      transform-style: preserve-3d;
+      perspective: 800px;
+      transform: translateZ(0);
+      transition: all var(--transition-medium);
+    }
+    
+    .content-area.defocused {
+      filter: blur(2px) saturate(0.8);
+      opacity: 0.7;
+    }
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto;
+      gap: 1.5rem;
+      height: 100%;
+      transform-style: preserve-3d;
+    }
+    
+    .grid-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      transition: all var(--transition-medium);
+      display: flex;
+      flex-direction: column;
+      transform: translateZ(0) scale(1);
+      transform-style: preserve-3d;
+    }
+    
+    .grid-card:hover {
+      transform: translateY(-3px) translateZ(5px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    }
+    
+    .grid-card.highlighted {
+      box-shadow: 0 0 0 2px var(--primary), 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .grid-card.focused {
+      transform: translateY(-5px) translateZ(30px) scale(1.03);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      z-index: 10;
+    }
+    
+    .grid-card.staged {
+      position: relative;
+    }
+    
+    /* Enhanced staged styling */
+    .grid-card.staged::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      border-radius: inherit;
+      transition: all var(--transition-medium);
+      box-shadow: 0 0 0 1px rgba(114, 9, 183, 0.3) inset;
+      opacity: 0.7;
+    }
+    
+    .grid-card.staged.focused::before {
+      box-shadow: 0 0 0 2px rgba(114, 9, 183, 0.5) inset, 
+                  0 0 20px rgba(114, 9, 183, 0.2);
+      opacity: 1;
+    }
+    
+    /* Status-specific styling */
+    .grid-card.modified::before {
+      box-shadow: 0 0 0 1px var(--status-modified) inset;
+    }
+    
+    .grid-card.modified.focused::before {
+      box-shadow: 0 0 0 2px var(--status-modified) inset,
+                  0 0 20px var(--status-modified-glow);
+    }
+    
+    .grid-card.added::before {
+      box-shadow: 0 0 0 1px var(--status-added) inset;
+    }
+    
+    .grid-card.added.focused::before {
+      box-shadow: 0 0 0 2px var(--status-added) inset,
+                  0 0 20px var(--status-added-glow);
+    }
+    
+    .grid-card.removed::before {
+      box-shadow: 0 0 0 1px var(--status-removed) inset;
+    }
+    
+    .grid-card.removed.focused::before {
+      box-shadow: 0 0 0 2px var(--status-removed) inset,
+                  0 0 20px var(--status-removed-glow);
+    }
+    
+    /* 3D Elevation Effects */
+    .grid-card.added {
+      animation: card-elevate-in 1s var(--easing-spring) both;
+    }
+    
+    .grid-card.removed {
+      animation: card-sink-out 1s var(--easing-spring) both;
+      opacity: 0.6;
+    }
+    
+    @keyframes card-elevate-in {
+      from {
+        opacity: 0;
+        transform: translateZ(-50px) scale(0.92);
+      }
+      to {
+        opacity: 1;
+        transform: translateZ(0) scale(1);
+      }
+    }
+    
+    @keyframes card-sink-out {
+      from {
+        opacity: 1;
+        transform: translateZ(0) scale(1);
+      }
+      to {
+        opacity: 0.6;
+        transform: translateZ(-20px) scale(0.96);
+      }
+    }
+    
+    .grid-card-header {
+      padding: 0.8rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all var(--transition-medium);
+    }
+    
+    .grid-card.modified .grid-card-header {
+      background: var(--status-modified-bg);
+      border-bottom: 1px solid var(--status-modified);
+    }
+    
+    .grid-card.added .grid-card-header {
+      background: var(--status-added-bg);
+      border-bottom: 1px solid var(--status-added);
+    }
+    
+    .grid-card.removed .grid-card-header {
+      background: var(--status-removed-bg);
+      border-bottom: 1px solid var(--status-removed);
+    }
+    
+    .grid-card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .grid-card-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.05);
+      font-size: 0.8rem;
+      transition: all var(--transition-medium);
+    }
+    
+    .grid-card.modified .grid-card-icon {
+      background: var(--status-modified-bg);
+      color: var(--status-modified);
+    }
+    
+    .grid-card.added .grid-card-icon {
+      background: var(--status-added-bg);
+      color: var(--status-added);
+    }
+    
+    .grid-card.removed .grid-card-icon {
+      background: var(--status-removed-bg);
+      color: var(--status-removed);
+    }
+    
+    .grid-card-body {
+      flex: 1;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      transition: all var(--transition-medium);
+      transform-style: preserve-3d;
+    }
+    
+    .grid-card-footer {
+      padding: 0.8rem 1rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      transition: all var(--transition-medium);
+    }
+    
+    .grid-card.modified .grid-card-footer {
+      border-top: 1px solid var(--status-modified-bg);
+    }
+    
+    .grid-card.added .grid-card-footer {
+      border-top: 1px solid var(--status-added-bg);
+    }
+    
+    .grid-card.removed .grid-card-footer {
+      border-top: 1px solid var(--status-removed-bg);
+    }
+    
+    .card-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.2rem 0.5rem;
+      border-radius: 10px;
+    }
+    
+    .card-status.modified {
+      background: var(--status-modified-bg);
+      color: var(--status-modified);
+    }
+    
+    .card-status.added {
+      background: var(--status-added-bg);
+      color: var(--status-added);
+    }
+    
+    .card-status.removed {
+      background: var(--status-removed-bg);
+      color: var(--status-removed);
+    }
+    
+    /* Visual Components */
+    .metric-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      height: 100%;
+      padding: 1rem;
+      transform-style: preserve-3d;
+      transition: all var(--transition-medium);
+    }
+    
+    .metric-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      transition: all var(--transition-medium);
+    }
+    
+    .metric-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      text-align: center;
+      transition: all var(--transition-medium);
+    }
+    
+    .chart-container {
+      width: 100%;
+      height: 100%;
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-style: preserve-3d;
+      position: relative;
+    }
+    
+    .chart-bars {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-around;
+      width: 100%;
+      height: 100%;
+      padding: 0 1rem 1.5rem;
+      transform-style: preserve-3d;
+    }
+    
+    .chart-bar {
+      width: 24px;
+      background: var(--primary-light);
+      border-radius: 6px 6px 0 0;
+      position: relative;
+      transition: all var(--transition-medium);
+      transform: translateZ(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .chart-bar::after {
+      content: attr(data-value);
+      position: absolute;
+      bottom: -1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    
+    .chart-bar.staged {
+      position: relative;
+    }
+    
+    .chart-bar.modified {
+      background: var(--status-modified);
+      box-shadow: 0 0 10px var(--status-modified-glow);
+      animation: bar-change 1s var(--easing-spring) both;
+    }
+    
+    .chart-bar.added {
+      background: var(--status-added);
+      box-shadow: 0 0 10px var(--status-added-glow);
+      animation: bar-add 1s var(--easing-spring) both;
+    }
+    
+    .chart-bar.removed {
+      background: var(--status-removed);
+      opacity: 0.5;
+      box-shadow: 0 0 10px var(--status-removed-glow);
+      animation: bar-remove 1s var(--easing-spring) both;
+    }
+    
+    @keyframes bar-change {
+      from {
+        transform: scaleY(0.5) translateZ(0);
+      }
+      to {
+        transform: scaleY(1) translateZ(20px);
+      }
+    }
+    
+    @keyframes bar-add {
+      from {
+        transform: scaleY(0) translateZ(0);
+        opacity: 0;
+      }
+      to {
+        transform: scaleY(1) translateZ(20px);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes bar-remove {
+      from {
+        transform: scaleY(1) translateZ(0);
+        opacity: 1;
+      }
+      to {
+        transform: scaleY(0.7) translateZ(-20px);
+        opacity: 0.5;
+      }
+    }
+    
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      transform-style: preserve-3d;
+    }
+    
+    .data-table th, 
+    .data-table td {
+      padding: 0.6rem 0.8rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: all var(--transition-medium);
+    }
+    
+    .data-table th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: rgba(0, 0, 0, 0.02);
+    }
+    
+    .data-table tr {
+      transition: all var(--transition-medium);
+      transform: translateZ(0);
+    }
+    
+    .data-table tr:hover {
+      background: rgba(0, 0, 0, 0.01);
+    }
+    
+    .data-table tr.staged {
+      position: relative;
+    }
+    
+    .data-table tr.modified {
+      background: var(--status-modified-bg);
+      animation: row-change 1s var(--easing-spring) both;
+    }
+    
+    .data-table tr.added {
+      background: var(--status-added-bg);
+      animation: row-add 1s var(--easing-spring) both;
+    }
+    
+    .data-table tr.removed {
+      background: var(--status-removed-bg);
+      text-decoration: line-through;
+      opacity: 0.7;
+      animation: row-remove 1s var(--easing-spring) both;
+    }
+    
+    @keyframes row-change {
+      from {
+        transform: translateZ(0);
+      }
+      to {
+        transform: translateZ(10px);
+      }
+    }
+    
+    @keyframes row-add {
+      from {
+        transform: translateX(-10px) translateZ(-10px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0) translateZ(10px);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes row-remove {
+      from {
+        transform: translateZ(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateZ(-10px);
+        opacity: 0.7;
+      }
+    }
+    
+    /* Enhanced Conversational Change Panel */
+    .change-dialog {
+      position: absolute;
+      width: 350px;
+      max-height: calc(100% - 2rem);
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 
+                  0 0 0 1px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      transition: all var(--transition-medium);
+      z-index: 100;
+      overflow: hidden;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.95);
+    }
+    
+    .change-dialog.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+    
+    .change-dialog.top-left {
+      top: 5rem;
+      left: 2rem;
+    }
+    
+    .change-dialog.top-right {
+      top: 5rem;
+      right: 2rem;
+    }
+    
+    .change-dialog.bottom-left {
+      bottom: 5rem;
+      left: 2rem;
+    }
+    
+    .change-dialog.bottom-right {
+      bottom: 5rem;
+      right: 2rem;
+    }
+    
+    .dialog-header {
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      background: var(--primary);
+      color: white;
+    }
+    
+    .dialog-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    
+    .dialog-title-container {
+      flex: 1;
+    }
+    
+    .dialog-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    
+    .dialog-subtitle {
+      font-size: 0.8rem;
+      opacity: 0.9;
+    }
+    
+    .dialog-close {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .dialog-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+    
+    .dialog-body {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem 0;
+    }
+    
+    .conversation {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 0 1.5rem;
+    }
+    
+    .message-bubble {
+      max-width: 85%;
+      padding: 1rem;
+      border-radius: 16px;
+      position: relative;
+      animation: message-appear 0.3s var(--easing-spring) forwards;
+      transform-origin: left center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transform: scale(0.9);
+      opacity: 0;
+    }
+    
+    .message-bubble.ai {
+      align-self: flex-start;
+      background: var(--primary-light);
+      color: white;
+      border-bottom-left-radius: 4px;
+    }
+    
+    .message-bubble.user {
+      align-self: flex-end;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      border-bottom-right-radius: 4px;
+      transform-origin: right center;
+    }
+    
+    @keyframes message-appear {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    .message-thinking {
+      align-self: flex-start;
+      display: flex;
+      gap: 0.3rem;
+      padding: 12px 18px;
+      background: var(--primary-light);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .thinking-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: white;
+    }
+    
+    .thinking-dot:nth-child(1) {
+      animation: dot-bounce 1.4s -0.32s infinite ease-in-out both;
+    }
+    
+    .thinking-dot:nth-child(2) {
+      animation: dot-bounce 1.4s -0.16s infinite ease-in-out both;
+    }
+    
+    .thinking-dot:nth-child(3) {
+      animation: dot-bounce 1.4s 0s infinite ease-in-out both;
+    }
+    
+    @keyframes dot-bounce {
+      0%, 80%, 100% { 
+        transform: translateY(0);
+      }
+      40% { 
+        transform: translateY(-8px);
+      }
+    }
+    
+    .message-time {
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 0.3rem;
+    }
+    
+    .message-bubble.user .message-time {
+      color: var(--text-secondary);
+    }
+    
+    .message-content {
+      line-height: 1.5;
+    }
+    
+    .message-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.8rem;
+    }
+    
+    .message-action {
+      padding: 0.4rem 0.8rem;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    
+    .message-action:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+    
+    .message-bubble.user .message-action {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .message-bubble.user .message-action:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .change-summary {
+      background: var(--bg-primary);
+      padding: 1rem 1.5rem;
+      margin: 1rem 0;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .change-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .change-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    
+    .change-stat {
+      padding: 0.8rem;
+      background: white;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: all var(--transition-fast);
+    }
+    
+    .change-stat:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .change-stat.added {
+      background: var(--status-added-bg);
+    }
+    
+    .change-stat.modified {
+      background: var(--status-modified-bg);
+    }
+    
+    .change-stat.removed {
+      background: var(--status-removed-bg);
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+    
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    
+    .change-stat.added .stat-value {
+      color: var(--status-added);
+    }
+    
+    .change-stat.modified .stat-value {
+      color: var(--status-modified);
+    }
+    
+    .change-stat.removed .stat-value {
+      color: var(--status-removed);
+    }
+    
+    .dialog-change-list {
+      padding: 0 1.5rem;
+    }
+    
+    .change-item {
+      margin-bottom: 1rem;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      transition: all var(--transition-medium);
+      border-left: 3px solid transparent;
+    }
+    
+    .change-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    
+    .change-item.modified {
+      border-left-color: var(--status-modified);
+    }
+    
+    .change-item.added {
+      border-left-color: var(--status-added);
+    }
+    
+    .change-item.removed {
+      border-left-color: var(--status-removed);
+    }
+    
+    .change-item-header {
+      padding: 0.8rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .change-item-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .change-item-body {
+      padding: 0.8rem 1rem;
+    }
+    
+    .change-item-description {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.8rem;
+    }
+    
+    .change-item-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .change-item-action {
+      padding: 0.3rem 0.8rem;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    
+    .change-item-action:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+    
+    .change-item-action.view {
+      background: white;
+    }
+    
+    .change-item-action.accept {
+      background: var(--status-added-bg);
+      color: var(--status-added);
+      border-color: var(--status-added);
+    }
+    
+    .change-item-action.reject {
+      background: var(--status-removed-bg);
+      color: var(--status-removed);
+      border-color: var(--status-removed);
+    }
+    
+    .dialog-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .dialog-btn {
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all var(--transition-fast);
+    }
+    
+    .dialog-btn:hover {
+      transform: translateY(-2px);
+    }
+    
+    .dialog-btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(114, 9, 183, 0.2);
+    }
+    
+    .dialog-btn-primary:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 8px 20px rgba(114, 9, 183, 0.3);
+    }
+    
+    .dialog-btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    
+    .dialog-btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    
+    .dialog-btn-success {
+      background: var(--status-added);
+      color: white;
+      box-shadow: 0 4px 12px var(--status-added-bg);
+    }
+    
+    .dialog-btn-success:hover {
+      background: hsl(142, 76%, 42%);
+      box-shadow: 0 8px 20px var(--status-added-bg);
+    }
+    
+    .dialog-btn-text {
+      background: transparent;
+      color: var(--text-secondary);
+      text-decoration: underline;
+      padding: 0.3rem;
+    }
+    
+    .dialog-btn-text:hover {
+      color: var(--text-primary);
+      background: transparent;
+      transform: none;
+    }
+    
+    .dialog-footer-info {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 0.3rem;
+    }
+    
+    /* Enhanced Diff Viewer with Slider */
+    .diff-viewer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .diff-viewer.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .diff-container {
+      width: 90%;
+      max-width: 900px;
+      max-height: 90vh;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(0.95);
+      transition: all var(--transition-medium);
+    }
+    
+    .diff-viewer.active .diff-container {
+      transform: translateY(0) scale(1);
+    }
+    
+    .diff-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .diff-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .diff-controls {
+      display: flex;
+      gap: 0.8rem;
+    }
+    
+    .diff-control {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .diff-control:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .diff-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      min-height: 300px;
+    }
+    
+    /* Enhanced Slider Diff View */
+    .diff-slider {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    
+    .slider-before,
+    .slider-after {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      transition: transform var(--transition-medium);
+    }
+    
+    .slider-before {
+      z-index: 1;
+    }
+    
+    .slider-after {
+      z-index: 2;
+      clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);
+    }
+    
+    .slider-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 40px;
+      transform: translateX(-50%);
+      cursor: ew-resize;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .slider-handle::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 2px;
+      background: white;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .slider-handle-knob {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: white;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+      transition: all var(--transition-fast);
+      z-index: 2;
+    }
+    
+    .slider-handle:hover .slider-handle-knob {
+      transform: scale(1.1);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .slider-label {
+      position: absolute;
+      top: 1rem;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      z-index: 5;
+    }
+    
+    .label-before {
+      left: 1rem;
+    }
+    
+    .label-after {
+      right: 1rem;
+    }
+    
+    .slider-content {
+      width: 100%;
+      height: 100%;
+      background: white;
+      padding: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .diff-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .diff-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    
+    .diff-status-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--status-modified);
+    }
+    
+    .diff-status.added .diff-status-icon {
+      background: var(--status-added);
+    }
+    
+    .diff-status.removed .diff-status-icon {
+      background: var(--status-removed);
+    }
+    
+    .diff-actions {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .diff-btn {
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .diff-btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(114, 9, 183, 0.2);
+    }
+    
+    .diff-btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(114, 9, 183, 0.3);
+    }
+    
+    .diff-btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    
+    .diff-btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.05);
+      transform: translateY(-2px);
+    }
+    
+    /* Enhanced AI Suggestion Highlight with Depth */
+    .ai-suggestion-highlight {
+      position: absolute;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0;
+      transition: all var(--transition-medium);
+    }
+    
+    .ai-suggestion-highlight.active {
+      opacity: 1;
+      animation: highlight-pulse 2.5s infinite;
+    }
+    
+    .ai-suggestion-highlight::before {
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border-radius: 16px;
+      background: radial-gradient(
+        circle at center,
+        var(--primary-glow) 0%,
+        transparent 70%
+      );
+      z-index: -1;
+    }
+    
+    .ai-suggestion-highlight.modified::before {
+      background: radial-gradient(
+        circle at center,
+        var(--status-modified-glow) 0%,
+        transparent 70%
+      );
+    }
+    
+    .ai-suggestion-highlight.added::before {
+      background: radial-gradient(
+        circle at center,
+        var(--status-added-glow) 0%,
+        transparent 70%
+      );
+    }
+    
+    .ai-suggestion-highlight.removed::before {
+      background: radial-gradient(
+        circle at center,
+        var(--status-removed-glow) 0%,
+        transparent 70%
+      );
+    }
+    
+    @keyframes highlight-pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 3px var(--primary-glow),
+                    0 0 30px rgba(114, 9, 183, 0.2);
+      }
+      50% {
+        box-shadow: 0 0 0 5px var(--primary-glow),
+                    0 0 50px rgba(114, 9, 183, 0.3);
+      }
+    }
+    
+    /* Enhanced Magic Wave with Visual Cues */
+    .magic-wave {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .magic-wave.active {
+      opacity: 1;
+    }
+    
+    .wave-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(114, 9, 183, 0.1);
+      opacity: 0;
+    }
+    
+    .wave-circle.modified {
+      background: rgba(76, 201, 240, 0.1);
+    }
+    
+    .wave-circle.added {
+      background: rgba(142, 76, 47, 0.1);
+    }
+    
+    .wave-circle.removed {
+      background: rgba(355, 90, 61, 0.1);
+    }
+    
+    /* Enhanced AI Nucleus */
+    .ai-nucleus-container {
+      position: absolute;
+      bottom: 2rem;
+      right: 2rem;
+      width: 70px;
+      height: 70px;
+      perspective: 800px;
+      z-index: 100;
+    }
+    
+    .ai-nucleus {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all var(--transition-medium);
+      transform-style: preserve-3d;
+      transform-origin: center;
+      box-shadow: 0 5px 15px rgba(114, 9, 183, 0.3);
+      z-index: 10;
+      overflow: hidden;
+    }
+    
+    .ai-nucleus::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      background: conic-gradient(from 0deg, var(--primary), var(--primary-light), var(--accent), var(--secondary), var(--primary));
+      border-radius: inherit;
+      animation: rotate-hue 4s linear infinite;
+      opacity: 0.7;
+      z-index: -1;
+    }
+    
+    .ai-nucleus::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      background: var(--primary);
+      border-radius: inherit;
+      z-index: -1;
+    }
+    
+    .ai-nucleus.active {
+      animation: nucleus-pulse 1.5s infinite alternate;
+    }
+    
+    .ai-nucleus:hover {
+      transform: scale(1.1) translateY(-5px);
+      box-shadow: 0 10px 25px rgba(114, 9, 183, 0.4);
+    }
+    
+    .nucleus-halo {
+      position: absolute;
+      inset: -15px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, 
+                  rgba(114, 9, 183, 0.3) 0%, 
+                  rgba(114, 9, 183, 0) 70%);
+      opacity: 0.5;
+      z-index: -1;
+      animation: halo-pulse 2s infinite alternate;
+    }
+    
+    @keyframes halo-pulse {
+      0% {
+        transform: scale(0.9);
+        opacity: 0.3;
+      }
+      100% {
+        transform: scale(1.1);
+        opacity: 0.6;
+      }
+    }
+    
+    @keyframes nucleus-pulse {
+      0% {
+        transform: scale(1);
+        box-shadow: 0 5px 15px rgba(114, 9, 183, 0.3);
+      }
+      100% {
+        transform: scale(1.1);
+        box-shadow: 0 10px 30px rgba(114, 9, 183, 0.5);
+      }
+    }
+    
+    @keyframes rotate-hue {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+    
+    /* Enhanced Commit Flow */
+    .commit-flow {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .commit-flow.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .commit-container {
+      width: 90%;
+      max-width: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(0.95);
+      transition: all var(--transition-medium);
+    }
+    
+    .commit-flow.active .commit-container {
+      transform: translateY(0) scale(1);
+    }
+    
+    .commit-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--primary);
+      color: white;
+    }
+    
+    .commit-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    
+    .commit-body {
+      padding: 1.5rem;
+    }
+    
+    .commit-summary {
+      margin-bottom: 1.5rem;
+    }
+    
+    .commit-summary-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .commit-changes {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    
+    .commit-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      background: var(--bg-primary);
+    }
+    
+    .commit-item-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: white;
+    }
+    
+    .commit-item.modified .commit-item-icon {
+      background: var(--status-modified);
+    }
+    
+    .commit-item.added .commit-item-icon {
+      background: var(--status-added);
+    }
+    
+    .commit-item.removed .commit-item-icon {
+      background: var(--status-removed);
+    }
+    
+    .commit-item-text {
+      font-size: 0.9rem;
+    }
+    
+    .commit-steps {
+      display: flex;
+      margin: 2rem 0;
+      position: relative;
+    }
+    
+    .commit-step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .commit-step-number {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin: 0 auto 0.5rem;
+      transition: all var(--transition-medium);
+    }
+    
+    .commit-step.active .commit-step-number {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    
+    .commit-step.completed .commit-step-number {
+      background: var(--status-added);
+      color: white;
+      border-color: var(--status-added);
+    }
+    
+    .commit-step-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      transition: all var(--transition-medium);
+    }
+    
+    .commit-step.active .commit-step-label,
+    .commit-step.completed .commit-step-label {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    
+    .commit-steps::before {
+      content: "";
+      position: absolute;
+      top: 15px;
+      left: 15%;
+      right: 15%;
+      height: 2px;
+      background: rgba(0, 0, 0, 0.1);
+      z-index: 0;
+    }
+    
+    .commit-progress {
+      position: absolute;
+      top: 15px;
+      left: 15%;
+      height: 2px;
+      background: var(--primary);
+      z-index: 0;
+      width: 0;
+      transition: width var(--transition-medium);
+    }
+    
+    .commit-progress.step-1 {
+      width: 0%;
+    }
+    
+    .commit-progress.step-2 {
+      width: 35%;
+    }
+    
+    .commit-progress.step-3 {
+      width: 70%;
+    }
+    
+    .commit-progress.step-4 {
+      width: 100%;
+      background: var(--status-added);
+    }
+    
+    .commit-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    
+    .commit-btn {
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .commit-btn:hover {
+      transform: translateY(-2px);
+    }
+    
+    .commit-btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(114, 9, 183, 0.2);
+    }
+    
+    .commit-btn-primary:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 8px 20px rgba(114, 9, 183, 0.3);
+    }
+    
+    .commit-btn-secondary {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+    
+    .commit-btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Success Animation */
+    .success-animation {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .success-animation.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .success-container {
+      text-align: center;
+      color: white;
+    }
+    
+    .success-icon {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+      transform: scale(0);
+      transition: transform 0.5s var(--easing-spring);
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: var(--status-added);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2rem;
+      position: relative;
+    }
+    
+    .success-icon::before {
+      content: "";
+      position: absolute;
+      inset: -15px;
+      border-radius: 50%;
+      background: rgba(76, 201, 240, 0.2);
+      animation: success-ripple 2s infinite;
+    }
+    
+    @keyframes success-ripple {
+      0% {
+        transform: scale(0.9);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1.5);
+        opacity: 0;
+      }
+    }
+    
+    .success-animation.active .success-icon {
+      transform: scale(1);
+    }
+    
+    .success-text {
+      font-size: 2rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease 0.3s;
+    }
+    
+    .success-animation.active .success-text {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .success-subtext {
+      font-size: 1.2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.5s ease 0.6s;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .success-animation.active .success-subtext {
+      opacity: 0.8;
+      transform: translateY(0);
+    }
+    
+    /* Timeline Panel */
+    .timeline-panel {
+      position: absolute;
+      top: 5rem;
+      right: 2rem;
+      width: 300px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 
+                  0 0 0 1px rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      transition: all var(--transition-medium);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(20px);
+      overflow: hidden;
+    }
+    
+    .timeline-panel.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+    }
+    
+    .timeline-header {
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .timeline-title {
+      font-weight: 600;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .timeline-close {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .timeline-close:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: scale(1.1);
+    }
+    
+    .timeline-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+    
+    .timeline-events {
+      position: relative;
+      padding-left: 30px;
+    }
+    
+    .timeline-events::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 10px;
+      width: 2px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .timeline-event {
+      position: relative;
+      padding-bottom: 1.5rem;
+    }
+    
+    .timeline-event:last-child {
+      padding-bottom: 0;
+    }
+    
+    .timeline-dot {
+      position: absolute;
+      top: 0;
+      left: -30px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--primary);
+      z-index: 1;
+    }
+    
+    .timeline-event-header {
+      margin-bottom: 0.5rem;
+    }
+    
+    .timeline-event-time {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    
+    .timeline-event-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    .timeline-event-content {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    
+    .timeline-event.modified .timeline-dot {
+      border-color: var(--status-modified);
+      background: var(--status-modified-bg);
+    }
+    
+    .timeline-event.added .timeline-dot {
+      border-color: var(--status-added);
+      background: var(--status-added-bg);
+    }
+    
+    .timeline-event.removed .timeline-dot {
+      border-color: var(--status-removed);
+      background: var(--status-removed-bg);
+    }
+    
+    .timeline-event.active .timeline-dot {
+      background: var(--primary);
+    }
+    
+    .timeline-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      justify-content: center;
+    }
+    
+    .timeline-btn {
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      color: var(--primary);
+      background: var(--bg-primary);
+    }
+    
+    .timeline-btn:hover {
+      background: rgba(114, 9, 183, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    /* Spotlight Effect */
+    .spotlight {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity var(--transition-medium);
+    }
+    
+    .spotlight.active {
+      opacity: 1;
+    }
+    
+    .spotlight-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(2px);
+    }
+    
+    .spotlight-hole {
+      position: absolute;
+      border-radius: 16px;
+      box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.7);
+      pointer-events: none;
+    }
+    
+    /* Controls */
+    .demo-controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 5;
+      margin-top: 2rem;
+    }
+    
+    .demo-control-btn {
+      padding: 0.8rem 1.2rem;
+      border-radius: 10px;
+      border: none;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .demo-control-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  rgba(255, 255, 255, 0) 0%, 
+                  rgba(255, 255, 255, 0.2) 50%, 
+                  rgba(255, 255, 255, 0) 100%);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+      pointer-events: none;
+    }
+    
+    .demo-control-btn:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .demo-control-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+    
+    .demo-control-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+    
+    /* Responsive Styles */
+    @media (max-width: 1200px) {
+      .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 992px) {
+      .change-dialog {
+        width: 100%;
+        max-width: none;
+        height: 500px;
+        max-height: 80vh;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        border-radius: 16px 16px 0 0;
+        transform: translateY(100%);
+      }
+      
+      .change-dialog.active {
+        transform: translateY(0);
+      }
+      
+      .diff-slider {
+        height: 300px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .workspace-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      
+      .workspace-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+      
+      .commit-steps {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .commit-steps::before {
+        top: 0;
+        bottom: 0;
+        left: 15px;
+        right: auto;
+        width: 2px;
+        height: auto;
+      }
+      
+      .commit-step {
+        text-align: left;
+        padding-left: 40px;
+      }
+      
+      .commit-step-number {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      
+      .commit-progress {
+        top: 0;
+        bottom: 0;
+        left: 15px;
+        width: 2px;
+        height: 0;
+        transition: height var(--transition-medium);
+      }
+      
+      .commit-progress.step-1 {
+        height: 0%;
+      }
+      
+      .commit-progress.step-2 {
+        height: 33%;
+      }
+      
+      .commit-progress.step-3 {
+        height: 66%;
+      }
+      
+      .commit-progress.step-4 {
+        height: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">Enhanced AI Change Management</h1>
+      <p class="subtitle">Experience a natural, intuitive way to collaborate with AI on improving your dashboard through our enhanced version control system.</p>
+    </header>
+    
+    <div class="ai-workspace" id="aiWorkspace">
+      <!-- Ambient Background -->
+      <div class="ambient-bg" id="ambientBg">
+        <div class="ambient-gradient"></div>
+        <div class="light-rays" id="lightRays">
+          <div class="light-ray" style="--angle: 0deg;"></div>
+          <div class="light-ray" style="--angle: 30deg;"></div>
+          <div class="light-ray" style="--angle: 60deg;"></div>
+          <div class="light-ray" style="--angle: 90deg;"></div>
+          <div class="light-ray" style="--angle: 120deg;"></div>
+          <div class="light-ray" style="--angle: 150deg;"></div>
+          <div class="light-ray" style="--angle: 180deg;"></div>
+        </div>
+      </div>
+      
+      <div class="workspace-container" id="workspaceContainer">
+        <div class="workspace-header" id="workspaceHeader">
+          <div class="workspace-title">
+            <div class="workspace-title-icon">K</div>
+            Market Analysis Dashboard
+          </div>
+          
+          <div class="workspace-controls">
+            <div class="workspace-control sandbox-indicator" id="sandboxIndicator" style="display: none;">
+              <div class="sandbox-pulse"></div>
+              <span>Safe Preview Mode</span>
+            </div>
+            <div class="workspace-control" id="viewHistoryBtn">
+              <span>View History</span>
+            </div>
+            <div class="workspace-control" id="viewChangesBtn">
+              <span>AI Suggestions</span>
+              <span id="changeCount" class="card-status modified">5</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="workspace-body">
+          <!-- Main Content Area -->
+          <div class="content-area" id="contentArea">
+            <div class="dashboard-grid">
+              <!-- Metric Card 1 -->
+              <div class="grid-card" id="totalUsersCard">
+                <div class="grid-card-header">
+                  <div class="grid-card-title">
+                    <div class="grid-card-icon">📊</div>
+                    <span>Total Users</span>
+                  </div>
+                </div>
+                <div class="grid-card-body">
+                  <div class="metric-card">
+                    <div class="metric-value">24,582</div>
+                    <div class="metric-label">Active users this month</div>
+                  </div>
+                </div>
+                <div class="grid-card-footer">
+                  <span>Updated 2 hours ago</span>
+                </div>
+              </div>
+              
+              <!-- Metric Card 2 - Modified -->
+              <div class="grid-card staged modified" id="conversionMetric">
+                <div class="grid-card-header">
+                  <div class="grid-card-title">
+                    <div class="grid-card-icon">💰</div>
+                    <span>Conversion Rate</span>
+                  </div>
+                  <div class="card-status modified">Modified</div>
+                </div>
+                <div class="grid-card-body">
+                  <div class="metric-card">
+                    <div class="metric-value">3.2%</div>
+                    <div class="metric-label">Average conversion rate</div>
+                  </div>
+                </div>
+                <div class="grid-card-footer">
+                  <span>Updated 2 hours ago</span>
+                </div>
+              </div>
+              
+              <!-- Chart Card 1 - Modified -->
+              <div class="grid-card staged modified" id="revenueChart">
+                <div class="grid-card-header">
+                  <div class="grid-card-title">
+                    <div class="grid-card-icon">📈</div>
+                    <span>Revenue Growth</span>
+                  </div>
+                  <div class="card-status modified">Modified</div>
+                </div>
+                <div class="grid-card-body">
+                  <div class="chart-container">
+                    <div class="chart-bars">
+                      <div class="chart-bar" style="height: 60%" data-value="$15K"></div>
+                      <div class="chart-bar" style="height: 75%" data-value="$19K"></div>
+                      <div class="chart-bar" style="height: 42%" data-value="$10K"></div>
+                      <div class="chart-bar staged modified" style="height: 90%" data-value="$23K"></div>
+                      <div class="chart-bar" style="height: 65%" data-value="$16K"></div>
+                      <div class="chart-bar staged added" style="height: 85%" data-value="$22K"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid-card-footer">
+                  <span>Last 6 months</span>
+                </div>
+              </div>
+              
+              <!-- Table Card - Modified -->
+              <div class="grid-card staged modified" id="marketingTable">
+                <div class="grid-card-header">
+                  <div class="grid-card-title">
+                    <div class="grid-card-icon">🎯</div>
+                    <span>Marketing Channels</span>
+                  </div>
+                  <div class="card-status modified">Modified</div>
+                </div>
+                <div class="grid-card-body">
+                  <div class="table-container">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>Channel</th>
+                          <th>Users</th>
+                          <th>Conv. %</th>
+                          <th>CPA</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Organic Search</td>
+                          <td>8,421</td>
+                          <td>4.7%</td>
+                          <td>$12.40</td>
+                        </tr>
+                        <tr class="staged modified">
+                          <td>Paid Search</td>
+                          <td>6,382</td>
+                          <td>3.8%</td>
+                          <td>$18.25</td>
+                        </tr>
+                        <tr class="staged added">
+                          <td>Referral Partners</td>
+                          <td>2,865</td>
+                          <td>5.2%</td>
+                          <td>$9.15</td>
+                        </tr>
+                        <tr>
+                          <td>Social Media</td>
+                          <td>5,193</td>
+                          <td>2.5%</td>
+                          <td>$22.30</td>
+                        </tr>
+                        <tr class="staged removed">
+                          <td>Email</td>
+                          <td>1,725</td>
+                          <td>2.1%</td>
+                          <td>$14.80</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="grid-card-footer">
+                  <span>Last 30 days</span>
+                </div>
+              </div>
+              
+              <!-- New Card - Added -->
+              <div class="grid-card staged added" id="customerSegment">
+                <div class="grid-card-header">
+                  <div class="grid-card-title">
+                    <div class="grid-card-icon">👥</div>
+                    <span>Customer Segments</span>
+                  </div>
+                  <div class="card-status added">Added</div>
+                </div>
+                <div class="grid-card-body">
+                  <div class="chart-container">
+                    <div class="chart-bars">
+                      <div class="chart-bar staged added" style="height: 85%" data-value="SMB"></div>
+                      <div class="chart-bar staged added" style="height: 60%" data-value="Mid"></div>
+                      <div class="chart-bar staged added" style="height: 40%" data-value="Ent"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid-card-footer">
+                  <span>By revenue contribution</span>
+                </div>
+              </div>
+              
+              <!-- Normal Card -->
+              <div class="grid-card">
+                <div class="grid-card-header">
+                  <div class="grid-card-title">
+                    <div class="grid-card-icon">🌎</div>
+                    <span>Geographic Distribution</span>
+                  </div>
+                </div>
+                <div class="grid-card-body">
+                  <div class="chart-container">
+                    <div class="chart-bars">
+                      <div class="chart-bar" style="height: 80%" data-value="NA"></div>
+                      <div class="chart-bar" style="height: 60%" data-value="EU"></div>
+                      <div class="chart-bar" style="height: 40%" data-value="APAC"></div>
+                      <div class="chart-bar" style="height: 20%" data-value="LATAM"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="grid-card-footer">
+                  <span>By region</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- AI Nucleus with Enhanced Halo -->
+        <div class="ai-nucleus-container">
+          <div class="nucleus-halo"></div>
+          <div class="ai-nucleus active" id="aiNucleus">K</div>
+        </div>
+        
+        <!-- Magic Wave Animation -->
+        <div class="magic-wave" id="magicWave"></div>
+        
+        <!-- AI Suggestion Highlights -->
+        <div class="ai-suggestion-highlight" id="suggestionHighlight"></div>
+        
+        <!-- Spotlight Effect -->
+        <div class="spotlight" id="spotlight">
+          <div class="spotlight-overlay"></div>
+          <div class="spotlight-hole"></div>
+        </div>
+      </div>
+      
+      <!-- Enhanced Conversational Change Dialog -->
+      <div class="change-dialog bottom-right" id="changeDialog">
+        <div class="dialog-header">
+          <div class="dialog-avatar">K</div>
+          <div class="dialog-title-container">
+            <div class="dialog-title">Kickoff Assistant</div>
+            <div class="dialog-subtitle">AI Suggestions</div>
+          </div>
+          <div class="dialog-close" id="closeDialog">×</div>
+        </div>
+        
+        <div class="dialog-body">
+          <div class="conversation">
+            <div class="message-bubble ai" style="animation-delay: 0.1s;">
+              <div class="message-content">
+                Hi there! I've analyzed your dashboard and found some opportunities for improvement based on your recent data.
+              </div>
+              <div class="message-time">Just now</div>
+            </div>
+            
+            <div class="message-bubble ai" style="animation-delay: 0.8s;">
+              <div class="message-content">
+                I've prepared 5 changes that could make your dashboard more insightful. Would you like to explore them?
+              </div>
+              <div class="message-actions">
+                <div class="message-action" id="showChangesBtn">Show me the changes</div>
+                <div class="message-action" id="askWhyBtn">Why are these changes helpful?</div>
+              </div>
+              <div class="message-time">Just now</div>
+            </div>
+            
+            <div class="message-thinking" id="aiThinking" style="display: none;">
+              <div class="thinking-dot"></div>
+              <div class="thinking-dot"></div>
+              <div class="thinking-dot"></div>
+            </div>
+          </div>
+          
+          <div class="change-summary" id="changeSummary" style="display: none;">
+            <div class="change-title">Suggested Changes</div>
+            <p>These changes will help you better understand your marketing performance and customer segments.</p>
+            
+            <div class="change-stats">
+              <div class="change-stat added">
+                <div class="stat-value">1</div>
+                <div class="stat-label">Added</div>
+              </div>
+              <div class="change-stat modified">
+                <div class="stat-value">3</div>
+                <div class="stat-label">Modified</div>
+              </div>
+              <div class="change-stat removed">
+                <div class="stat-value">1</div>
+                <div class="stat-label">Removed</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="dialog-change-list" id="changeList" style="display: none;">
+            <!-- Modified Changes -->
+            <div class="change-item modified" data-target="conversionMetric">
+              <div class="change-item-header">
+                <div class="change-item-title">
+                  <span>Conversion Rate</span>
+                </div>
+                <div class="card-status modified">Modified</div>
+              </div>
+              <div class="change-item-body">
+                <div class="change-item-description">Updated with segmented conversion data showing 4.8% for new users (previously averaged at 3.2%).</div>
+                <div class="change-item-actions">
+                  <div class="change-item-action view" data-action="view"><span>👁️</span> View Change</div>
+                  <div class="change-item-action accept"><span>✓</span> Accept</div>
+                  <div class="change-item-action reject"><span>✕</span> Reject</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="change-item modified" data-target="revenueChart">
+              <div class="change-item-header">
+                <div class="change-item-title">
+                  <span>Revenue Growth</span>
+                </div>
+                <div class="card-status modified">Modified</div>
+              </div>
+              <div class="change-item-body">
+                <div class="change-item-description">Adjusted April data to reflect recent reconciliation and added forecast for June.</div>
+                <div class="change-item-actions">
+                  <div class="change-item-action view" data-action="view"><span>👁️</span> View Change</div>
+                  <div class="change-item-action accept"><span>✓</span> Accept</div>
+                  <div class="change-item-action reject"><span>✕</span> Reject</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="change-item modified" data-target="marketingTable">
+              <div class="change-item-header">
+                <div class="change-item-title">
+                  <span>Marketing Channels</span>
+                </div>
+                <div class="card-status modified">Modified</div>
+              </div>
+              <div class="change-item-body">
+                <div class="change-item-description">Updated Paid Search performance, added high-performing Referral Partners, and removed underperforming Email channel.</div>
+                <div class="change-item-actions">
+                  <div class="change-item-action view" data-action="view"><span>👁️</span> View Change</div>
+                  <div class="change-item-action accept"><span>✓</span> Accept</div>
+                  <div class="change-item-action reject"><span>✕</span> Reject</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Added Changes -->
+            <div class="change-item added" data-target="customerSegment">
+              <div class="change-item-header">
+                <div class="change-item-title">
+                  <span>Customer Segments</span>
+                </div>
+                <div class="card-status added">Added</div>
+              </div>
+              <div class="change-item-body">
+                <div class="change-item-description">New visualization showing revenue contribution by customer segment based on your CRM data.</div>
+                <div class="change-item-actions">
+                  <div class="change-item-action view" data-action="view"><span>👁️</span> View Change</div>
+                  <div class="change-item-action accept"><span>✓</span> Accept</div>
+                  <div class="change-item-action reject"><span>✕</span> Reject</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="dialog-footer">
+          <button class="dialog-btn dialog-btn-primary" id="applyChangesBtn">Review & Apply Selected Changes</button>
+          <button class="dialog-btn dialog-btn-secondary" id="cancelChangesBtn">Dismiss All Changes</button>
+          <div class="dialog-footer-info">You can accept or reject each change individually</div>
+        </div>
+      </div>
+      
+      <!-- Enhanced Diff Viewer with Slider -->
+      <div class="diff-viewer" id="diffViewer">
+        <div class="diff-container">
+          <div class="diff-header">
+            <div class="diff-title" id="diffTitle">
+              Compare Changes: Conversion Rate
+            </div>
+            <div class="diff-controls">
+              <div class="diff-control" id="closeDiffBtn">×</div>
+            </div>
+          </div>
+          
+          <div class="diff-body">
+            <div class="diff-slider" id="diffSlider">
+              <div class="slider-label label-before">Current</div>
+              <div class="slider-label label-after">Suggested</div>
+              
+              <div class="slider-before">
+                <div class="slider-content" id="beforeContent">
+                  <!-- Current content will be dynamically inserted -->
+                  <div class="metric-card">
+                    <div class="metric-value">3.2%</div>
+                    <div class="metric-label">Average conversion rate</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="slider-after">
+                <div class="slider-content" id="afterContent">
+                  <!-- Suggested content will be dynamically inserted -->
+                  <div class="metric-card">
+                    <div class="metric-value">4.8%</div>
+                    <div class="metric-label">New user conversion rate</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="slider-handle" id="sliderHandle">
+                <div class="slider-handle-knob">⟷</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="diff-footer">
+            <div class="diff-status modified">
+              <span class="diff-status-icon"></span>
+              <span>Modified Component</span>
+            </div>
+            
+            <div class="diff-actions">
+              <button class="diff-btn diff-btn-secondary" id="cancelDiffBtn">Cancel</button>
+              <button class="diff-btn diff-btn-primary" id="acceptChangeBtn">Accept Change</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Enhanced Commit Flow -->
+      <div class="commit-flow" id="commitFlow">
+        <div class="commit-container">
+          <div class="commit-header">
+            <div class="commit-title">Review & Apply Changes</div>
+          </div>
+          
+          <div class="commit-body">
+            <div class="commit-summary">
+              <div class="commit-summary-title">Changes to be applied</div>
+              <p>The following changes will be applied to your dashboard:</p>
+              
+              <div class="commit-changes">
+                <div class="commit-item modified">
+                  <div class="commit-item-icon">M</div>
+                  <div class="commit-item-text">Conversion Rate: Updated to show 4.8% new user conversion</div>
+                </div>
+                <div class="commit-item modified">
+                  <div class="commit-item-icon">M</div>
+                  <div class="commit-item-text">Revenue Growth: Added June forecast</div>
+                </div>
+                <div class="commit-item added">
+                  <div class="commit-item-icon">+</div>
+                  <div class="commit-item-text">Customer Segments: Added new visualization</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="commit-steps">
+              <div class="commit-step active">
+                <div class="commit-step-number">1</div>
+                <div class="commit-step-label">Review</div>
+              </div>
+              <div class="commit-step">
+                <div class="commit-step-number">2</div>
+                <div class="commit-step-label">Confirm</div>
+              </div>
+              <div class="commit-step">
+                <div class="commit-step-number">3</div>
+                <div class="commit-step-label">Apply</div>
+              </div>
+              <div class="commit-step">
+                <div class="commit-step-number">4</div>
+                <div class="commit-step-label">Complete</div>
+              </div>
+              <div class="commit-progress step-1"></div>
+            </div>
+          </div>
+          
+          <div class="commit-footer">
+            <button class="commit-btn commit-btn-secondary" id="backCommitBtn">Back</button>
+            <button class="commit-btn commit-btn-primary" id="nextCommitBtn">Continue</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Success Animation -->
+      <div class="success-animation" id="successAnimation">
+        <div class="success-container">
+          <div class="success-icon">✓</div>
+          <div class="success-text">Changes Applied Successfully!</div>
+          <div class="success-subtext">Your dashboard has been updated with the selected changes. Feel free to revert any change from the history panel if needed.</div>
+        </div>
+      </div>
+      
+      <!-- Timeline Panel -->
+      <div class="timeline-panel" id="timelinePanel">
+        <div class="timeline-header">
+          <div class="timeline-title">
+            <span>📜</span> Change History
+          </div>
+          <div class="timeline-close" id="closeTimelineBtn">×</div>
+        </div>
+        
+        <div class="timeline-body">
+          <div class="timeline-events">
+            <div class="timeline-event active">
+              <div class="timeline-dot"></div>
+              <div class="timeline-event-header">
+                <div class="timeline-event-time">Just now</div>
+                <div class="timeline-event-title">Applied AI Suggestions</div>
+              </div>
+              <div class="timeline-event-content">
+                Applied 3 changes suggested by AI assistant to improve dashboard insights.
+              </div>
+            </div>
+            
+            <div class="timeline-event modified">
+              <div class="timeline-dot"></div>
+              <div class="timeline-event-header">
+                <div class="timeline-event-time">Yesterday, 4:30 PM</div>
+                <div class="timeline-event-title">Updated Revenue Chart</div>
+              </div>
+              <div class="timeline-event-content">
+                Updated revenue data for Q1 and added growth indicators.
+              </div>
+            </div>
+            
+            <div class="timeline-event added">
+              <div class="timeline-dot"></div>
+              <div class="timeline-event-header">
+                <div class="timeline-event-time">2 days ago</div>
+                <div class="timeline-event-title">Added Marketing Channels</div>
+              </div>
+              <div class="timeline-event-content">
+                Added new table showing marketing channel performance.
+              </div>
+            </div>
+            
+            <div class="timeline-event">
+              <div class="timeline-dot"></div>
+              <div class="timeline-event-header">
+                <div class="timeline-event-time">1 week ago</div>
+                <div class="timeline-event-title">Dashboard Created</div>
+              </div>
+              <div class="timeline-event-content">
+                Initial dashboard setup with core metrics and visualizations.
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="timeline-footer">
+          <button class="timeline-btn" id="revertChangesBtn">Revert to Previous Version</button>
+        </div>
+      </div>
+      
+      <div class="demo-controls">
+        <button class="demo-control-btn" id="startConversationBtn">Start AI Conversation</button>
+        <button class="demo-control-btn" id="showDiffViewBtn">Show Change Slider</button>
+        <button class="demo-control-btn" id="showCommitFlowBtn">Show Commit Flow</button>
+        <button class="demo-control-btn" id="showSuccessBtn">Show Success Animation</button>
+        <button class="demo-control-btn" id="toggleTimelineBtn">Toggle History</button>
+        <button class="demo-control-btn" id="toggleSandboxBtn">Toggle Safe Mode</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // DOM Elements
+    const aiWorkspace = document.getElementById('aiWorkspace');
+    const workspaceContainer = document.getElementById('workspaceContainer');
+    const workspaceHeader = document.getElementById('workspaceHeader');
+    const contentArea = document.getElementById('contentArea');
+    const aiNucleus = document.getElementById('aiNucleus');
+    const magicWave = document.getElementById('magicWave');
+    const suggestionHighlight = document.getElementById('suggestionHighlight');
+    const changeDialog = document.getElementById('changeDialog');
+    const closeDialog = document.getElementById('closeDialog');
+    const showChangesBtn = document.getElementById('showChangesBtn');
+    const askWhyBtn = document.getElementById('askWhyBtn');
+    const changeSummary = document.getElementById('changeSummary');
+    const changeList = document.getElementById('changeList');
+    const aiThinking = document.getElementById('aiThinking');
+    const viewChangesBtn = document.getElementById('viewChangesBtn');
+    const diffViewer = document.getElementById('diffViewer');
+    const closeDiffBtn = document.getElementById('closeDiffBtn');
+    const cancelDiffBtn = document.getElementById('cancelDiffBtn');
+    const acceptChangeBtn = document.getElementById('acceptChangeBtn');
+    const diffTitle = document.getElementById('diffTitle');
+    const beforeContent = document.getElementById('beforeContent');
+    const afterContent = document.getElementById('afterContent');
+    const sliderHandle = document.getElementById('sliderHandle');
+    const diffSlider = document.getElementById('diffSlider');
+    const commitFlow = document.getElementById('commitFlow');
+    const backCommitBtn = document.getElementById('backCommitBtn');
+    const nextCommitBtn = document.getElementById('nextCommitBtn');
+    const successAnimation = document.getElementById('successAnimation');
+    const timelinePanel = document.getElementById('timelinePanel');
+    const closeTimelineBtn = document.getElementById('closeTimelineBtn');
+    const applyChangesBtn = document.getElementById('applyChangesBtn');
+    const cancelChangesBtn = document.getElementById('cancelChangesBtn');
+    const spotlight = document.getElementById('spotlight');
+    const ambientBg = document.getElementById('ambientBg');
+    const lightRays = document.getElementById('lightRays');
+    const sandboxIndicator = document.getElementById('sandboxIndicator');
+    
+    // Demo Control Buttons
+    const startConversationBtn = document.getElementById('startConversationBtn');
+    const showDiffViewBtn = document.getElementById('showDiffViewBtn');
+    const showCommitFlowBtn = document.getElementById('showCommitFlowBtn');
+    const showSuccessBtn = document.getElementById('showSuccessBtn');
+    const toggleTimelineBtn = document.getElementById('toggleTimelineBtn');
+    const toggleSandboxBtn = document.getElementById('toggleSandboxBtn');
+    
+    // State Management
+    let currentCommitStep = 1;
+    let isSandboxMode = false;
+    let acceptedChanges = [];
+    let rejectedChanges = [];
+    
+    // Slider Functionality
+    let isSliderDragging = false;
+    
+    sliderHandle.addEventListener('mousedown', startSliderDrag);
+    document.addEventListener('mousemove', moveSlider);
+    document.addEventListener('mouseup', stopSliderDrag);
+    
+    sliderHandle.addEventListener('touchstart', startSliderDrag);
+    document.addEventListener('touchmove', moveSlider);
+    document.addEventListener('touchend', stopSliderDrag);
+    
+    function startSliderDrag(e) {
+      e.preventDefault();
+      isSliderDragging = true;
+    }
+    
+    function moveSlider(e) {
+      if (!isSliderDragging) return;
+      
+      const sliderRect = diffSlider.getBoundingClientRect();
+      let clientX;
+      
+      if (e.type === 'touchmove') {
+        clientX = e.touches[0].clientX;
+      } else {
+        clientX = e.clientX;
+      }
+      
+      let position = (clientX - sliderRect.left) / sliderRect.width;
+      position = Math.max(0, Math.min(1, position));
+      
+      const sliderAfter = diffSlider.querySelector('.slider-after');
+      sliderAfter.style.clipPath = `polygon(0 0, ${position * 100}% 0, ${position * 100}% 100%, 0 100%)`;
+      sliderHandle.style.left = `${position * 100}%`;
+    }
+    
+    function stopSliderDrag() {
+      isSliderDragging = false;
+    }
+    
+    // Generate Magic Wave Animation
+    function generateMagicWave(targetElement, type = '') {
+      magicWave.innerHTML = '';
+      magicWave.classList.add('active');
+      
+      const rect = targetElement.getBoundingClientRect();
+      const containerRect = workspaceContainer.getBoundingClientRect();
+      
+      const centerX = rect.left - containerRect.left + rect.width / 2;
+      const centerY = rect.top - containerRect.top + rect.height / 2;
+      
+      const maxRadius = Math.max(rect.width, rect.height) * 1.5;
+      const waveCount = 3;
+      
+      for (let i = 0; i < waveCount; i++) {
+        const circle = document.createElement('div');
+        circle.className = `wave-circle ${type}`;
+        circle.style.left = `${centerX}px`;
+        circle.style.top = `${centerY}px`;
+        circle.style.width = '10px';
+        circle.style.height = '10px';
+        
+        const delay = i * 0.3;
+        circle.style.animation = `wave-expand 2s ${delay}s forwards cubic-bezier(0, 0.5, 0.25, 1)`;
+        
+        magicWave.appendChild(circle);
+      }
+      
+      // Add the animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes wave-expand {
+          0% {
+            width: 10px;
+            height: 10px;
+            opacity: 0.8;
+            transform: translate(-50%, -50%);
+          }
+          100% {
+            width: ${maxRadius}px;
+            height: ${maxRadius}px;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Hide wave after animation
+      setTimeout(() => {
+        magicWave.classList.remove('active');
+      }, 3000);
+    }
+    
+    // Show Enhanced AI Suggestion Highlight
+    function showSuggestionHighlight(targetElement, type = '') {
+      const rect = targetElement.getBoundingClientRect();
+      const containerRect = workspaceContainer.getBoundingClientRect();
+      
+      suggestionHighlight.style.left = `${rect.left - containerRect.left}px`;
+      suggestionHighlight.style.top = `${rect.top - containerRect.top}px`;
+      suggestionHighlight.style.width = `${rect.width}px`;
+      suggestionHighlight.style.height = `${rect.height}px`;
+      
+      suggestionHighlight.className = 'ai-suggestion-highlight';
+      if (type) {
+        suggestionHighlight.classList.add(type);
+      }
+      
+      suggestionHighlight.classList.add('active');
+      
+      return suggestionHighlight;
+    }
+    
+    // Show Spotlight Effect
+    function showSpotlight(targetElement) {
+      const rect = targetElement.getBoundingClientRect();
+      const containerRect = workspaceContainer.getBoundingClientRect();
+      
+      const spotlightHole = spotlight.querySelector('.spotlight-hole');
+      
+      spotlightHole.style.left = `${rect.left - containerRect.left - 10}px`;
+      spotlightHole.style.top = `${rect.top - containerRect.top - 10}px`;
+      spotlightHole.style.width = `${rect.width + 20}px`;
+      spotlightHole.style.height = `${rect.height + 20}px`;
+      
+      spotlight.classList.add('active');
+      contentArea.classList.add('defocused');
+      
+      return spotlight;
+    }
+    
+    function hideSpotlight() {
+      spotlight.classList.remove('active');
+      contentArea.classList.remove('defocused');
+    }
+    
+    // Focus Card
+    function focusCard(cardElement) {
+      // Remove focused class from all cards
+      document.querySelectorAll('.grid-card').forEach(card => {
+        card.classList.remove('focused');
+      });
+      
+      // Add focused class to the target card
+      cardElement.classList.add('focused');
+    }
+    
+    // Dialog Functionality
+    function showDialog() {
+      changeDialog.classList.add('active');
+      ambientBg.classList.add('active');
+      ambientBg.querySelector('.ambient-gradient').classList.add('active');
+      lightRays.classList.add('active');
+      
+      // Activate safe preview mode
+      if (isSandboxMode) {
+        activateSandboxMode();
+      }
+    }
+    
+    function hideDialog() {
+      changeDialog.classList.remove('active');
+      ambientBg.classList.remove('active');
+      ambientBg.querySelector('.ambient-gradient').classList.remove('active');
+      lightRays.classList.remove('active');
+      
+      // Deactivate sandbox mode
+      deactivateSandboxMode();
+    }
+    
+    // View Changes in Dialog
+    showChangesBtn.addEventListener('click', () => {
+      aiThinking.style.display = 'flex';
+      
+      setTimeout(() => {
+        aiThinking.style.display = 'none';
+        
+        // Add explanation message
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble ai';
+        messageBubble.style.animationDelay = '0.1s';
+        messageBubble.innerHTML = `
+          <div class="message-content">
+            Great! Here's what I'm suggesting:
+          </div>
+          <div class="message-time">Just now</div>
+        `;
+        
+        const conversation = document.querySelector('.conversation');
+        conversation.appendChild(messageBubble);
+        
+        // Show change summary and list
+        setTimeout(() => {
+          changeSummary.style.display = 'block';
+          changeList.style.display = 'block';
+        }, 500);
+      }, 1500);
+    });
+    
+    askWhyBtn.addEventListener('click', () => {
+      aiThinking.style.display = 'flex';
+      
+      setTimeout(() => {
+        aiThinking.style.display = 'none';
+        
+        // Add explanation message
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble ai';
+        messageBubble.style.animationDelay = '0.1s';
+        messageBubble.innerHTML = `
+          <div class="message-content">
+            I noticed your dashboard could benefit from more segmented data. The changes I'm suggesting will:
+            <br><br>
+            1. Show you conversion rates for new users, which are higher than your average
+            <br>
+            2. Add missing data for April and forecast for June in revenue
+            <br>
+            3. Add high-performing Referral Partners channel that was missing
+            <br>
+            4. Remove the underperforming Email channel (2.1% conversion)
+            <br>
+            5. Add new customer segment visualization to see which segments drive most revenue
+          </div>
+          <div class="message-actions">
+            <div class="message-action" id="nowShowChangesBtn">Show me the changes</div>
+          </div>
+          <div class="message-time">Just now</div>
+        `;
+        
+        const conversation = document.querySelector('.conversation');
+        conversation.appendChild(messageBubble);
+        
+        // Add event listener to the new button
+        setTimeout(() => {
+          document.getElementById('nowShowChangesBtn').addEventListener('click', () => {
+            changeSummary.style.display = 'block';
+            changeList.style.display = 'block';
+          });
+        }, 100);
+      }, 1500);
+    });
+    
+    // Close dialog
+    closeDialog.addEventListener('click', hideDialog);
+    cancelChangesBtn.addEventListener('click', hideDialog);
+    
+    // View Diff Functionality
+    function showDiffViewer(targetId, title = 'Comparing Changes') {
+      diffTitle.textContent = title;
+      diffViewer.classList.add('active');
+      
+      // Reset slider position
+      const sliderAfter = diffSlider.querySelector('.slider-after');
+      sliderAfter.style.clipPath = `polygon(0 0, 50% 0, 50% 100%, 0 100%)`;
+      sliderHandle.style.left = `50%`;
+      
+      // Update diff status
+      const diffStatus = document.querySelector('.diff-status');
+      diffStatus.className = 'diff-status';
+      
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        if (targetElement.classList.contains('modified')) {
+          diffStatus.classList.add('modified');
+        } else if (targetElement.classList.contains('added')) {
+          diffStatus.classList.add('added');
+        } else if (targetElement.classList.contains('removed')) {
+          diffStatus.classList.add('removed');
+        }
+      }
+      
+      // Load specific content for the target
+      loadDiffContent(targetId);
+    }
+    
+    function loadDiffContent(targetId) {
+      // Clear previous content
+      beforeContent.innerHTML = '';
+      afterContent.innerHTML = '';
+      
+      // Create specific diff content based on targetId
+      switch (targetId) {
+        case 'conversionMetric':
+          beforeContent.innerHTML = `
+            <div class="metric-card">
+              <div class="metric-value">3.2%</div>
+              <div class="metric-label">Average conversion rate</div>
+            </div>
+          `;
+          
+          afterContent.innerHTML = `
+            <div class="metric-card">
+              <div class="metric-value">4.8%</div>
+              <div class="metric-label">New user conversion rate</div>
+            </div>
+          `;
+          break;
+          
+        case 'revenueChart':
+          beforeContent.innerHTML = `
+            <div class="chart-container">
+              <div class="chart-bars">
+                <div class="chart-bar" style="height: 60%" data-value="$15K"></div>
+                <div class="chart-bar" style="height: 75%" data-value="$19K"></div>
+                <div class="chart-bar" style="height: 42%" data-value="$10K"></div>
+                <div class="chart-bar" style="height: 65%" data-value="$16K"></div>
+                <div class="chart-bar" style="height: 65%" data-value="$16K"></div>
+              </div>
+            </div>
+          `;
+          
+          afterContent.innerHTML = `
+            <div class="chart-container">
+              <div class="chart-bars">
+                <div class="chart-bar" style="height: 60%" data-value="$15K"></div>
+                <div class="chart-bar" style="height: 75%" data-value="$19K"></div>
+                <div class="chart-bar" style="height: 42%" data-value="$10K"></div>
+                <div class="chart-bar" style="height: 90%" data-value="$23K"></div>
+                <div class="chart-bar" style="height: 65%" data-value="$16K"></div>
+                <div class="chart-bar" style="height: 85%" data-value="$22K"></div>
+              </div>
+            </div>
+          `;
+          break;
+          
+        case 'marketingTable':
+          beforeContent.innerHTML = `
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Channel</th>
+                    <th>Users</th>
+                    <th>Conv. %</th>
+                    <th>CPA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Organic Search</td>
+                    <td>8,421</td>
+                    <td>4.7%</td>
+                    <td>$12.40</td>
+                  </tr>
+                  <tr>
+                    <td>Paid Search</td>
+                    <td>5,283</td>
+                    <td>3.2%</td>
+                    <td>$21.75</td>
+                  </tr>
+                  <tr>
+                    <td>Social Media</td>
+                    <td>5,193</td>
+                    <td>2.5%</td>
+                    <td>$22.30</td>
+                  </tr>
+                  <tr>
+                    <td>Email</td>
+                    <td>1,725</td>
+                    <td>2.1%</td>
+                    <td>$14.80</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          `;
+          
+          afterContent.innerHTML = `
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Channel</th>
+                    <th>Users</th>
+                    <th>Conv. %</th>
+                    <th>CPA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Organic Search</td>
+                    <td>8,421</td>
+                    <td>4.7%</td>
+                    <td>$12.40</td>
+                  </tr>
+                  <tr class="modified">
+                    <td>Paid Search</td>
+                    <td>6,382</td>
+                    <td>3.8%</td>
+                    <td>$18.25</td>
+                  </tr>
+                  <tr class="added">
+                    <td>Referral Partners</td>
+                    <td>2,865</td>
+                    <td>5.2%</td>
+                    <td>$9.15</td>
+                  </tr>
+                  <tr>
+                    <td>Social Media</td>
+                    <td>5,193</td>
+                    <td>2.5%</td>
+                    <td>$22.30</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          `;
+          break;
+          
+        case 'customerSegment':
+          beforeContent.innerHTML = `
+            <div style="text-align: center; color: #999; padding: 2rem;">
+              No customer segment data visualization exists
+            </div>
+          `;
+          
+          afterContent.innerHTML = `
+            <div class="chart-container">
+              <div class="chart-bars">
+                <div class="chart-bar" style="height: 85%" data-value="SMB"></div>
+                <div class="chart-bar" style="height: 60%" data-value="Mid"></div>
+                <div class="chart-bar" style="height: 40%" data-value="Ent"></div>
+              </div>
+            </div>
+          `;
+          break;
+      }
+    }
+    
+    // Set up change items view diff buttons
+    document.querySelectorAll('.change-item-action[data-action="view"]').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const changeItem = e.target.closest('.change-item');
+        const targetId = changeItem.getAttribute('data-target');
+        const targetTitle = changeItem.querySelector('.change-item-title').textContent.trim();
+        
+        showDiffViewer(targetId, `Compare Changes: ${targetTitle}`);
+      });
+    });
+    
+    // Close diff viewer
+    closeDiffBtn.addEventListener('click', () => {
+      diffViewer.classList.remove('active');
+    });
+    
+    cancelDiffBtn.addEventListener('click', () => {
+      diffViewer.classList.remove('active');
+    });
+    
+    // Accept change from diff viewer
+    acceptChangeBtn.addEventListener('click', () => {
+      const targetId = diffTitle.textContent.split(':')[1].trim();
+      
+      // Add to accepted changes
+      if (!acceptedChanges.includes(targetId)) {
+        acceptedChanges.push(targetId);
+      }
+      
+      // Remove from rejected changes if present
+      const rejectIndex = rejectedChanges.indexOf(targetId);
+      if (rejectIndex !== -1) {
+        rejectedChanges.splice(rejectIndex, 1);
+      }
+      
+      // Close diff viewer
+      diffViewer.classList.remove('active');
+      
+      // Show success message
+      const messageBubble = document.createElement('div');
+      messageBubble.className = 'message-bubble ai';
+      messageBubble.style.animationDelay = '0.1s';
+      messageBubble.innerHTML = `
+        <div class="message-content">
+          Change accepted! You can apply all selected changes when you're ready.
+        </div>
+        <div class="message-time">Just now</div>
+      `;
+      
+      const conversation = document.querySelector('.conversation');
+      conversation.appendChild(messageBubble);
+    });
+    
+    // Set up change items accept/reject buttons
+    document.querySelectorAll('.change-item-action.accept').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const changeItem = e.target.closest('.change-item');
+        const targetId = changeItem.getAttribute('data-target');
+        
+        // Add to accepted changes
+        if (!acceptedChanges.includes(targetId)) {
+          acceptedChanges.push(targetId);
+        }
+        
+        // Remove from rejected changes if present
+        const rejectIndex = rejectedChanges.indexOf(targetId);
+        if (rejectIndex !== -1) {
+          rejectedChanges.splice(rejectIndex, 1);
+        }
+        
+        // Visual feedback
+        changeItem.style.opacity = '0.7';
+        button.textContent = '✓ Accepted';
+        
+        // Show success message
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble ai';
+        messageBubble.style.animationDelay = '0.1s';
+        messageBubble.innerHTML = `
+          <div class="message-content">
+            Change accepted! You can apply all selected changes when you're ready.
+          </div>
+          <div class="message-time">Just now</div>
+        `;
+        
+        const conversation = document.querySelector('.conversation');
+        conversation.appendChild(messageBubble);
+      });
+    });
+    
+    document.querySelectorAll('.change-item-action.reject').forEach(button => {
+      button.addEventListener('click', (e) => {
+        const changeItem = e.target.closest('.change-item');
+        const targetId = changeItem.getAttribute('data-target');
+        
+        // Add to rejected changes
+        if (!rejectedChanges.includes(targetId)) {
+          rejectedChanges.push(targetId);
+        }
+        
+        // Remove from accepted changes if present
+        const acceptIndex = acceptedChanges.indexOf(targetId);
+        if (acceptIndex !== -1) {
+          acceptedChanges.splice(acceptIndex, 1);
+        }
+        
+        // Visual feedback
+        changeItem.style.opacity = '0.5';
+        button.textContent = '✕ Rejected';
+        
+        // Show message
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble ai';
+        messageBubble.style.animationDelay = '0.1s';
+        messageBubble.innerHTML = `
+          <div class="message-content">
+            No problem, I've removed this change from the suggestions.
+          </div>
+          <div class="message-time">Just now</div>
+        `;
+        
+        const conversation = document.querySelector('.conversation');
+        conversation.appendChild(messageBubble);
+      });
+    });
+    
+    // Commit Flow Functionality
+    applyChangesBtn.addEventListener('click', () => {
+      if (acceptedChanges.length === 0) {
+        // Show message if no changes are selected
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble ai';
+        messageBubble.style.animationDelay = '0.1s';
+        messageBubble.innerHTML = `
+          <div class="message-content">
+            Please select at least one change to apply. You can click "View Change" to see details and then accept or reject each change.
+          </div>
+          <div class="message-time">Just now</div>
+        `;
+        
+        const conversation = document.querySelector('.conversation');
+        conversation.appendChild(messageBubble);
+        return;
+      }
+      
+      // Hide dialog and show commit flow
+      hideDialog();
+      
+      // Reset commit flow
+      currentCommitStep = 1;
+      updateCommitStep();
+      
+      // Show commit flow
+      commitFlow.classList.add('active');
+    });
+    
+    function updateCommitStep() {
+      // Update progress indicator
+      const progressBar = document.querySelector('.commit-progress');
+      progressBar.className = `commit-progress step-${currentCommitStep}`;
+      
+      // Update active step
+      const steps = document.querySelectorAll('.commit-step');
+      steps.forEach((step, index) => {
+        step.classList.remove('active', 'completed');
+        
+        if (index + 1 === currentCommitStep) {
+          step.classList.add('active');
+        } else if (index + 1 < currentCommitStep) {
+          step.classList.add('completed');
+        }
+      });
+      
+      // Update buttons based on step
+      if (currentCommitStep === 1) {
+        backCommitBtn.textContent = 'Cancel';
+        nextCommitBtn.textContent = 'Continue';
+      } else if (currentCommitStep === 4) {
+        backCommitBtn.style.display = 'none';
+        nextCommitBtn.textContent = 'Done';
+      } else {
+        backCommitBtn.textContent = 'Back';
+        backCommitBtn.style.display = 'block';
+        nextCommitBtn.textContent = currentCommitStep === 3 ? 'Apply Changes' : 'Continue';
+      }
+    }
+    
+    backCommitBtn.addEventListener('click', () => {
+      if (currentCommitStep === 1) {
+        // Cancel
+        commitFlow.classList.remove('active');
+        showDialog();
+      } else {
+        // Go back one step
+        currentCommitStep--;
+        updateCommitStep();
+      }
+    });
+    
+    nextCommitBtn.addEventListener('click', () => {
+      if (currentCommitStep < 4) {
+        // Go to next step
+        currentCommitStep++;
+        updateCommitStep();
+        
+        // If applying changes (step 3 to 4)
+        if (currentCommitStep === 4) {
+          // Show success animation after a delay
+          setTimeout(() => {
+            // Hide commit flow
+            commitFlow.classList.remove('active');
+            
+            // Show success animation
+            successAnimation.classList.add('active');
+            
+            // Hide success animation after a delay
+            setTimeout(() => {
+              successAnimation.classList.remove('active');
+              
+              // Update the UI to reflect the changes
+              // In a real implementation, this would update the actual data
+              document.querySelectorAll('.staged').forEach(element => {
+                element.classList.remove('staged');
+              });
+              
+              // Reset accepted and rejected changes
+              acceptedChanges = [];
+              rejectedChanges = [];
+            }, 3000);
+          }, 1000);
+        }
+      } else {
+        // Done
+        commitFlow.classList.remove('active');
+      }
+    });
+    
+    // Timeline Panel Functionality
+    function toggleTimelinePanel() {
+      timelinePanel.classList.toggle('active');
+    }
+    
+    viewHistoryBtn.addEventListener('click', toggleTimelinePanel);
+    closeTimelineBtn.addEventListener('click', toggleTimelinePanel);
+    
+    // Sandbox Mode
+    function activateSandboxMode() {
+      isSandboxMode = true;
+      aiWorkspace.classList.add('sandbox-mode');
+      workspaceContainer.classList.add('sandbox-mode');
+      workspaceHeader.classList.add('sandbox-mode');
+      sandboxIndicator.style.display = 'flex';
+    }
+    
+    function deactivateSandboxMode() {
+      isSandboxMode = false;
+      aiWorkspace.classList.remove('sandbox-mode');
+      workspaceContainer.classList.remove('sandbox-mode');
+      workspaceHeader.classList.remove('sandbox-mode');
+      sandboxIndicator.style.display = 'none';
+    }
+    
+    // AI Nucleus Interaction
+    aiNucleus.addEventListener('click', () => {
+      generateMagicWave(aiNucleus);
+      
+      // Show dialog
+      showDialog();
+      
+      // Show suggestion highlight on a random component
+      const stagedElements = document.querySelectorAll('.grid-card.staged');
+      if (stagedElements.length > 0) {
+        const randomIndex = Math.floor(Math.random() * stagedElements.length);
+        const randomElement = stagedElements[randomIndex];
+        const type = randomElement.classList.contains('modified') ? 'modified' : 
+                     randomElement.classList.contains('added') ? 'added' : 
+                     randomElement.classList.contains('removed') ? 'removed' : '';
+        
+        // Focus the card
+        focusCard(randomElement);
+        
+        // Show highlight
+        showSuggestionHighlight(randomElement, type);
+        
+        // Show spotlight
+        showSpotlight(randomElement);
+      }
+    });
+    
+    // Demo Control Buttons
+    startConversationBtn.addEventListener('click', () => {
+      // Hide any active highlights
+      suggestionHighlight.classList.remove('active');
+      
+      // Hide spotlight
+      hideSpotlight();
+      
+      // Show dialog
+      showDialog();
+    });
+    
+    showDiffViewBtn.addEventListener('click', () => {
+      // Show diff viewer for a random component
+      const components = ['conversionMetric', 'revenueChart', 'marketingTable', 'customerSegment'];
+      const randomComponent = components[Math.floor(Math.random() * components.length)];
+      const componentTitle = document.getElementById(randomComponent).querySelector('.grid-card-title span').textContent;
+      
+      showDiffViewer(randomComponent, `Compare Changes: ${componentTitle}`);
+    });
+    
+    showCommitFlowBtn.addEventListener('click', () => {
+      // Reset commit flow
+      currentCommitStep = 1;
+      updateCommitStep();
+      
+      // Show commit flow
+      commitFlow.classList.add('active');
+    });
+    
+    showSuccessBtn.addEventListener('click', () => {
+      // Show success animation
+      successAnimation.classList.add('active');
+      
+      // Hide after a delay
+      setTimeout(() => {
+        successAnimation.classList.remove('active');
+      }, 3000);
+    });
+    
+    toggleTimelineBtn.addEventListener('click', toggleTimelinePanel);
+    
+    toggleSandboxBtn.addEventListener('click', () => {
+      if (isSandboxMode) {
+        deactivateSandboxMode();
+      } else {
+        activateSandboxMode();
+      }
+    });
+    
+    // Add click event for grid cards
+    document.querySelectorAll('.grid-card').forEach(card => {
+      card.addEventListener('click', () => {
+        // Focus the clicked card
+        focusCard(card);
+        
+        // If it's a staged card, show highlight
+        if (card.classList.contains('staged')) {
+          const type = card.classList.contains('modified') ? 'modified' : 
+                       card.classList.contains('added') ? 'added' : 
+                       card.classList.contains('removed') ? 'removed' : '';
+          
+          showSuggestionHighlight(card, type);
+        }
+      });
+    });
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Create light rays
+      for (let i = 0; i < 12; i++) {
+        const angle = i * 30;
+        const ray = document.createElement('div');
+        ray.className = 'light-ray';
+        ray.style.setProperty('--angle', `${angle}deg`);
+        lightRays.appendChild(ray);
+      }
+    });
+  </script>
+</body>
+</html>

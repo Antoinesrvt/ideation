@@ -18,6 +18,7 @@ import './styles/variables.css';
 import './styles/animations.css';
 
 export default function LandingPage() {
+  
   useEffect(() => {
     // Scroll Reveal Animation
     const revealElements = document.querySelectorAll('.reveal-animation');

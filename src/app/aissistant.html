@@ -1,0 +1,2966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kickoff AI Command Center - Enhanced</title>
+  <style>
+    :root {
+      /* Core Colors */
+      --primary: hsl(273, 91%, 42%);
+      --primary-glow: hsla(273, 91%, 42%, 0.3);
+      --primary-dark: hsl(273, 91%, 32%);
+      --primary-light: hsl(273, 91%, 60%);
+      --secondary: hsl(198, 86%, 61%);
+      --accent: hsl(339, 94%, 58%);
+      --insight: hsl(140, 86%, 61%);
+      --dark: hsl(240, 19%, 14%);
+      --light: hsl(240, 60%, 99%);
+      
+      /* Semantic Colors */
+      --bg-primary: hsl(240, 50%, 99%);
+      --bg-surface: hsl(0, 0%, 100%);
+      --text-primary: hsl(240, 20%, 10%);
+      --text-secondary: hsl(240, 10%, 40%);
+      
+      /* Animation Timings */
+      --transition-fast: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-medium: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      --transition-slow: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    @font-face {
+      font-family: 'Outfit';
+      src: url('https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.0.2/fonts/bootstrap-icons.woff2') format('woff2');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
+    
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 600;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .title {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .poc-container {
+      display: flex;
+      flex-direction: column;
+      gap: 5rem;
+    }
+    
+    /* Enhanced Workspace Environment */
+    .ai-workspace {
+      position: relative;
+      width: 100%;
+      background: var(--bg-surface);
+      border-radius: 24px;
+      padding: 3rem 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      transition: background var(--transition-slow);
+    }
+    
+    .ai-workspace.ai-mode {
+      background: linear-gradient(to bottom right, rgba(114, 9, 183, 0.03), rgba(76, 201, 240, 0.05));
+    }
+    
+    .ambient-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity var(--transition-slow);
+      pointer-events: none;
+    }
+    
+    .ambient-bg.active {
+      opacity: 1;
+    }
+    
+    .ambient-particles {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    
+    .particle {
+      position: absolute;
+      background: var(--primary-glow);
+      border-radius: 50%;
+      filter: blur(5px);
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .energy-wave {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary-light), transparent);
+      transform-origin: left center;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity var(--transition-medium);
+      pointer-events: none;
+    }
+    
+    .energy-wave.active {
+      opacity: 0.5;
+      animation: wave-pulse 2s infinite ease-in-out;
+    }
+    
+    @keyframes wave-pulse {
+      0%, 100% {
+        opacity: 0;
+        height: 2px;
+      }
+      50% {
+        opacity: 0.5;
+        height: 3px;
+      }
+    }
+    
+    .workspace-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+      background: linear-gradient(to bottom right, #f8f9ff, #eef1ff);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: box-shadow var(--transition-medium);
+      z-index: 1;
+    }
+    
+    .workspace-container.ai-active {
+      box-shadow: 0 0 0 1px rgba(114, 9, 183, 0.2), 
+                  0 0 30px rgba(114, 9, 183, 0.1);
+    }
+    
+    .demo-header {
+      text-align: center;
+      margin-bottom: 1rem;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .demo-title {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .demo-description {
+      color: var(--text-secondary);
+      max-width: 600px;
+    }
+    
+    /* Enhanced AI Nucleus */
+    .ai-nucleus-container {
+      position: absolute;
+      bottom: 2rem;
+      right: 2rem;
+      width: 70px;
+      height: 70px;
+      perspective: 800px;
+      z-index: 10;
+    }
+    
+    .ai-nucleus {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all var(--transition-medium);
+      transform-style: preserve-3d;
+      transform-origin: center;
+      box-shadow: 0 0 0 rgba(114, 9, 183, 0.4);
+      animation: pulse 2s infinite;
+      z-index: 10;
+      overflow: hidden;
+    }
+    
+    .ai-nucleus::before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      background: conic-gradient(from 0deg, var(--primary), var(--primary-light), var(--accent), var(--secondary), var(--primary));
+      border-radius: inherit;
+      animation: rotate-hue 4s linear infinite;
+      opacity: 0.7;
+      z-index: -1;
+    }
+    
+    .ai-nucleus::after {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      background: var(--primary);
+      border-radius: inherit;
+      z-index: -1;
+    }
+    
+    .nucleus-holo {
+      position: absolute;
+      inset: -25%;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, 
+                  rgba(114, 9, 183, 0.2) 0%, 
+                  rgba(114, 9, 183, 0.1) 40%, 
+                  rgba(114, 9, 183, 0) 70%);
+      opacity: 0.5;
+      filter: blur(5px);
+      animation: holo-pulse 3s infinite ease-in-out;
+      pointer-events: none;
+    }
+    
+    @keyframes holo-pulse {
+      0%, 100% {
+        opacity: 0.2;
+        transform: scale(0.8);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+      }
+    }
+    
+    .nucleus-particles {
+      position: absolute;
+      inset: -50%;
+      pointer-events: none;
+    }
+    
+    .nucleus-particle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: white;
+      opacity: 0.6;
+    }
+    
+    .ai-nucleus.expanded {
+      width: 60px;
+      height: 60px;
+      border-radius: 30px;
+      background: var(--primary);
+      box-shadow: 0 10px 25px rgba(114, 9, 183, 0.3);
+      transform: translateY(-180px) rotateY(180deg);
+    }
+    
+    .ai-nucleus.expanded::before {
+      opacity: 0.9;
+    }
+    
+    .ai-nucleus.thinking {
+      box-shadow: 0 0 0 rgba(114, 9, 183, 0.7);
+      animation: thinking-pulse 1s infinite alternate;
+    }
+    
+    .ai-nucleus.thinking .nucleus-holo {
+      animation: thinking-holo 1s infinite alternate;
+    }
+    
+    .ai-nucleus.listening {
+      animation: listening-wave 2s infinite;
+    }
+    
+    .ai-nucleus.listening .nucleus-holo {
+      background: radial-gradient(circle at center, 
+                  rgba(114, 9, 183, 0.3) 0%, 
+                  rgba(114, 9, 183, 0.15) 40%, 
+                  rgba(114, 9, 183, 0) 70%);
+      animation: listening-holo 2s infinite;
+    }
+    
+    .ai-nucleus-icon {
+      font-size: 1.5rem;
+      color: white;
+      transition: all var(--transition-medium);
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+    }
+    
+    .ai-nucleus-icon.front {
+      transform: rotateY(0deg);
+    }
+    
+    .ai-nucleus-icon.back {
+      position: absolute;
+      transform: rotateY(180deg);
+    }
+    
+    .ai-nucleus.expanded .ai-nucleus-icon.front {
+      opacity: 0;
+    }
+    
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(114, 9, 183, 0.4);
+      }
+      70% {
+        box-shadow: 0 0 0 15px rgba(114, 9, 183, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(114, 9, 183, 0);
+      }
+    }
+    
+    @keyframes thinking-pulse {
+      0% {
+        transform: scale(1) rotate(0deg);
+        background: var(--primary);
+      }
+      100% {
+        transform: scale(1.05) rotate(5deg);
+        background: var(--primary-light);
+      }
+    }
+    
+    @keyframes thinking-holo {
+      0% {
+        opacity: 0.3;
+        transform: scale(0.9) rotate(0deg);
+      }
+      100% {
+        opacity: 0.6;
+        transform: scale(1.3) rotate(10deg);
+      }
+    }
+    
+    @keyframes listening-wave {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(114, 9, 183, 0.2), 
+                    0 0 0 10px rgba(114, 9, 183, 0.2), 
+                    0 0 0 20px rgba(114, 9, 183, 0.2);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(114, 9, 183, 0.2), 
+                    0 0 0 20px rgba(114, 9, 183, 0.2), 
+                    0 0 0 30px rgba(114, 9, 183, 0);
+      }
+    }
+    
+    @keyframes listening-holo {
+      0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.7;
+        transform: scale(1.5);
+      }
+    }
+    
+    @keyframes rotate-hue {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+    
+    /* Enhanced AI Assistant Panel */
+    .ai-assistant-panel {
+      position: absolute;
+      bottom: 2rem;
+      right: 2rem;
+      width: 400px;
+      height: 500px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      border: 1px solid rgba(114, 9, 183, 0.2);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px) scale(0.95);
+      transform-origin: bottom right;
+      transition: all var(--transition-medium);
+      overflow: hidden;
+      z-index: 5;
+    }
+    
+    .ai-assistant-panel.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    
+    .ai-assistant-panel::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, 
+                  rgba(114, 9, 183, 0.05) 0%, 
+                  rgba(255, 255, 255, 0) 50%,
+                  rgba(76, 201, 240, 0.05) 100%);
+      opacity: 0;
+      transition: opacity var(--transition-medium);
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    .ai-assistant-panel.active::before {
+      opacity: 1;
+      animation: panel-gradient 8s infinite alternate ease-in-out;
+    }
+    
+    @keyframes panel-gradient {
+      0% {
+        background-position: 0% 0%;
+      }
+      100% {
+        background-position: 100% 100%;
+      }
+    }
+    
+    .assistant-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: linear-gradient(to right, var(--primary), var(--primary-dark));
+      color: white;
+      border-top-left-radius: inherit;
+      border-top-right-radius: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .assistant-header::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 200%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  rgba(255, 255, 255, 0) 0%, 
+                  rgba(255, 255, 255, 0.2) 50%, 
+                  rgba(255, 255, 255, 0) 100%);
+      animation: header-shine 3s infinite linear;
+      pointer-events: none;
+    }
+    
+    @keyframes header-shine {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(50%);
+      }
+    }
+    
+    .assistant-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .assistant-title span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      color: var(--primary);
+      font-size: 0.9rem;
+    }
+    
+    .assistant-close {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .assistant-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+    
+    .assistant-body {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background-image: radial-gradient(rgba(114, 9, 183, 0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    
+    .conversation-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .message {
+      max-width: 80%;
+      padding: 1rem;
+      border-radius: 16px;
+      animation: message-appear 0.3s var(--easing-spring) forwards;
+      position: relative;
+    }
+    
+    .message.with-memory-context::after {
+      content: "Remembering your project from last week";
+      position: absolute;
+      top: -20px;
+      left: 10px;
+      font-size: 0.7rem;
+      color: var(--primary);
+      opacity: 0.8;
+    }
+    
+    .user-message {
+      align-self: flex-end;
+      background: var(--primary);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    
+    .ai-message {
+      align-self: flex-start;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      border-bottom-left-radius: 4px;
+    }
+    
+    .ai-message::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, 
+                  rgba(114, 9, 183, 0.05) 0%, 
+                  rgba(255, 255, 255, 0) 50%);
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    .ai-message.with-insight {
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(76, 201, 240, 0.1));
+    }
+    
+    .ai-message.with-insight::before {
+      background: linear-gradient(135deg, 
+                  rgba(76, 201, 240, 0.1) 0%, 
+                  rgba(255, 255, 255, 0) 50%);
+    }
+    
+    .message-content {
+      position: relative;
+      z-index: 1;
+    }
+    
+    @keyframes message-appear {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .ai-thinking {
+      align-self: flex-start;
+      display: flex;
+      gap: 0.3rem;
+      padding: 10px 18px;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .ai-thinking::before {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background: radial-gradient(circle at 30% 50%, rgba(114, 9, 183, 0.1), transparent 70%);
+      animation: thinking-gradient 2s infinite alternate ease-in-out;
+      pointer-events: none;
+    }
+    
+    @keyframes thinking-gradient {
+      0% {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+      100% {
+        opacity: 0.6;
+        transform: scale(1.2);
+      }
+    }
+    
+    .thinking-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      position: relative;
+      z-index: 1;
+    }
+    
+    .thinking-dot:nth-child(1) {
+      animation: dot-bounce 1.4s -0.32s infinite ease-in-out both;
+    }
+    
+    .thinking-dot:nth-child(2) {
+      animation: dot-bounce 1.4s -0.16s infinite ease-in-out both;
+    }
+    
+    .thinking-dot:nth-child(3) {
+      animation: dot-bounce 1.4s 0s infinite ease-in-out both;
+    }
+    
+    @keyframes dot-bounce {
+      0%, 80%, 100% { 
+        transform: translateY(0);
+      }
+      40% { 
+        transform: translateY(-8px);
+      }
+    }
+    
+    .assistant-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+    }
+    
+    .message-input-container {
+      position: relative;
+      width: 100%;
+    }
+    
+    .message-input {
+      width: 100%;
+      padding: 0.8rem 1rem 0.8rem 3rem;
+      border-radius: 20px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      background: rgba(0, 0, 0, 0.02);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+    
+    .message-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(114, 9, 183, 0.1);
+    }
+    
+    .message-input-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+    
+    /* Enhanced Context-aware AI Suggestion */
+    .ai-suggestion {
+      position: absolute;
+      top: 30%;
+      left: 10%;
+      padding: 1.2rem;
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(114, 9, 183, 0.2);
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2), 
+                  0 0 0 1px rgba(114, 9, 183, 0.05),
+                  0 0 30px rgba(114, 9, 183, 0.1);
+      max-width: 300px;
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all var(--transition-medium);
+      z-index: 10;
+    }
+    
+    .ai-suggestion.active {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+      animation: float 4s ease-in-out infinite;
+    }
+    
+    .ai-suggestion::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, 
+                  rgba(114, 9, 183, 0.1) 0%, 
+                  rgba(255, 255, 255, 0) 50%,
+                  rgba(76, 201, 240, 0.05) 100%);
+      opacity: 0.5;
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    .suggestion-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    
+    .suggestion-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 0.9rem;
+      position: relative;
+    }
+    
+    .suggestion-icon::before {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      background: rgba(114, 9, 183, 0.2);
+      animation: suggestion-pulse 2s infinite;
+      z-index: -1;
+    }
+    
+    @keyframes suggestion-pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.5;
+      }
+      50% {
+        transform: scale(1.2);
+        opacity: 0.2;
+      }
+    }
+    
+    .suggestion-content {
+      font-size: 0.95rem;
+      margin-bottom: 1.2rem;
+      line-height: 1.5;
+    }
+    
+    .suggestion-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .suggestion-btn {
+      padding: 0.6rem 1rem;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .suggestion-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  rgba(255, 255, 255, 0) 0%, 
+                  rgba(255, 255, 255, 0.2) 50%, 
+                  rgba(255, 255, 255, 0) 100%);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+      pointer-events: none;
+    }
+    
+    .suggestion-btn:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .suggestion-btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 5px 15px rgba(114, 9, 183, 0.2);
+    }
+    
+    .suggestion-btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(114, 9, 183, 0.3);
+    }
+    
+    .suggestion-btn-secondary {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .suggestion-btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+    
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) rotate(0deg);
+      }
+      50% {
+        transform: translateY(-15px) rotate(-1deg);
+      }
+    }
+    
+    /* Enhanced Command Membrane */
+    .command-membrane-demo {
+      position: relative;
+      width: 100%;
+      background: var(--bg-surface);
+      border-radius: 24px;
+      padding: 3rem 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    
+    .membrane-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+      background: linear-gradient(to bottom right, #f8f9ff, #eef1ff);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    .command-palette {
+      position: absolute;
+      width: 500px;
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      border: 1px solid rgba(114, 9, 183, 0.2);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2), 
+                  0 0 0 1px rgba(114, 9, 183, 0.05);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all var(--transition-medium);
+      z-index: 10;
+    }
+    
+    .command-palette.compact {
+      height: 70px;
+    }
+    
+    .command-palette.expanded {
+      height: 400px;
+    }
+    
+    .command-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      height: 70px;
+      position: relative;
+    }
+    
+    .command-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: white;
+      margin-right: 1rem;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      transition: all var(--transition-medium);
+    }
+    
+    .command-palette.thinking .command-icon {
+      animation: command-icon-pulse 1s infinite alternate ease-in-out;
+    }
+    
+    @keyframes command-icon-pulse {
+      0% {
+        transform: scale(1);
+        background: var(--primary);
+      }
+      100% {
+        transform: scale(1.1);
+        background: var(--primary-light);
+      }
+    }
+    
+    .command-input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+    
+    .command-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      padding: 0.5rem 0;
+    }
+    
+    .command-input::placeholder {
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+    
+    .command-thinking-visualization {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+    
+    .command-palette.thinking .command-thinking-visualization {
+      opacity: 1;
+      animation: thinking-line 2s infinite linear;
+    }
+    
+    @keyframes thinking-line {
+      0% {
+        background-position: 0% 50%;
+        transform: scaleX(0.3);
+      }
+      50% {
+        background-position: 100% 50%;
+        transform: scaleX(1);
+      }
+      100% {
+        background-position: 0% 50%;
+        transform: scaleX(0.3);
+      }
+    }
+    
+    .command-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0;
+    }
+    
+    .command-section {
+      padding: 0.5rem 1.5rem;
+    }
+    
+    .command-section-header {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 0.8rem;
+    }
+    
+    .thought-visualization {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      height: 40px;
+      opacity: 0.7;
+    }
+    
+    .thought-node {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(114, 9, 183, 0.1);
+      color: var(--primary);
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      opacity: 0;
+      transform: scale(0.5);
+      animation: thought-node-appear var(--transition-medium) forwards;
+    }
+    
+    .thought-node:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .thought-node:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    
+    .thought-node:nth-child(4) {
+      animation-delay: 0.6s;
+    }
+    
+    .thought-connector {
+      flex: 1;
+      height: 2px;
+      background: var(--primary-light);
+      opacity: 0;
+      transform: scaleX(0);
+      transform-origin: left center;
+      animation: thought-connector-appear 0.3s forwards;
+    }
+    
+    .thought-connector:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+    
+    .thought-connector:nth-child(4) {
+      animation-delay: 0.5s;
+    }
+    
+    @keyframes thought-node-appear {
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    @keyframes thought-connector-appear {
+      to {
+        opacity: 0.5;
+        transform: scaleX(1);
+      }
+    }
+    
+    .command-suggestions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .command-suggestion {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.02);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .command-suggestion::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: transparent;
+      transition: all var(--transition-fast);
+    }
+    
+    .command-suggestion:hover {
+      background: rgba(114, 9, 183, 0.05);
+    }
+    
+    .command-suggestion:hover::before {
+      background: var(--primary);
+    }
+    
+    .suggestion-category {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .suggestion-category::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: var(--primary);
+      opacity: 0.1;
+      transition: all var(--transition-fast);
+      z-index: -1;
+    }
+    
+    .command-suggestion:hover .suggestion-category::before {
+      opacity: 0.2;
+      transform: scale(1.1);
+    }
+    
+    .suggestion-category.analytics::before {
+      background: var(--secondary);
+    }
+    
+    .suggestion-category.financial::before {
+      background: var(--accent);
+    }
+    
+    .suggestion-category.research::before {
+      background: var(--insight);
+    }
+    
+    .suggestion-details {
+      flex: 1;
+    }
+    
+    .suggestion-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.2rem;
+    }
+    
+    .suggestion-description {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    
+    .command-groups {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      padding: 0 1.5rem;
+    }
+    
+    .command-group {
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all var(--transition-fast);
+    }
+    
+    .command-group:hover {
+      background: rgba(0, 0, 0, 0.04);
+      transform: translateY(-3px);
+    }
+    
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+    
+    .group-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: rgba(114, 9, 183, 0.1);
+      color: var(--primary);
+      font-size: 0.8rem;
+    }
+    
+    .group-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    .group-commands {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+    
+    .group-command {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .group-command:hover {
+      color: var(--primary);
+      transform: translateX(3px);
+    }
+    
+    /* Enhanced AI Analysis Visualization */
+    .ai-analysis-demo {
+      position: relative;
+      width: 100%;
+      background: var(--bg-surface);
+      border-radius: 24px;
+      padding: 3rem 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    
+    .analysis-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+      background: linear-gradient(to bottom right, #f8f9ff, #eef1ff);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .analysis-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: white;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      position: relative;
+      z-index: 5;
+    }
+    
+    .analysis-title {
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .analysis-title-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: white;
+      font-size: 0.9rem;
+    }
+    
+    .analysis-controls {
+      display: flex;
+      gap: 0.8rem;
+    }
+    
+    .analysis-control {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .analysis-control::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  rgba(255, 255, 255, 0) 0%, 
+                  rgba(255, 255, 255, 0.2) 50%, 
+                  rgba(255, 255, 255, 0) 100%);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+      pointer-events: none;
+    }
+    
+    .analysis-control:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .analysis-control:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .analysis-body {
+      flex: 1;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .analysis-canvas {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: all var(--transition-medium);
+    }
+    
+    .analysis-canvas.revealing {
+      transform: scale(0.9);
+    }
+    
+    .data-point {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      box-shadow: 0 2px 10px rgba(114, 9, 183, 0.3);
+      z-index: 1;
+      opacity: 0;
+      transition: all var(--transition-medium);
+    }
+    
+    .data-point.active {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+    
+    .data-point:hover {
+      transform: translate(-50%, -50%) scale(1.3);
+      z-index: 10;
+    }
+    
+    .data-point::before {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, 
+                  rgba(114, 9, 183, 0.2) 0%, 
+                  rgba(114, 9, 183, 0) 70%);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    .data-point:hover::before {
+      opacity: 1;
+    }
+    
+    .data-connection {
+      position: absolute;
+      height: 2px;
+      background: rgba(114, 9, 183, 0.2);
+      transform-origin: left center;
+      transform: scaleX(0);
+      opacity: 0;
+      transition: all var(--transition-medium);
+      z-index: 0;
+    }
+    
+    .data-connection.active {
+      transform: scaleX(1);
+      opacity: 0.5;
+    }
+    
+    .insight-marker {
+      position: absolute;
+      padding: 1rem;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15),
+                  0 0 0 1px rgba(114, 9, 183, 0.05);
+      width: 250px;
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
+      z-index: 2;
+      transition: all var(--transition-medium);
+      pointer-events: none;
+    }
+    
+    .insight-marker.active {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: auto;
+      animation: insight-pulse 3s infinite;
+    }
+    
+    .insight-marker::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, 
+                  rgba(114, 9, 183, 0.05) 0%, 
+                  rgba(255, 255, 255, 0) 50%,
+                  rgba(76, 201, 240, 0.05) 100%);
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    .insight-marker.positive {
+      border-top: 3px solid var(--insight);
+    }
+    
+    .insight-marker.negative {
+      border-top: 3px solid var(--accent);
+    }
+    
+    .insight-marker.neutral {
+      border-top: 3px solid var(--secondary);
+    }
+    
+    .insight-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+    
+    .insight-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 0.9rem;
+    }
+    
+    .insight-marker.positive .insight-icon {
+      background: var(--insight);
+    }
+    
+    .insight-marker.negative .insight-icon {
+      background: var(--accent);
+    }
+    
+    .insight-marker.neutral .insight-icon {
+      background: var(--secondary);
+    }
+    
+    .insight-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    
+    .insight-content {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    
+    .insights-path {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 3;
+    }
+    
+    .path-segment {
+      position: absolute;
+      height: 2px;
+      background: var(--primary);
+      transform-origin: left center;
+      transform: scaleX(0);
+      opacity: 0;
+      transition: all var(--transition-medium);
+    }
+    
+    .path-segment.active {
+      transform: scaleX(1);
+      opacity: 0.7;
+    }
+    
+    .path-marker {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+      transition: all var(--transition-medium);
+    }
+    
+    .path-marker.active {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      animation: path-marker-pulse 2s infinite;
+    }
+    
+    @keyframes path-marker-pulse {
+      0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 0 0 0 rgba(114, 9, 183, 0.5);
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.2);
+        box-shadow: 0 0 0 10px rgba(114, 9, 183, 0);
+      }
+    }
+    
+    .ai-analysis-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: all var(--transition-medium);
+    }
+    
+    .ai-analysis-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .analysis-processing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+    }
+    
+    .ai-brain-visualization {
+      position: relative;
+      width: 150px;
+      height: 150px;
+    }
+    
+    .brain-node {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0.7;
+    }
+    
+    .brain-connection {
+      position: absolute;
+      height: 2px;
+      background: var(--primary-light);
+      transform-origin: left center;
+      opacity: 0.3;
+    }
+    
+    .processing-text {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      text-align: center;
+      max-width: 300px;
+    }
+    
+    .processing-status {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+    
+    @keyframes insight-pulse {
+      0%, 100% {
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      }
+      50% {
+        box-shadow: 0 15px 35px rgba(114, 9, 183, 0.25);
+      }
+    }
+    
+    /* Guided Tour */
+    .guided-tour {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: all var(--transition-medium);
+    }
+    
+    .guided-tour.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .tour-spotlight {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, 
+                  rgba(255, 255, 255, 0.9) 0%, 
+                  rgba(255, 255, 255, 0) 70%);
+      pointer-events: none;
+      transition: all var(--transition-medium);
+    }
+    
+    .spotlight-ring {
+      position: absolute;
+      inset: -20px;
+      border: 2px solid var(--primary);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: spotlight-pulse 2s infinite;
+    }
+    
+    @keyframes spotlight-pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.3;
+      }
+      50% {
+        transform: scale(1.1);
+        opacity: 0.1;
+      }
+    }
+    
+    .tour-content {
+      position: absolute;
+      bottom: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      background: white;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+    
+    .tour-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+    }
+    
+    .tour-description {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    
+    .tour-actions {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .tour-btn {
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+    
+    .tour-btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .tour-btn-secondary {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+    }
+    
+    /* Magic Hand */
+    .magic-hand {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="white" fill="none"><path d="M21 3l-7.5 7.5m-4.5 5.5l-2 1.5l-5 -4l2 -2l9 -9m-8 12l-4 4l-1 -1l4 -4l1 1z" /></svg>');
+      background-size: contain;
+      background-repeat: no-repeat;
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0;
+      transform: rotate(-15deg);
+      transition: opacity var(--transition-fast);
+    }
+    
+    .magic-hand.active {
+      opacity: 1;
+      animation: hand-move 2s forwards ease-in-out;
+    }
+    
+    @keyframes hand-move {
+      0% {
+        transform: translate(0, 0) rotate(-15deg);
+      }
+      30% {
+        transform: translate(100px, 50px) rotate(-5deg);
+      }
+      60% {
+        transform: translate(200px, 30px) rotate(5deg);
+      }
+      100% {
+        transform: translate(300px, 100px) rotate(15deg);
+      }
+    }
+    
+    .magic-trail {
+      position: absolute;
+      background: linear-gradient(90deg, var(--primary-light), transparent);
+      height: 3px;
+      border-radius: 3px;
+      transform-origin: left center;
+      opacity: 0;
+      z-index: 999;
+      pointer-events: none;
+    }
+    
+    .magic-trail.active {
+      animation: trail-fade 1s forwards;
+    }
+    
+    @keyframes trail-fade {
+      0% {
+        opacity: 0.7;
+        transform: scaleX(0);
+      }
+      100% {
+        opacity: 0;
+        transform: scaleX(1);
+      }
+    }
+    
+    /* Controls */
+    .demo-controls {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+      z-index: 5;
+    }
+    
+    .demo-control-btn {
+      padding: 0.8rem 1.2rem;
+      border-radius: 10px;
+      border: none;
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-primary);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .demo-control-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, 
+                  rgba(255, 255, 255, 0) 0%, 
+                  rgba(255, 255, 255, 0.2) 50%, 
+                  rgba(255, 255, 255, 0) 100%);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+      pointer-events: none;
+    }
+    
+    .demo-control-btn:hover::before {
+      transform: translateX(100%);
+    }
+    
+    .demo-control-btn:hover {
+      background: rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+    
+    .demo-control-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .legend {
+      margin-top: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    
+    .legend-color.primary {
+      background: var(--primary);
+    }
+    
+    .legend-color.secondary {
+      background: var(--secondary);
+    }
+    
+    .legend-color.accent {
+      background: var(--accent);
+    }
+    
+    .legend-color.insight {
+      background: var(--insight);
+    }
+    
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+      
+      .title {
+        font-size: 2rem;
+      }
+      
+      .subtitle {
+        font-size: 1rem;
+      }
+      
+      .workspace-container {
+        height: 500px;
+      }
+      
+      .ai-assistant-panel {
+        width: 320px;
+        height: 400px;
+      }
+      
+      .ai-suggestion {
+        width: 250px;
+      }
+      
+      .command-palette {
+        width: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">Kickoff AI Command Center</h1>
+      <p class="subtitle">Enhanced experience demonstrating how AI naturally integrates into the workspace with magical interactions and intelligence.</p>
+    </header>
+    
+    <div class="poc-container">
+      <!-- Enhanced AI Workspace -->
+      <section class="ai-workspace" id="nucleus-demo">
+        <div class="demo-header">
+          <h2 class="demo-title">AI Command Nucleus</h2>
+          <p class="demo-description">The omnipresent AI assistant with holographic presence, particle effects, and environmental awareness.</p>
+        </div>
+        
+        <!-- Ambient Background Elements -->
+        <div class="ambient-bg">
+          <div class="ambient-particles"></div>
+          <div class="energy-wave"></div>
+        </div>
+        
+        <div class="workspace-container">
+          <!-- AI Command Nucleus -->
+          <div class="ai-nucleus-container">
+            <div class="nucleus-holo"></div>
+            <div class="ai-nucleus">
+              <div class="ai-nucleus-icon front">K</div>
+              <div class="ai-nucleus-icon back">AI</div>
+              <div class="nucleus-particles"></div>
+            </div>
+          </div>
+          
+          <!-- AI Assistant Panel -->
+          <div class="ai-assistant-panel">
+            <div class="assistant-header">
+              <div class="assistant-title">
+                <span>K</span>
+                Kickoff AI Assistant
+              </div>
+              <div class="assistant-close">×</div>
+            </div>
+            
+            <div class="assistant-body">
+              <div class="conversation-container">
+                <div class="message ai-message">
+                  <div class="message-content">
+                    Hi there! I'm your Kickoff AI assistant. How can I help with your project today?
+                  </div>
+                </div>
+                
+                <div class="message user-message">
+                  <div class="message-content">
+                    Can you help me analyze the market for my SaaS product?
+                  </div>
+                </div>
+                
+                <div class="message ai-message with-memory-context">
+                  <div class="message-content">
+                    I'd be happy to help analyze the market for your SaaS product. I see from your previous workspace that you're focusing on team collaboration tools.
+                    <br><br>
+                    To provide the most relevant insights, could you tell me:
+                    <br><br>
+                    1. Which specific pain points are you addressing?<br>
+                    2. What's your target price point?<br>
+                    3. Are you focusing more on small teams or enterprise?
+                  </div>
+                </div>
+                
+                <div class="message user-message">
+                  <div class="message-content">
+                    We're addressing communication gaps in remote teams. Targeting $15/user/month for small to medium businesses.
+                  </div>
+                </div>
+                
+                <div class="message ai-message with-insight">
+                  <div class="message-content">
+                    Thanks for the details. That positions you in an interesting market segment.
+                    <br><br>
+                    <strong>Quick market insight:</strong> SMBs in the $10-20/user/month range have shown 34% growth this year, with particular demand for tools that bridge async/sync communication.
+                    <br><br>
+                    Would you like me to:
+                    <br><br>
+                    1. Generate a full competitive analysis report<br>
+                    2. Create pricing strategy suggestions<br>
+                    3. Identify potential target customer segments
+                  </div>
+                </div>
+                
+                <div class="ai-thinking">
+                  <div class="thinking-dot"></div>
+                  <div class="thinking-dot"></div>
+                  <div class="thinking-dot"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="assistant-footer">
+              <div class="message-input-container">
+                <div class="message-input-icon">K</div>
+                <input type="text" class="message-input" placeholder="Ask me anything about your project...">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Context-aware AI Suggestion -->
+          <div class="ai-suggestion">
+            <div class="suggestion-header">
+              <div class="suggestion-icon">💡</div>
+              <div>Market Opportunity</div>
+            </div>
+            <div class="suggestion-content">
+              I noticed a growing demand for async communication tools in healthcare. Based on your project focus, this could be a high-value vertical to explore.
+            </div>
+            <div class="suggestion-actions">
+              <button class="suggestion-btn suggestion-btn-primary">Explore This</button>
+              <button class="suggestion-btn suggestion-btn-secondary">Dismiss</button>
+            </div>
+          </div>
+          
+          <!-- Magic Hand Demo -->
+          <div class="magic-hand"></div>
+          <div class="magic-trail"></div>
+        </div>
+        
+        <div class="demo-controls">
+          <button class="demo-control-btn" id="toggleAssistant">Toggle Assistant</button>
+          <button class="demo-control-btn" id="toggleThinking">Show Thinking</button>
+          <button class="demo-control-btn" id="toggleSuggestion">Show Insight</button>
+          <button class="demo-control-btn" id="toggleListening">Show Listening</button>
+          <button class="demo-control-btn" id="toggleAmbient">Toggle AI Mode</button>
+          <button class="demo-control-btn" id="toggleMagicHand">Show Magic Hand</button>
+        </div>
+      </section>
+      
+      <!-- Enhanced Command Membrane Interface -->
+      <section class="ai-workspace" id="command-demo">
+        <div class="demo-header">
+          <h2 class="demo-title">Command Membrane</h2>
+          <p class="demo-description">An intelligent command interface with thought visualization, semantic grouping, and contextual suggestions.</p>
+        </div>
+        
+        <div class="workspace-container">
+          <!-- Command Palette -->
+          <div class="command-palette compact">
+            <div class="command-header">
+              <div class="command-icon">K</div>
+              <div class="command-input-wrapper">
+                <input type="text" class="command-input" placeholder="Type '/' for commands or ask anything...">
+                <div class="command-thinking-visualization"></div>
+              </div>
+            </div>
+            
+            <div class="command-body">
+              <!-- Thought Visualization -->
+              <div class="command-section">
+                <h4 class="command-section-header">Understanding Your Request</h4>
+                <div class="thought-visualization">
+                  <div class="thought-node">📊</div>
+                  <div class="thought-connector"></div>
+                  <div class="thought-node">🔍</div>
+                  <div class="thought-connector"></div>
+                  <div class="thought-node">💰</div>
+                  <div class="thought-connector"></div>
+                  <div class="thought-node">📈</div>
+                </div>
+              </div>
+              
+              <!-- Command Suggestions -->
+              <div class="command-section">
+                <h4 class="command-section-header">Recommended Actions</h4>
+                <div class="command-suggestions">
+                  <div class="command-suggestion">
+                    <div class="suggestion-category analytics">📊</div>
+                    <div class="suggestion-details">
+                      <div class="suggestion-title">Analyze Market Segments</div>
+                      <div class="suggestion-description">Identify key customer segments and market opportunities</div>
+                    </div>
+                  </div>
+                  
+                  <div class="command-suggestion">
+                    <div class="suggestion-category financial">💰</div>
+                    <div class="suggestion-details">
+                      <div class="suggestion-title">SaaS Pricing Strategy</div>
+                      <div class="suggestion-description">Develop optimal pricing tiers based on market data</div>
+                    </div>
+                  </div>
+                  
+                  <div class="command-suggestion">
+                    <div class="suggestion-category research">🔍</div>
+                    <div class="suggestion-details">
+                      <div class="suggestion-title">Competitor Analysis</div>
+                      <div class="suggestion-description">Research competing products in your market space</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Command Groups -->
+              <div class="command-section">
+                <h4 class="command-section-header">All Commands</h4>
+                <div class="command-groups">
+                  <div class="command-group">
+                    <div class="group-header">
+                      <div class="group-icon">📊</div>
+                      <div class="group-title">Market Research</div>
+                    </div>
+                    <div class="group-commands">
+                      <div class="group-command">Market size analysis</div>
+                      <div class="group-command">Customer segmentation</div>
+                      <div class="group-command">Trend forecasting</div>
+                    </div>
+                  </div>
+                  
+                  <div class="command-group">
+                    <div class="group-header">
+                      <div class="group-icon">💰</div>
+                      <div class="group-title">Financial</div>
+                    </div>
+                    <div class="group-commands">
+                      <div class="group-command">Pricing strategy</div>
+                      <div class="group-command">Revenue forecasting</div>
+                      <div class="group-command">Break-even analysis</div>
+                    </div>
+                  </div>
+                  
+                  <div class="command-group">
+                    <div class="group-header">
+                      <div class="group-icon">📝</div>
+                      <div class="group-title">Documents</div>
+                    </div>
+                    <div class="group-commands">
+                      <div class="group-command">Create pitch deck</div>
+                      <div class="group-command">Generate business plan</div>
+                      <div class="group-command">Export analytics report</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="demo-controls">
+          <button class="demo-control-btn" id="toggleCommandExpand">Expand Command</button>
+          <button class="demo-control-btn" id="toggleCommandThinking">Show Thinking</button>
+        </div>
+      </section>
+      
+      <!-- Enhanced AI Analysis Visualization -->
+      <section class="ai-workspace" id="analysis-demo">
+        <div class="demo-header">
+          <h2 class="demo-title">AI Insight Visualization</h2>
+          <p class="demo-description">Enhanced data visualization with animated insights path, progressive revelation, and focus+context mechanics.</p>
+        </div>
+        
+        <div class="workspace-container">
+          <div class="analysis-container">
+            <div class="analysis-header">
+              <div class="analysis-title">
+                <div class="analysis-title-icon">K</div>
+                Market Opportunity Analysis
+              </div>
+              
+              <div class="analysis-controls">
+                <div class="analysis-control">⟳</div>
+                <div class="analysis-control">⋮</div>
+              </div>
+            </div>
+            
+            <div class="analysis-body">
+              <div class="analysis-canvas">
+                <!-- Data points and connections will be generated via JS -->
+              </div>
+              
+              <!-- Insights Path -->
+              <div class="insights-path">
+                <!-- Path segments will be generated via JS -->
+              </div>
+              
+              <!-- Insight Markers -->
+              <div class="insight-marker positive" style="top: 30%; left: 70%;">
+                <div class="insight-header">
+                  <div class="insight-icon">💡</div>
+                  <div class="insight-title">Growth Opportunity</div>
+                </div>
+                <div class="insight-content">
+                  Enterprise clients show 40% higher conversion rate and 2.3x lifetime value compared to SMB segment.
+                </div>
+              </div>
+              
+              <div class="insight-marker negative" style="top: 60%; left: 30%;">
+                <div class="insight-header">
+                  <div class="insight-icon">⚠️</div>
+                  <div class="insight-title">Market Saturation</div>
+                </div>
+                <div class="insight-content">
+                  General team chat tools market shows signs of saturation with 6 major competitors at similar price points.
+                </div>
+              </div>
+              
+              <div class="insight-marker neutral" style="top: 70%; left: 70%;">
+                <div class="insight-header">
+                  <div class="insight-icon">🔍</div>
+                  <div class="insight-title">Niche Potential</div>
+                </div>
+                <div class="insight-content">
+                  Healthcare-specific communication tools show 27% annual growth with fewer established players.
+                </div>
+              </div>
+              
+              <!-- Guided Tour Spotlight -->
+              <div class="guided-tour">
+                <div class="tour-spotlight">
+                  <div class="spotlight-ring"></div>
+                </div>
+                <div class="tour-content">
+                  <div class="tour-title">Key Market Opportunity</div>
+                  <div class="tour-description">This cluster shows potential in the healthcare vertical market.</div>
+                  <div class="tour-actions">
+                    <button class="tour-btn tour-btn-primary">Next</button>
+                    <button class="tour-btn tour-btn-secondary">Skip Tour</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="ai-analysis-overlay">
+                <div class="analysis-processing">
+                  <div class="ai-brain-visualization">
+                    <!-- Neural network visualization will be generated via JS -->
+                  </div>
+                  <div>
+                    <div class="processing-text">Analyzing market data patterns and identifying opportunities...</div>
+                    <div class="processing-status">Processing segment clustering (67%)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="demo-controls">
+          <button class="demo-control-btn" id="runEnhancedAnalysis">Run Analysis</button>
+          <button class="demo-control-btn" id="showInsightPath">Show Insight Path</button>
+          <button class="demo-control-btn" id="toggleTour">Show Guided Tour</button>
+        </div>
+        
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color primary"></div>
+            <span>Market Segments</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color secondary"></div>
+            <span>User Behavior</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color accent"></div>
+            <span>Competitive Threats</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color insight"></div>
+            <span>Growth Opportunities</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  
+  <script>
+    // Generate nucleus particles
+    function generateNucleusParticles() {
+      const nucleusParticles = document.querySelector('.nucleus-particles');
+      nucleusParticles.innerHTML = '';
+      
+      const colors = [
+        'rgba(114, 9, 183, 0.7)',
+        'rgba(76, 201, 240, 0.7)',
+        'rgba(247, 37, 133, 0.7)',
+        'rgba(255, 255, 255, 0.7)'
+      ];
+      
+      for (let i = 0; i < 15; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'nucleus-particle';
+        
+        const size = 3 + Math.random() * 5;
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 20 + Math.random() * 40;
+        const x = Math.cos(angle) * distance + 50;
+        const y = Math.sin(angle) * distance + 50;
+        
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.left = `${x}%`;
+        particle.style.top = `${y}%`;
+        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+        
+        const duration = 3 + Math.random() * 4;
+        const delay = Math.random() * 2;
+        
+        particle.style.animation = `nucleus-particle-orbit ${duration}s ${delay}s infinite linear`;
+        
+        nucleusParticles.appendChild(particle);
+      }
+      
+      // Add the CSS animation for particles
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes nucleus-particle-orbit {
+          0% {
+            transform: translate(-50%, -50%) rotate(0deg) translateX(20px) rotate(0deg);
+            opacity: 0.7;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(360deg) translateX(20px) rotate(-360deg);
+            opacity: 0.7;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Generate ambient background particles
+    function generateAmbientParticles() {
+      const ambientParticles = document.querySelectorAll('.ambient-particles');
+      
+      ambientParticles.forEach(container => {
+        container.innerHTML = '';
+        
+        const colors = [
+          'rgba(114, 9, 183, 0.1)',
+          'rgba(76, 201, 240, 0.1)',
+          'rgba(247, 37, 133, 0.1)'
+        ];
+        
+        for (let i = 0; i < 20; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          
+          const size = 10 + Math.random() * 50;
+          const x = Math.random() * 100;
+          const y = Math.random() * 100;
+          
+          particle.style.width = `${size}px`;
+          particle.style.height = `${size}px`;
+          particle.style.left = `${x}%`;
+          particle.style.top = `${y}%`;
+          particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+          
+          const duration = 15 + Math.random() * 20;
+          const delay = Math.random() * 5;
+          
+          particle.style.animation = `ambient-particle-float ${duration}s ${delay}s infinite alternate ease-in-out`;
+          
+          container.appendChild(particle);
+        }
+      });
+      
+      // Add the CSS animation for ambient particles
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes ambient-particle-float {
+          0% {
+            transform: translate(0, 0);
+            opacity: 0.1;
+          }
+          100% {
+            transform: translate(${Math.random() > 0.5 ? '' : '-'}${20 + Math.random() * 50}px, ${Math.random() > 0.5 ? '' : '-'}${20 + Math.random() * 50}px);
+            opacity: ${0.1 + Math.random() * 0.15};
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Generate energy waves
+    function generateEnergyWaves() {
+      const energyWaves = document.querySelectorAll('.energy-wave');
+      
+      energyWaves.forEach(wave => {
+        const container = wave.parentElement;
+        const containerHeight = container.offsetHeight;
+        
+        const waveCount = 5;
+        const spacing = containerHeight / waveCount;
+        
+        for (let i = 0; i < waveCount; i++) {
+          const newWave = document.createElement('div');
+          newWave.className = 'energy-wave';
+          newWave.style.top = `${(i + 1) * spacing}px`;
+          newWave.style.animationDelay = `${i * 0.5}s`;
+          
+          container.appendChild(newWave);
+        }
+      });
+    }
+    
+    // Generate AI brain visualization
+    function generateBrainVisualization() {
+      const brainVisualizations = document.querySelectorAll('.ai-brain-visualization');
+      
+      brainVisualizations.forEach(container => {
+        container.innerHTML = '';
+        
+        // Create nodes
+        const nodeCount = 20;
+        const nodes = [];
+        
+        for (let i = 0; i < nodeCount; i++) {
+          const node = document.createElement('div');
+          node.className = 'brain-node';
+          
+          const x = 10 + Math.random() * 80;
+          const y = 10 + Math.random() * 80;
+          
+          node.style.left = `${x}%`;
+          node.style.top = `${y}%`;
+          
+          const blinkDelay = Math.random() * 5;
+          node.style.animation = `brain-node-blink 2s ${blinkDelay}s infinite alternate`;
+          
+          container.appendChild(node);
+          nodes.push({ x, y, element: node });
+        }
+        
+        // Create connections
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            // Connect nodes that are close to each other
+            const p1 = nodes[i];
+            const p2 = nodes[j];
+            
+            const dx = (p2.x - p1.x) / 100 * container.offsetWidth;
+            const dy = (p2.y - p1.y) / 100 * container.offsetHeight;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 50 || Math.random() > 0.7) {
+              const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+              
+              const connection = document.createElement('div');
+              connection.className = 'brain-connection';
+              connection.style.left = `${p1.x}%`;
+              connection.style.top = `${p1.y}%`;
+              connection.style.width = `${distance}px`;
+              connection.style.transform = `rotate(${angle}deg)`;
+              
+              const pulseDelay = Math.random() * 5;
+              connection.style.animation = `brain-connection-pulse 3s ${pulseDelay}s infinite alternate`;
+              
+              container.appendChild(connection);
+            }
+          }
+        }
+      });
+      
+      // Add the CSS animations for brain visualization
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes brain-node-blink {
+          0%, 80%, 100% {
+            opacity: 0.7;
+            transform: scale(1);
+          }
+          40% {
+            opacity: 1;
+            transform: scale(1.3);
+          }
+        }
+        
+        @keyframes brain-connection-pulse {
+          0%, 100% {
+            opacity: 0.3;
+          }
+          50% {
+            opacity: 0.6;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Generate data visualization
+    function generateDataVisualization() {
+      const canvases = document.querySelectorAll('.analysis-canvas');
+      
+      canvases.forEach(canvas => {
+        canvas.innerHTML = '';
+        
+        const colors = [
+          'var(--primary)',
+          'var(--secondary)',
+          'var(--accent)',
+          'var(--insight)'
+        ];
+        
+        const points = [];
+        
+        // Generate data points in clusters
+        const clusterCount = 3;
+        const pointsPerCluster = 8;
+        
+        for (let c = 0; c < clusterCount; c++) {
+          const clusterX = 20 + c * 30;
+          const clusterY = 30 + (c % 2) * 40;
+          
+          for (let i = 0; i < pointsPerCluster; i++) {
+            const x = clusterX + (Math.random() - 0.5) * 20;
+            const y = clusterY + (Math.random() - 0.5) * 20;
+            const size = 8 + Math.random() * 12;
+            const colorIndex = c;
+            
+            const point = document.createElement('div');
+            point.className = 'data-point';
+            point.style.left = `${x}%`;
+            point.style.top = `${y}%`;
+            point.style.width = `${size}px`;
+            point.style.height = `${size}px`;
+            point.style.background = colors[colorIndex];
+            point.style.transitionDelay = `${(Math.random() * 1000).toFixed(0)}ms`;
+            
+            canvas.appendChild(point);
+            points.push({ x, y, element: point, cluster: c });
+          }
+        }
+        
+        // Generate connections within clusters
+        for (let i = 0; i < points.length; i++) {
+          for (let j = i + 1; j < points.length; j++) {
+            const p1 = points[i];
+            const p2 = points[j];
+            
+            // Connect points in the same cluster or sometimes between clusters
+            if (p1.cluster === p2.cluster || Math.random() > 0.7) {
+              const dx = p2.x - p1.x;
+              const dy = p2.y - p1.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+              
+              if (distance < 25) {
+                const connection = document.createElement('div');
+                connection.className = 'data-connection';
+                connection.style.left = `${p1.x}%`;
+                connection.style.top = `${p1.y}%`;
+                connection.style.width = `${distance}%`;
+                connection.style.transform = `rotate(${angle}deg)`;
+                connection.style.transitionDelay = `${(Math.random() * 1000 + 500).toFixed(0)}ms`;
+                
+                canvas.appendChild(connection);
+              }
+            }
+          }
+        }
+        
+        // Generate insights path
+        const pathContainer = canvas.closest('.analysis-body').querySelector('.insights-path');
+        if (pathContainer) {
+          pathContainer.innerHTML = '';
+          
+          // Select key points from each cluster
+          const keyPoints = [];
+          for (let c = 0; c < clusterCount; c++) {
+            const clusterPoints = points.filter(p => p.cluster === c);
+            const keyPoint = clusterPoints[Math.floor(Math.random() * clusterPoints.length)];
+            keyPoints.push(keyPoint);
+          }
+          
+          // Create path segments connecting key points
+          for (let i = 0; i < keyPoints.length - 1; i++) {
+            const p1 = keyPoints[i];
+            const p2 = keyPoints[i + 1];
+            
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            const segment = document.createElement('div');
+            segment.className = 'path-segment';
+            segment.style.left = `${p1.x}%`;
+            segment.style.top = `${p1.y}%`;
+            segment.style.width = `${distance}%`;
+            segment.style.transform = `rotate(${angle}deg)`;
+            segment.style.transitionDelay = `${i * 500 + 1500}ms`;
+            
+            pathContainer.appendChild(segment);
+            
+            // Add path markers at the start of each segment
+            const marker = document.createElement('div');
+            marker.className = 'path-marker';
+            marker.style.left = `${p1.x}%`;
+            marker.style.top = `${p1.y}%`;
+            marker.style.transitionDelay = `${i * 500 + 1500}ms`;
+            
+            pathContainer.appendChild(marker);
+            
+            // Add final marker at the end of the path
+            if (i === keyPoints.length - 2) {
+              const finalMarker = document.createElement('div');
+              finalMarker.className = 'path-marker';
+              finalMarker.style.left = `${p2.x}%`;
+              finalMarker.style.top = `${p2.y}%`;
+              finalMarker.style.transitionDelay = `${(i+1) * 500 + 1500}ms`;
+              
+              pathContainer.appendChild(finalMarker);
+            }
+          }
+        }
+      });
+    }
+    
+    // Nucleus Demo Controls
+    const toggleAssistantBtn = document.querySelector('#toggleAssistant');
+    const toggleThinkingBtn = document.querySelector('#toggleThinking');
+    const toggleSuggestionBtn = document.querySelector('#toggleSuggestion');
+    const toggleListeningBtn = document.querySelector('#toggleListening');
+    const toggleAmbientBtn = document.querySelector('#toggleAmbient');
+    const toggleMagicHandBtn = document.querySelector('#toggleMagicHand');
+    
+    const nucleus = document.querySelector('.ai-nucleus');
+    const assistantPanel = document.querySelector('.ai-assistant-panel');
+    const aiThinking = document.querySelector('.ai-thinking');
+    const aiSuggestion = document.querySelector('.ai-suggestion');
+    const workspaceContainer = document.querySelector('#nucleus-demo .workspace-container');
+    const aiWorkspace = document.querySelector('#nucleus-demo');
+    const magicHand = document.querySelector('.magic-hand');
+    const magicTrail = document.querySelector('.magic-trail');
+    
+    toggleAssistantBtn.addEventListener('click', () => {
+      toggleAssistantBtn.classList.toggle('active');
+      nucleus.classList.toggle('expanded');
+      
+      setTimeout(() => {
+        assistantPanel.classList.toggle('active');
+        workspaceContainer.classList.toggle('ai-active');
+      }, 300);
+    });
+    
+    toggleThinkingBtn.addEventListener('click', () => {
+      toggleThinkingBtn.classList.toggle('active');
+      
+      if (toggleThinkingBtn.classList.contains('active')) {
+        aiThinking.style.display = 'flex';
+        nucleus.classList.add('thinking');
+      } else {
+        aiThinking.style.display = 'none';
+        nucleus.classList.remove('thinking');
+      }
+    });
+    
+    toggleSuggestionBtn.addEventListener('click', () => {
+      toggleSuggestionBtn.classList.toggle('active');
+      aiSuggestion.classList.toggle('active');
+    });
+    
+    toggleListeningBtn.addEventListener('click', () => {
+      toggleListeningBtn.classList.toggle('active');
+      
+      if (toggleListeningBtn.classList.contains('active')) {
+        nucleus.classList.add('listening');
+        nucleus.classList.remove('thinking');
+        
+        const energyWaves = document.querySelectorAll('.energy-wave');
+        energyWaves.forEach(wave => wave.classList.add('active'));
+      } else {
+        nucleus.classList.remove('listening');
+        
+        const energyWaves = document.querySelectorAll('.energy-wave');
+        energyWaves.forEach(wave => wave.classList.remove('active'));
+      }
+    });
+    
+    toggleAmbientBtn.addEventListener('click', () => {
+      toggleAmbientBtn.classList.toggle('active');
+      aiWorkspace.classList.toggle('ai-mode');
+      
+      const ambientBg = aiWorkspace.querySelector('.ambient-bg');
+      ambientBg.classList.toggle('active');
+    });
+    
+    toggleMagicHandBtn.addEventListener('click', () => {
+      toggleMagicHandBtn.classList.toggle('active');
+      
+      if (toggleMagicHandBtn.classList.contains('active')) {
+        // Set initial position
+        magicHand.style.left = '10%';
+        magicHand.style.top = '50%';
+        magicHand.classList.add('active');
+        
+        // Set trail position
+        setTimeout(() => {
+          const handRect = magicHand.getBoundingClientRect();
+          const containerRect = workspaceContainer.getBoundingClientRect();
+          
+          const startX = handRect.left - containerRect.left + handRect.width / 2;
+          const startY = handRect.top - containerRect.top + handRect.height / 2;
+          
+          magicTrail.style.left = `${startX}px`;
+          magicTrail.style.top = `${startY}px`;
+          magicTrail.style.width = '200px';
+          magicTrail.style.transform = 'rotate(15deg)';
+          
+          magicTrail.classList.add('active');
+        }, 500);
+        
+        // Reset after animation completes
+        setTimeout(() => {
+          magicHand.classList.remove('active');
+          magicTrail.classList.remove('active');
+          toggleMagicHandBtn.classList.remove('active');
+        }, 2500);
+      }
+    });
+    
+    // Command Membrane Controls
+    const toggleCommandExpandBtn = document.querySelector('#toggleCommandExpand');
+    const toggleCommandThinkingBtn = document.querySelector('#toggleCommandThinking');
+    const commandPalette = document.querySelector('.command-palette');
+    
+    toggleCommandExpandBtn.addEventListener('click', () => {
+      toggleCommandExpandBtn.classList.toggle('active');
+      
+      if (toggleCommandExpandBtn.classList.contains('active')) {
+        commandPalette.classList.remove('compact');
+        commandPalette.classList.add('expanded');
+      } else {
+        commandPalette.classList.add('compact');
+        commandPalette.classList.remove('expanded');
+      }
+    });
+    
+    toggleCommandThinkingBtn.addEventListener('click', () => {
+      toggleCommandThinkingBtn.classList.toggle('active');
+      commandPalette.classList.toggle('thinking');
+    });
+    
+    // AI Analysis Controls
+    const runAnalysisBtn = document.querySelector('#runEnhancedAnalysis');
+    const showInsightPathBtn = document.querySelector('#showInsightPath');
+    const toggleTourBtn = document.querySelector('#toggleTour');
+    
+    const analysisCanvas = document.querySelector('#analysis-demo .analysis-canvas');
+    const analysisOverlay = document.querySelector('.ai-analysis-overlay');
+    const insightMarkers = document.querySelectorAll('.insight-marker');
+    const guidedTour = document.querySelector('.guided-tour');
+    
+    runAnalysisBtn.addEventListener('click', () => {
+      // Hide any visible insights
+      insightMarkers.forEach(marker => marker.classList.remove('active'));
+      
+      // Hide insight path
+      const pathSegments = document.querySelectorAll('.path-segment');
+      const pathMarkers = document.querySelectorAll('.path-marker');
+      
+      pathSegments.forEach(segment => segment.classList.remove('active'));
+      pathMarkers.forEach(marker => marker.classList.remove('active'));
+      
+      // Show analysis overlay
+      analysisOverlay.classList.add('active');
+      
+      // Apply shrinking effect to canvas
+      analysisCanvas.classList.add('revealing');
+      
+      // Generate new data points but keep them hidden
+      generateDataVisualization();
+      
+      // Wait and then reveal analysis
+      setTimeout(() => {
+        // Hide overlay
+        analysisOverlay.classList.remove('active');
+        
+        // Remove shrinking effect
+        analysisCanvas.classList.remove('revealing');
+        
+        // Show data points progressively
+        const dataPoints = document.querySelectorAll('.data-point');
+        const dataConnections = document.querySelectorAll('.data-connection');
+        
+        dataPoints.forEach(point => point.classList.add('active'));
+        
+        setTimeout(() => {
+          dataConnections.forEach(connection => connection.classList.add('active'));
+        }, 500);
+      }, 3000);
+    });
+    
+    showInsightPathBtn.addEventListener('click', () => {
+      showInsightPathBtn.classList.toggle('active');
+      
+      const pathSegments = document.querySelectorAll('.path-segment');
+      const pathMarkers = document.querySelectorAll('.path-marker');
+      
+      if (showInsightPathBtn.classList.contains('active')) {
+        // Show path
+        pathSegments.forEach(segment => segment.classList.add('active'));
+        pathMarkers.forEach(marker => marker.classList.add('active'));
+        
+        // Show insights after path animation
+        setTimeout(() => {
+          insightMarkers.forEach(marker => marker.classList.add('active'));
+        }, 1500);
+      } else {
+        // Hide path
+        pathSegments.forEach(segment => segment.classList.remove('active'));
+        pathMarkers.forEach(marker => marker.classList.remove('active'));
+        
+        // Hide insights
+        insightMarkers.forEach(marker => marker.classList.remove('active'));
+      }
+    });
+    
+    toggleTourBtn.addEventListener('click', () => {
+      toggleTourBtn.classList.toggle('active');
+      guidedTour.classList.toggle('active');
+      
+      if (toggleTourBtn.classList.contains('active')) {
+        // Position tour spotlight on a data point
+        const dataPoints = document.querySelectorAll('.data-point');
+        if (dataPoints.length > 0) {
+          const targetPoint = dataPoints[Math.floor(dataPoints.length / 3)];
+          const pointRect = targetPoint.getBoundingClientRect();
+          const containerRect = analysisCanvas.getBoundingClientRect();
+          
+          const spotlightX = pointRect.left - containerRect.left + pointRect.width / 2;
+          const spotlightY = pointRect.top - containerRect.top + pointRect.height / 2;
+          
+          guidedTour.style.left = `${spotlightX}px`;
+          guidedTour.style.top = `${spotlightY}px`;
+        }
+      }
+    });
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      generateNucleusParticles();
+      generateAmbientParticles();
+      generateEnergyWaves();
+      generateBrainVisualization();
+      generateDataVisualization();
+      
+      // Set initial states
+      aiThinking.style.display = 'none';
+    });
+    
+    // Initialize close buttons
+    const closeButtons = document.querySelectorAll('.assistant-close');
+    closeButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const panel = button.closest('.ai-assistant-panel');
+        panel.classList.remove('active');
+        
+        // Find and reset associated nucleus
+        const workspace = panel.closest('.workspace-container');
+        const nucleus = workspace.querySelector('.ai-nucleus');
+        if (nucleus) {
+          nucleus.classList.remove('expanded');
+        }
+        
+        // Reset workspace active state
+        workspace.classList.remove('ai-active');
+        
+        // Reset associated toggle button
+        toggleAssistantBtn.classList.remove('active');
+      });
+    });
+    
+    // Setup tour buttons
+    const tourNextBtn = document.querySelector('.tour-btn-primary');
+    const tourSkipBtn = document.querySelector('.tour-btn-secondary');
+    
+    if (tourNextBtn) {
+      tourNextBtn.addEventListener('click', () => {
+        // Move to next tour point logic would go here
+        // For demo purposes, just dismiss the tour
+        guidedTour.classList.remove('active');
+        toggleTourBtn.classList.remove('active');
+      });
+    }
+    
+    if (tourSkipBtn) {
+      tourSkipBtn.addEventListener('click', () => {
+        guidedTour.classList.remove('active');
+        toggleTourBtn.classList.remove('active');
+      });
+    }
+  </script>
+</body>
+</html>

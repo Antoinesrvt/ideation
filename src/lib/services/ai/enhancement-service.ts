@@ -154,4 +154,39 @@ export class EnhancementService extends BaseAIService {
     if (options.includeFinancialData) types.push('financial')
     return types
   }
+}
+
+/**
+ * Gets AI-generated enhancement suggestions for a project
+ */
+export async function getProjectEnhancements(
+  projectId: string,
+  instruction: string,
+  context: string = 'project'
+): Promise<any> {
+  // Make API call to get enhancements
+  try {
+    // This would be a real API call in production
+    const response = await fetch(`/api/ai/enhance-project`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        projectId,
+        instruction,
+        context
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error getting AI enhancements: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.enhancements;
+  } catch (error) {
+    console.error('Failed to get AI enhancements:', error);
+    throw error;
+  }
 } 

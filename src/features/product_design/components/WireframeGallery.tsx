@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { PlusCircle, Image, Upload, Info, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { Wireframe } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -10,14 +9,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+import { ProductWireframe } from '@/store/types';
 
 interface WireframeGalleryProps {
-  wireframes: Wireframe[];
+  wireframes: ProductWireframe[];
   onAdd?: () => void;
   onSelect?: (id: string) => void;
 }
@@ -76,9 +71,9 @@ export const WireframeGallery: React.FC<WireframeGalleryProps> = ({
                 onClick={() => onSelect && onSelect(wireframe.id)}
               >
                 <div className="bg-gray-100 p-8 flex items-center justify-center">
-                  {wireframe.imageUrl ? (
+                  {wireframe.image_url ? (
                     <img 
-                      src={wireframe.imageUrl} 
+                      src={wireframe.image_url} 
                       alt={wireframe.name} 
                       className="w-full h-40 object-contain"
                     />
@@ -123,7 +118,7 @@ export const WireframeGallery: React.FC<WireframeGalleryProps> = ({
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <p className="text-xs text-gray-500">Created {formatDate(wireframe.createdAt)}</p>
+                  <p className="text-xs text-gray-500">Created {formatDate(wireframe.created_at ?? "")}</p>
                 </div>
               </div>
             ))}

@@ -8,7 +8,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter
+  DialogFooter,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { 
   Form, 
@@ -47,78 +48,76 @@ import {
   Percent,
   Scale,
   UserCheck,
-  Clock
+  Clock,
+  Plus,
+  Trash
 } from 'lucide-react';
-import { ABTest } from '@/types';
+import { ValidationABTest } from '@/store/types';
 import { useForm } from 'react-hook-form';
 
 interface ABTestsListProps {
-  tests: ABTest[];
-  onUpdate: (test: ABTest) => void;
+  tests: ValidationABTest[];
+  onUpdate: (params: { id: string; data: Partial<Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>> }) => void;
   onDelete: (id: string) => void;
 }
 
 interface ABTestFormValues {
   title: string;
   description: string;
-  variantA: string;
-  variantB: string;
+  variant_a: string;
+  variant_b: string;
   metric: string;
   status: 'planned' | 'running' | 'completed';
-  startDate: string;
-  endDate: string;
-  sampleSize: string;
-  conversionA: string;
-  conversionB: string;
-  confidence: string;
-  winner: 'A' | 'B' | 'inconclusive' | '';
+  start_date: string;
+  end_date: string;
+  sample_size: number;
+  conversion_a: number;
+  conversion_b: number;
+  confidence: number;
+  winner: string | null;
   notes: string;
 }
 
-export const ABTestsList: React.FC<ABTestsListProps> = ({ 
-  tests, 
-  onUpdate,
-  onDelete
-}) => {
+export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTest, setEditingTest] = useState<ABTest | null>(null);
+  const [editingTest, setEditingTest] = useState<ValidationABTest | null>(null);
   
   const form = useForm<ABTestFormValues>({
     defaultValues: {
       title: '',
       description: '',
-      variantA: '',
-      variantB: '',
+      variant_a: '',
+      variant_b: '',
       metric: '',
       status: 'planned',
-      startDate: '',
-      endDate: '',
-      sampleSize: '',
-      conversionA: '',
-      conversionB: '',
-      confidence: '',
-      winner: '',
+      start_date: '',
+      end_date: '',
+      sample_size: 0,
+      conversion_a: 0,
+      conversion_b: 0,
+      confidence: 0,
+      winner: null,
       notes: ''
     }
   });
   
-  const handleEdit = (test: ABTest) => {
+  const handleEdit = (test: ValidationABTest) => {
     setEditingTest(test);
     
     form.reset({
       title: test.title || '',
       description: test.description || '',
-      variantA: test.variantA || '',
-      variantB: test.variantB || '',
+      variant_a: test.variant_a || '',
+      variant_b: test.variant_b || '',
       metric: test.metric || '',
-      status: test.status || 'planned',
-      startDate: test.startDate || '',
-      endDate: test.endDate || '',
-      sampleSize: test.sampleSize?.toString() || '',
-      conversionA: test.conversionA?.toString() || '',
-      conversionB: test.conversionB?.toString() || '',
-      confidence: test.confidence?.toString() || '',
-      winner: test.winner || '',
+      status: (test.status as 'planned' | 'running' | 'completed') || 'planned',
+      start_date: test.start_date || '',
+      end_date: test.end_date || '',
+      sample_size: test.sample_size || 0,
+      conversion_a: test.conversion_a || 0,
+      conversion_b: test.conversion_b || 0,
+      confidence: test.confidence || 0,
+      winner: test.winner as string | null,
       notes: test.notes || ''
     });
     
@@ -128,19 +127,17 @@ export const ABTestsList: React.FC<ABTestsListProps> = ({
   const handleSave = (values: ABTestFormValues) => {
     if (!editingTest) return;
     
-    const updatedTest: ABTest = {
-      ...editingTest,
-      ...values,
-      sampleSize: values.sampleSize ? parseInt(values.sampleSize, 10) : undefined,
-      conversionA: values.conversionA ? parseFloat(values.conversionA) : undefined,
-      conversionB: values.conversionB ? parseFloat(values.conversionB) : undefined,
-      confidence: values.confidence ? parseFloat(values.confidence) : undefined,
-      winner: values.winner === '' ? undefined : values.winner as 'A' | 'B' | 'inconclusive' | undefined
-    };
-    
-    onUpdate(updatedTest);
+    onUpdate({
+      id: editingTest.id,
+      data: {
+        ...values,
+        winner: values.winner || undefined
+      }
+    });
+
     setIsDialogOpen(false);
     setEditingTest(null);
+    form.reset();
   };
   
   const handleDelete = (id: string) => {
@@ -149,59 +146,77 @@ export const ABTestsList: React.FC<ABTestsListProps> = ({
     }
   };
   
-  const getStatusColor = (status: ABTest['status']) => {
+  const getStatusColor = (status: ValidationABTest['status']) => {
     switch (status) {
-      case 'planned':
-        return 'bg-blue-100 text-blue-800';
-      case 'running':
-        return 'bg-purple-100 text-purple-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
+      case 'running':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
   
-  const getWinnerColor = (winner?: ABTest['winner']) => {
-    if (!winner) return '';
-    
+  const getWinnerColor = (winner: ValidationABTest['winner']) => {
     switch (winner) {
       case 'A':
-        return 'text-green-600';
+        return 'bg-green-100 text-green-800';
       case 'B':
-        return 'text-blue-600';
+        return 'bg-blue-100 text-blue-800';
       case 'inconclusive':
-        return 'text-gray-600';
+        return 'bg-yellow-100 text-yellow-800';
       default:
-        return '';
+        return 'bg-gray-100 text-gray-800';
     }
   };
   
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
+    return new Date(dateString).toLocaleDateString();
   };
 
-  const getImprovement = (test: ABTest) => {
+  const getImprovement = (test: ValidationABTest) => {
     if (
-      test.conversionA === undefined || 
-      test.conversionB === undefined || 
-      test.conversionA === 0
+      !test.conversion_a ||
+      !test.conversion_b ||
+      test.conversion_a === 0
     ) {
       return null;
     }
     
-    const improvement = ((test.conversionB - test.conversionA) / test.conversionA) * 100;
+    const improvement = ((test.conversion_b - test.conversion_a) / test.conversion_a) * 100;
     return improvement.toFixed(1);
   };
 
   return (
     <div className="space-y-6">
+      <div className="mb-4">
+        <Button onClick={() => handleEdit({
+          id: '',
+          title: '',
+          description: '',
+          variant_a: '',
+          variant_b: '',
+          metric: '',
+          status: 'planned',
+          start_date: '',
+          end_date: '',
+          sample_size: 0,
+          conversion_a: 0,
+          conversion_b: 0,
+          confidence: 0,
+          winner: null,
+          notes: '',
+          project_id: '',
+          created_at: null,
+          updated_at: null,
+          created_by: null
+        })}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add A/B Test
+        </Button>
+      </div>
+
       {tests.length === 0 ? (
         <Card className="border-dashed border-2">
           <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
@@ -216,22 +231,22 @@ export const ABTestsList: React.FC<ABTestsListProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Test</TableHead>
+              <TableHead>Title</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Metric</TableHead>
+              <TableHead>Metrics</TableHead>
               <TableHead>Results</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tests.map(test => (
+            {tests.map((test) => (
               <TableRow key={test.id}>
                 <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{test.title || "Unnamed Test"}</span>
+                  <div>
+                    <div className="font-medium">{test.title}</div>
                     <span className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {formatDate(test.startDate) || "Not scheduled"}
+                      {formatDate(test.start_date ?? undefined) || "Not scheduled"}
                     </span>
                   </div>
                 </TableCell>
@@ -241,58 +256,52 @@ export const ABTestsList: React.FC<ABTestsListProps> = ({
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col">
+                  <div>
                     <span className="text-sm">{test.metric || "-"}</span>
                     <div className="text-xs text-gray-500 mt-1 flex items-start gap-2">
-                      <span className="flex-1">A: {test.variantA || "Variant A"}</span>
-                      <span className="flex-1">B: {test.variantB || "Variant B"}</span>
+                      <span className="flex-1">A: {test.variant_a || "Variant A"}</span>
+                      <span className="flex-1">B: {test.variant_b || "Variant B"}</span>
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col">
-                    {test.status === 'completed' ? (
-                      <>
-                        {test.winner && (
-                          <span className={`text-sm font-medium flex items-center gap-1 ${getWinnerColor(test.winner)}`}>
-                            <Award className="h-3 w-3" />
-                            Winner: {test.winner === 'inconclusive' ? 'Inconclusive' : `Variant ${test.winner}`}
-                          </span>
-                        )}
-                        {test.conversionA !== undefined && test.conversionB !== undefined && (
-                          <div className="flex gap-2 text-xs text-gray-600">
-                            <span>A: {test.conversionA}%</span>
-                            <span>B: {test.conversionB}%</span>
-                            {getImprovement(test) && (
-                              <span className={parseFloat(getImprovement(test) || '0') > 0 ? 'text-green-600' : 'text-red-600'}>
-                                ({parseFloat(getImprovement(test) || '0') > 0 ? '+' : ''}{getImprovement(test)}%)
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-500">
-                        {test.sampleSize ? `${test.sampleSize} participants` : "No data yet"}
-                      </span>
-                    )}
-                  </div>
+                  {test.status === 'completed' ? (
+                    <div>
+                      <Badge className={getWinnerColor(test.winner)}>
+                        {test.winner === 'A' ? 'Variant A Wins' :
+                         test.winner === 'B' ? 'Variant B Wins' :
+                         test.winner === 'inconclusive' ? 'Inconclusive' : 'No Result'}
+                      </Badge>
+                      {test.confidence && test.confidence > 0 && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {test.confidence}% confidence
+                        </div>
+                      )}
+                      {getImprovement(test) && (
+                        <div className="text-xs text-gray-500">
+                          {getImprovement(test)}% improvement
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">-</span>
+                  )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => handleEdit(test)}
                     >
-                      <Edit className="h-4 w-4" />
+                      Edit
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="sm"
                       onClick={() => handleDelete(test.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
                 </TableCell>
@@ -304,304 +313,131 @@ export const ABTestsList: React.FC<ABTestsListProps> = ({
 
       {/* Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingTest?.title || 'New A/B Test'}
+              {editingTest?.id ? 'Edit A/B Test' : 'Add A/B Test'}
             </DialogTitle>
           </DialogHeader>
           
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Test title" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="planned">Planned</SelectItem>
-                          <SelectItem value="running">Running</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div>
+                <label className="text-sm font-medium">Title</label>
+                <Input {...form.register('title')} />
               </div>
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="What are you testing?" 
-                        className="min-h-[80px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="p-4 bg-gray-50 rounded-md border space-y-4">
-                <div className="flex items-center">
-                  <Scale className="h-4 w-4 mr-2 text-blue-500" />
-                  <span className="font-medium">Test Setup</span>
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                <Textarea {...form.register('description')} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Variant A</label>
+                  <Input {...form.register('variant_a')} />
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="variantA"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Variant A (Control)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Original version" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="variantB"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Variant B (Test)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="New version" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div>
+                  <label className="text-sm font-medium">Variant B</label>
+                  <Input {...form.register('variant_b')} />
                 </div>
-                
-                <FormField
-                  control={form.control}
-                  name="metric"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Success Metric</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. Conversion rate, Click-through rate" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>End Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div>
+                <label className="text-sm font-medium">Metric</label>
+                <Input {...form.register('metric')} />
               </div>
-              
-              <FormField
-                control={form.control}
-                name="sampleSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1">
-                      <UserCheck className="h-4 w-4 text-gray-500" />
-                      Sample Size
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Number of participants" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
+              <div>
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  value={form.watch('status')}
+                  onValueChange={(value) => form.setValue('status', value as ABTestFormValues['status'])}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="planned">Planned</SelectItem>
+                    <SelectItem value="running">Running</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Start Date</label>
+                  <Input type="date" {...form.register('start_date')} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">End Date</label>
+                  <Input type="date" {...form.register('end_date')} />
+                </div>
+              </div>
               {form.watch('status') === 'completed' && (
-                <div className="p-4 bg-gray-50 rounded-md border space-y-4">
-                  <div className="flex items-center">
-                    <LineChart className="h-4 w-4 mr-2 text-blue-500" />
-                    <span className="font-medium">Test Results</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="conversionA"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Variant A Result (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              placeholder="e.g. 5.2" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="conversionB"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Variant B Result (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01"
-                              placeholder="e.g. 6.8" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                <>
+                  <div>
+                    <label className="text-sm font-medium">Sample Size</label>
+                    <Input
+                      type="number"
+                      {...form.register('sample_size', { valueAsNumber: true })}
                     />
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="confidence"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <Percent className="h-4 w-4 text-gray-500" /> 
-                            Confidence (%)
-                          </FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.1"
-                              placeholder="e.g. 95" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="winner"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <Award className="h-4 w-4 text-gray-500" /> 
-                            Winner
-                          </FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select winner" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="A">Variant A</SelectItem>
-                              <SelectItem value="B">Variant B</SelectItem>
-                              <SelectItem value="inconclusive">Inconclusive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Conversion A (%)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...form.register('conversion_a', { valueAsNumber: true })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Conversion B (%)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...form.register('conversion_b', { valueAsNumber: true })}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Confidence (%)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...form.register('confidence', { valueAsNumber: true })}
                     />
                   </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes & Learnings</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="What did you learn from this test?" 
-                            className="min-h-[80px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                  <div>
+                    <label className="text-sm font-medium">Winner</label>
+                    <Select
+                      value={form.watch('winner') || ''}
+                      onValueChange={(value: string) => form.setValue('winner', value || null)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No Result</SelectItem>
+                        <SelectItem value="A">Variant A</SelectItem>
+                        <SelectItem value="B">Variant B</SelectItem>
+                        <SelectItem value="inconclusive">Inconclusive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
-              
-              <DialogFooter>
-                <Button type="submit">Save A/B Test</Button>
-              </DialogFooter>
+              <div>
+                <label className="text-sm font-medium">Notes</label>
+                <Textarea {...form.register('notes')} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Save</Button>
+              </div>
             </form>
           </Form>
         </DialogContent>
       </Dialog>
     </div>
   );
-}; 
+} 

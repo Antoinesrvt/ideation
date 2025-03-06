@@ -336,4 +336,78 @@ export interface ProjectActions {
   setError: (error: Error | null) => void;
 }
 
-export interface ProjectStore extends ProjectState, ProjectActions {} 
+export type ChangeType = 'added' | 'modified' | 'deleted' | 'unchanged';
+
+export interface ItemDiff {
+  id: string;
+  changeType: ChangeType;
+  previousValues?: Record<string, any>;
+  newValues?: Record<string, any>;
+}
+
+export interface FeatureDiff {
+  additions: string[]; // IDs of added items
+  modifications: string[]; // IDs of modified items
+  deletions: string[]; // IDs of deleted items
+}
+
+export interface DiffMetadata {
+  // One diff object per feature
+  project?: FeatureDiff;
+  // Business Model Canvas
+  canvasSections?: FeatureDiff;
+  canvasItems?: FeatureDiff;
+  // GRP Model
+  grpCategories?: FeatureDiff;
+  grpSections?: FeatureDiff;
+  grpItems?: FeatureDiff;
+  // Market Analysis
+  marketPersonas?: FeatureDiff;
+  marketInterviews?: FeatureDiff;
+  marketCompetitors?: FeatureDiff;
+  marketTrends?: FeatureDiff;
+  // Product Design
+  productWireframes?: FeatureDiff;
+  productFeatures?: FeatureDiff;
+  productJourneyStages?: FeatureDiff;
+  productJourneyActions?: FeatureDiff;
+  productJourneyPainPoints?: FeatureDiff;
+  // Financial
+  financialRevenueStreams?: FeatureDiff;
+  financialCostStructure?: FeatureDiff;
+  financialPricingStrategies?: FeatureDiff;
+  financialProjections?: FeatureDiff;
+  // Validation
+  validationExperiments?: FeatureDiff;
+  validationABTests?: FeatureDiff;
+  validationUserFeedback?: FeatureDiff;
+  validationHypotheses?: FeatureDiff;
+  // Team
+  teamMembers?: FeatureDiff;
+  teamTasks?: FeatureDiff;
+  teamResponsibilityMatrix?: FeatureDiff;
+  // Documents
+  documents?: FeatureDiff;
+  documentCollaborators?: FeatureDiff;
+  // Cross-feature
+  notifications?: FeatureDiff;
+  relatedItems?: FeatureDiff;
+  projectTags?: FeatureDiff;
+  featureItemTags?: FeatureDiff;
+}
+
+export interface ProjectStore extends ProjectState, ProjectActions {
+  // UI state
+  comparisonMode: boolean;
+  
+  // Diff metadata
+  diffMetadata: DiffMetadata;
+  
+  // Change tracking actions
+  calculateDiff: () => void;
+  getItemChangeType: (feature: keyof ProjectState['currentData'], id: string) => ChangeType;
+  
+  // Selective change application
+  applySelectedChanges: (changeSelections: Record<string, boolean>) => void;
+  discardSelectedChanges: (changeSelections: Record<string, boolean>) => void;
+} 

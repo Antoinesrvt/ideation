@@ -8,7 +8,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter
+  DialogFooter,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { 
   Form, 
@@ -48,15 +49,17 @@ import {
   PlusCircle, 
   Target, 
   Trash2, 
-  TrendingUp
+  TrendingUp,
+  Plus,
+  Trash
 } from 'lucide-react';
-import { Experiment } from '@/types';
+import { ValidationExperiment } from '@/store/types';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ExperimentsListProps {
-  experiments: Experiment[];
-  onUpdate: (experiment: Experiment) => void;
+  experiments: ValidationExperiment[];
+  onUpdate: (params: { id: string; data: Partial<Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>> }) => void;
   onDelete: (id: string) => void;
 }
 
@@ -65,10 +68,11 @@ interface ExperimentFormValues {
   description: string;
   hypothesis: string;
   status: 'planned' | 'in-progress' | 'completed' | 'cancelled';
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   results: string;
   learnings: string;
+  metrics: MetricInput[];
 }
 
 interface MetricInput {
@@ -78,13 +82,9 @@ interface MetricInput {
   actual: string;
 }
 
-export const ExperimentsList: React.FC<ExperimentsListProps> = ({ 
-  experiments, 
-  onUpdate,
-  onDelete
-}) => {
+export function ExperimentsList({ experiments, onUpdate, onDelete }: ExperimentsListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingExperiment, setEditingExperiment] = useState<Experiment | null>(null);
+  const [editingExperiment, setEditingExperiment] = useState<ValidationExperiment | null>(null);
   const [metrics, setMetrics] = useState<MetricInput[]>([]);
   
   const form = useForm<ExperimentFormValues>({
@@ -93,35 +93,38 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
       description: '',
       hypothesis: '',
       status: 'planned',
-      startDate: '',
-      endDate: '',
+      start_date: '',
+      end_date: '',
       results: '',
-      learnings: ''
+      learnings: '',
+      metrics: []
     }
   });
   
-  const handleEdit = (experiment: Experiment) => {
+  const handleEdit = (experiment: ValidationExperiment) => {
     setEditingExperiment(experiment);
     
     form.reset({
       title: experiment.title || '',
       description: experiment.description || '',
       hypothesis: experiment.hypothesis || '',
-      status: experiment.status || 'planned',
-      startDate: experiment.startDate || '',
-      endDate: experiment.endDate || '',
+      status: (experiment.status as 'planned' | 'in-progress' | 'completed' | 'cancelled') || 'planned',
+      start_date: experiment.start_date || '',
+      end_date: experiment.end_date || '',
       results: experiment.results || '',
-      learnings: experiment.learnings || ''
+      learnings: experiment.learnings || '',
+      metrics: []
     });
     
     // Set metrics
+    const experimentMetrics = experiment.metrics as { key: string; target: string; actual: string }[] || [];
     setMetrics(
-      experiment.metrics?.map(metric => ({
+      experimentMetrics.map(metric => ({
         id: uuidv4(),
         key: metric.key || '',
         target: metric.target || '',
         actual: metric.actual || ''
-      })) || []
+      }))
     );
     
     setIsDialogOpen(true);
@@ -130,19 +133,24 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
   const handleSave = (values: ExperimentFormValues) => {
     if (!editingExperiment) return;
     
-    const updatedExperiment: Experiment = {
-      ...editingExperiment,
+    const updatedExperiment = {
       ...values,
-      metrics: metrics.map(m => ({
-        key: m.key,
-        target: m.target,
-        actual: m.actual
+      metrics: metrics.map(({ key, target, actual }) => ({
+        key,
+        target,
+        actual
       }))
     };
     
-    onUpdate(updatedExperiment);
+    onUpdate({
+      id: editingExperiment.id,
+      data: updatedExperiment
+    });
+    
     setIsDialogOpen(false);
     setEditingExperiment(null);
+    form.reset();
+    setMetrics([]);
   };
   
   const handleDelete = (id: string) => {
@@ -162,20 +170,18 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
     setMetrics(metrics.filter(m => m.id !== id));
   };
 
-  const updateMetric = (id: string, field: 'key' | 'target' | 'actual', value: string) => {
+  const updateMetric = (id: string, field: keyof Omit<MetricInput, 'id'>, value: string) => {
     setMetrics(metrics.map(m => 
       m.id === id ? { ...m, [field]: value } : m
     ));
   };
   
-  const getStatusColor = (status: Experiment['status']) => {
+  const getStatusColor = (status: ValidationExperiment['status']) => {
     switch (status) {
-      case 'planned':
-        return 'bg-blue-100 text-blue-800';
-      case 'in-progress':
-        return 'bg-purple-100 text-purple-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
@@ -185,12 +191,7 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
+    return new Date(dateString).toLocaleDateString();
   };
 
   return (
@@ -238,16 +239,16 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col text-sm">
-                    {experiment.startDate && (
+                    {experiment.start_date && (
                       <span className="flex items-center">
                         <Calendar className="h-3 w-3 mr-1 text-gray-500" />
-                        {formatDate(experiment.startDate)}
+                        {formatDate(experiment.start_date)}
                       </span>
                     )}
-                    {experiment.endDate && (
+                    {experiment.end_date && (
                       <span className="flex items-center">
                         <Clock className="h-3 w-3 mr-1 text-gray-500" />
-                        {formatDate(experiment.endDate)}
+                        {formatDate(experiment.end_date)}
                       </span>
                     )}
                   </div>
@@ -278,10 +279,10 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
 
       {/* Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingExperiment?.title || 'New Experiment'}
+              {editingExperiment?.id ? 'Edit Experiment' : 'Add Experiment'}
             </DialogTitle>
           </DialogHeader>
           
@@ -369,7 +370,7 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="startDate"
+                  name="start_date"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
@@ -383,7 +384,7 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
                 
                 <FormField
                   control={form.control}
-                  name="endDate"
+                  name="end_date"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>End Date</FormLabel>
@@ -416,7 +417,7 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {metrics.map((metric, index) => (
+                    {metrics.map((metric) => (
                       <div key={metric.id} className="flex gap-2 items-start">
                         <div className="flex-1">
                           <Input
@@ -445,7 +446,7 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
                           size="icon"
                           onClick={() => removeMetric(metric.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
                     ))}
@@ -502,4 +503,4 @@ export const ExperimentsList: React.FC<ExperimentsListProps> = ({
       </Dialog>
     </div>
   );
-}; 
+} 

@@ -1,308 +1,348 @@
-import { BaseSupabaseService } from './base-supabase-service'
-import { ModuleService } from './module-service'
-import { 
-  ProjectRow, 
-  ProjectWithModules,
-  ProjectMember,
+import { PostgrestError } from '@supabase/supabase-js';
+import { BaseSupabaseService } from './base-supabase-service';
+import type { Database } from '@/types/database';
+import type { 
+  ProjectRow,
   ProjectInsertData,
   ProjectUpdateData,
-  MemberRole,
-  ModuleType
-} from '@/types/project'
-import { ModuleInsertData, ModuleUpdateData } from '@/types/module'
-import { PostgrestSingleResponse, PostgrestResponse, PostgrestError } from '@supabase/supabase-js'
+} from '@/types/project';
 
 export class ProjectService extends BaseSupabaseService {
-  private moduleService: ModuleService
-
-  constructor(supabase: any) {
-    super(supabase)
-    this.moduleService = new ModuleService(supabase)
-  }
-
   protected handleError(error: PostgrestError | Error, context: string = ''): never {
-    console.error('Project service error:', error, context)
-    throw error
+    console.error(`Project Service Error in ${context}:`, error);
+    throw error;
   }
 
   /**
-   * Get all projects for current user (including those where they are a member)
+   * Get all projects for the current user
    */
   async getProjects(): Promise<ProjectRow[]> {
-    return this.handleDatabaseOperation<ProjectRow[]>(
+    return this.handleDatabaseOperation(
       async () => {
-        const { data: { user }, error: authError } = await this.supabase.auth.getUser()
-        if (authError) throw authError
-        if (!user) throw new Error('No authenticated user')
-
-        // First get all projects where user is creator
-        const { data: createdProjects, error: createdError } = await this.supabase
+        const userId = await this.getCurrentUserId();
+        
+        // First, get the project IDs that the user has access to as a team member
+        const { data: teamMemberships } = await this.supabase
+          .from('team_members')
+          .select('project_id')
+          .eq('user_id', userId);
+        
+        // Get the list of project IDs from team memberships - filter out any null values
+        const teamProjectIds = teamMemberships && teamMemberships.length > 0
+          ? teamMemberships
+              .map(tm => tm.project_id)
+              .filter((id): id is string => id !== null)
+          : [];
+        
+        // Also get projects where the user is the owner
+        const { data: ownedProjects } = await this.supabase
+          .from('projects')
+          .select('id')
+          .eq('owner_id', userId);
+        
+        // Get the list of project IDs from owned projects
+        const ownedProjectIds = ownedProjects && ownedProjects.length > 0
+          ? ownedProjects.map(p => p.id).filter((id): id is string => id !== null)
+          : [];
+        
+        // Combine both lists and remove duplicates
+        const projectIds = Array.from(new Set([...teamProjectIds, ...ownedProjectIds]));
+        
+        if (projectIds.length === 0) {
+          return { data: [], error: null };
+        }
+        
+        // Then fetch those projects
+        return this.supabase
           .from('projects')
           .select('*')
-          .eq('created_by', user.id)
-
-        if (createdError) throw createdError
-
-        // Then get all projects where user is a member
-        const { data: memberProjects, error: memberError } = await this.supabase
-          .from('projects')
-          .select('*, project_members(*)')
-          .eq('project_members.user_id', user.id)
-
-        if (memberError) throw memberError
-
-        // Combine and deduplicate projects
-        const allProjects = [...(createdProjects || []), ...(memberProjects || [])]
-        const uniqueProjects = Array.from(new Map(allProjects.map(p => [p.id, p])).values())
-
-        // Sort by updated_at and return as PostgrestResponse
-        return {
-          data: uniqueProjects.sort((a, b) => 
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-          ),
-          error: null
-        } as PostgrestResponse<ProjectRow>
+          .in('id', projectIds)
+          .order('updated_at', { ascending: false });
       },
       'getProjects'
-    )
+    );
   }
 
   /**
-   * Get a single project with basic information
+   * Get a single project by ID with all its data
    */
   async getProject(projectId: string): Promise<ProjectRow> {
-    return this.handleDatabaseOperation<ProjectRow>(
+    return this.handleDatabaseOperation(
       async () => {
-        const result = await this.supabase
+        const userId = await this.getCurrentUserId();
+        console.log('🔍 getProject called with projectId:', projectId);
+        console.log('🔍 Current user ID:', userId);
+        
+        // First, check if the user has access to this project as a team member
+        console.log('🔍 Checking team membership...');
+        const { data: teamMember, error: teamError } = await this.supabase
+          .from('team_members')
+          .select('id')
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        console.log('🔍 Team membership response:', JSON.stringify({
+          error: teamError,
+          data: teamMember,
+          count: null,
+          status: 200,
+          statusText: ''
+        }, null, 2));
+        
+        // If not a team member, check if the user is the project owner
+        if (!teamMember) {
+          console.log('❌ No team membership found');
+          console.log('🔍 Checking project ownership...');
+          
+          const { data: project, error: projectOwnershipError } = await this.supabase
+            .from('projects')
+            .select('*')
+            .eq('id', projectId)
+            .eq('owner_id', userId)
+            .maybeSingle();
+            
+          console.log('🔍 Project ownership check response:', JSON.stringify({
+            error: projectOwnershipError,
+            data: project,
+            count: null,
+            status: 200,
+            statusText: ''
+          }, null, 2));
+          
+          if (projectOwnershipError) {
+            console.log('❌ Error checking project ownership:', projectOwnershipError);
+            throw new Error('Error checking project access');
+          }
+          
+          // If user is the owner, return the project
+          if (project) {
+            console.log('✅ User is the project owner, granting access');
+            return { data: project, error: null };
+          }
+          
+          // If user is neither a team member nor the owner, deny access
+          console.log('❌ User is neither team member nor owner, access denied');
+          throw new Error('Project not found or access denied');
+        }
+        
+        // If user is a team member, fetch the project data
+        console.log('✅ User is a team member, fetching project data');
+        const { data: project, error: projectError } = await this.supabase
           .from('projects')
           .select('*')
           .eq('id', projectId)
-          .single()
+          .maybeSingle();
 
-        return result as PostgrestSingleResponse<ProjectRow>
+        if (projectError) {
+          console.log('❌ Error fetching project data:', projectError);
+          throw new Error('Error fetching project data');
+        }
+        
+        if (!project) {
+          console.log('❌ Project not found with ID:', projectId);
+          throw new Error('Project not found or access denied');
+        }
+        
+        console.log('✅ Project data fetched successfully');
+        return { data: project, error: null };
       },
       'getProject'
-    )
-  }
-
-  /**
-   * Get project with its modules (basic info only)
-   */
-  async getProjectWithModules(projectId: string) {
-    return this.handleDatabaseOperation(
-      async () => {
-        const result = await this.supabase
-          .from('projects')
-          .select(`
-            *,
-            modules:modules(
-              id,
-              title,
-              type,
-              status,
-              created_at,
-              updated_at
-            )
-          `)
-          .eq('id', projectId)
-          .single()
-
-        return result
-      },
-      'getProjectWithModules'
-    )
-  }
-
-  /**
-   * Get project members with their profiles
-   */
-  async getProjectMembersWithProfiles(projectId: string) {
-    return this.handleDatabaseOperation(
-      async () => {
-        const result = await this.supabase
-          .from('project_members')
-          .select(`
-            *,
-            profile:profiles(
-              full_name,
-              avatar_url
-            )
-          `)
-          .eq('project_id', projectId)
-
-        return result
-      },
-      'getProjectMembersWithProfiles'
-    )
+    );
   }
 
   /**
    * Create a new project
    */
   async createProject(data: ProjectInsertData): Promise<ProjectRow> {
-    return this.handleDatabaseOperation<ProjectRow>(
+    return this.handleDatabaseOperation(
       async () => {
-        const { data: { user } } = await this.supabase.auth.getUser()
-        if (!user) throw new Error('No authenticated user')
+        const userId = await this.getCurrentUserId();
+        if (!userId) {
+          throw new Error('No authenticated user found');
+        }
+
+        // Create the project with the current user as owner
+        const projectData = {
+          ...data,
+          owner_id: userId,
+          created_by: userId
+        };
 
         const result = await this.supabase
           .from('projects')
-          .insert({
-            ...data,
-            created_by: user.id,
-            metadata: data.metadata || {}
-          })
+          .insert(projectData)
           .select()
-          .single()
+          .single();
 
-        return result as PostgrestSingleResponse<ProjectRow>
+        if (!result.data) {
+          throw new Error('Failed to create project');
+        }
+
+        // Add the creator as an admin team member
+        const teamMember = {
+          project_id: result.data.id,
+          user_id: userId,
+          role: 'admin',
+          created_by: userId,
+          name: 'Project Admin'
+        };
+
+        await this.supabase
+          .from('team_members')
+          .insert(teamMember);
+
+        return result;
       },
       'createProject'
-    )
+    );
   }
 
   /**
    * Update a project
    */
   async updateProject(projectId: string, data: ProjectUpdateData): Promise<ProjectRow> {
-    return this.handleDatabaseOperation<ProjectRow>(
+    return this.handleDatabaseOperation(
       async () => {
-        const result = await this.supabase
+        const userId = await this.getCurrentUserId();
+        
+        // First check if user is a team member
+        const { data: teamMember } = await this.supabase
+          .from('team_members')
+          .select('role')
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        let hasAccess = !!teamMember;
+        
+        // If not a team member, check if user is the project owner
+        if (!hasAccess) {
+          const { data: project } = await this.supabase
+            .from('projects')
+            .select('owner_id')
+            .eq('id', projectId)
+            .eq('owner_id', userId)
+            .maybeSingle();
+          
+          hasAccess = !!project;
+        }
+        
+        if (!hasAccess) {
+          throw new Error('Access denied');
+        }
+
+        // Then update the project
+        const { data: updatedProject, error: updateError } = await this.supabase
           .from('projects')
-          .update({
-            ...data,
-            updated_at: new Date().toISOString()
-          })
+          .update(data)
           .eq('id', projectId)
           .select()
-          .single()
-
-        return result as PostgrestSingleResponse<ProjectRow>
+          .maybeSingle();
+        
+        if (updateError || !updatedProject) {
+          throw new Error('Failed to update project');
+        }
+        
+        return { data: updatedProject, error: null };
       },
       'updateProject'
-    )
+    );
   }
 
   /**
-   * Delete a project and all related data
+   * Delete a project
    */
   async deleteProject(projectId: string): Promise<void> {
-    await this.handleDatabaseOperation<void>(
+    await this.handleDatabaseOperation(
       async () => {
-        const result = await this.supabase
+        const userId = await this.getCurrentUserId();
+        
+        // First check if user is an admin team member
+        const { data: adminTeamMember } = await this.supabase
+          .from('team_members')
+          .select('role')
+          .eq('project_id', projectId)
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        let hasAdminAccess = !!adminTeamMember;
+        
+        // If not an admin team member, check if user is the project owner
+        if (!hasAdminAccess) {
+          const { data: ownedProject } = await this.supabase
+            .from('projects')
+            .select('owner_id')
+            .eq('id', projectId)
+            .eq('owner_id', userId)
+            .maybeSingle();
+          
+          hasAdminAccess = !!ownedProject;
+        }
+        
+        if (!hasAdminAccess) {
+          throw new Error('Access denied');
+        }
+
+        // Then delete the project
+        const { error: deleteError } = await this.supabase
           .from('projects')
           .delete()
-          .eq('id', projectId)
-        return { data: null, error: result.error }
+          .eq('id', projectId);
+        
+        if (deleteError) {
+          throw new Error('Failed to delete project');
+        }
+        
+        return { data: null, error: null };
       },
       'deleteProject'
-    )
+    );
   }
 
   /**
-   * Get project members
+   * Check if user has access to a project
    */
-  async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
-    return this.handleDatabaseOperation<ProjectMember[]>(
-      async () => {
-        const result = await this.supabase
-          .from('project_members')
-          .select(`
-            *,
-            profile:profiles(full_name, avatar_url)
-          `)
-          .eq('project_id', projectId)
-
-        return result as PostgrestResponse<ProjectMember>
-      },
-      'getProjectMembers'
-    )
+  async hasProjectAccess(projectId: string): Promise<boolean> {
+    try {
+      const userId = await this.getCurrentUserId();
+      
+      // First check if user is a team member
+      const { data: teamMember } = await this.supabase
+        .from('team_members')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (teamMember) {
+        return true;
+      }
+      
+      // If not a team member, check if user is the project owner
+      const { data: project } = await this.supabase
+        .from('projects')
+        .select('owner_id')
+        .eq('id', projectId)
+        .eq('owner_id', userId)
+        .maybeSingle();
+      
+      return !!project;
+    } catch (error) {
+      console.error('Error checking project access:', error);
+      return false;
+    }
   }
 
   /**
-   * Add project member
+   * Get current user ID
    */
-  async addProjectMember(projectId: string, userId: string, role: MemberRole): Promise<ProjectMember> {
-    return this.handleDatabaseOperation<ProjectMember>(
-      async () => {
-        const result = await this.supabase
-          .from('project_members')
-          .insert({
-            project_id: projectId,
-            user_id: userId,
-            role
-          })
-          .select(`
-            *,
-            profile:profiles(full_name, avatar_url)
-          `)
-          .single()
-
-        return result as PostgrestSingleResponse<ProjectMember>
-      },
-      'addProjectMember'
-    )
-  }
-
-  /**
-   * Update project member role
-   */
-  async updateProjectMemberRole(
-    projectId: string,
-    userId: string,
-    role: MemberRole
-  ): Promise<ProjectMember> {
-    return this.handleDatabaseOperation<ProjectMember>(
-      async () => {
-        const result = await this.supabase
-          .from('project_members')
-          .update({ role })
-          .eq('project_id', projectId)
-          .eq('user_id', userId)
-          .select(`
-            *,
-            profile:profiles(full_name, avatar_url)
-          `)
-          .single()
-
-        return result as PostgrestSingleResponse<ProjectMember>
-      },
-      'updateProjectMemberRole'
-    )
-  }
-
-  /**
-   * Remove project member
-   */
-  async removeProjectMember(projectId: string, userId: string): Promise<void> {
-    await this.handleDatabaseOperation<void>(
-      async () => {
-        const result = await this.supabase
-          .from('project_members')
-          .delete()
-          .eq('project_id', projectId)
-          .eq('user_id', userId)
-
-        return { data: null, error: result.error }
-      },
-      'removeProjectMember'
-    )
-  }
-
-  // Module listing only - detailed operations should go through ModuleService
-  async getProjectModules(projectId: string) {
-    return this.moduleService.getModulesByProject(projectId)
-  }
-
-  async getOrCreateModule(projectId: string, moduleType: ModuleType, userId: string) {
-    return this.moduleService.getOrCreateModule(projectId, moduleType, userId)
-  }
-
-  async createProjectModule(data: ModuleInsertData) {
-    return this.moduleService.createModule(data)
-  }
-
-  async updateProjectModule(moduleId: string, data: ModuleUpdateData) {
-    return this.moduleService.updateModule(moduleId, data)
+  private async getCurrentUserId(): Promise<string> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) {
+      throw new Error('No authenticated user found');
+    }
+    return user.id;
   }
 } 

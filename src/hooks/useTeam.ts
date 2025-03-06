@@ -1,162 +1,166 @@
-import { useFeatureData } from './use-feature-data';
-import { useCallback } from 'react';
-import { Database } from '@/types/database';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { TeamService, TeamData } from '@/lib/services/features/team-service';
+import type { 
+  TeamMember,
+  TeamTask,
+  TeamResponsibilityMatrix
+} from '@/store/types';
 
-// Database types for team tables
-type TeamMember = Database['public']['Tables']['team_members']['Row'];
-type TeamTask = Database['public']['Tables']['team_tasks']['Row'];
-type TeamResponsibilityMatrix = Database['public']['Tables']['team_responsibility_matrix']['Row'];
+// Create service instance
+const teamService = new TeamService(createClient());
 
-// Combined type for all team data
-type TeamData = {
-  members: TeamMember[];
-  tasks: TeamTask[];
-  responsibilities: TeamResponsibilityMatrix[];
-};
+export interface UseTeamReturn {
+  data: TeamData;
+  isLoading: boolean;
+  error: Error | null;
 
-// Base type for any team item
-type BaseItem = {
-  id: string;
-  created_at: string | null;
-  updated_at: string | null;
-  project_id: string | null;
-  created_by: string | null;
-};
+  // Team Members
+  addMember: (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateMember: (params: { id: string; data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deleteMember: (id: string) => void;
 
-// Type for any team item
-type TeamItem = BaseItem & (
-  | Omit<TeamMember, keyof BaseItem>
-  | Omit<TeamTask, keyof BaseItem>
-  | Omit<TeamResponsibilityMatrix, keyof BaseItem>
-);
+  // Team Tasks
+  addTask: (task: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateTask: (params: { id: string; data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deleteTask: (id: string) => void;
 
-/**
- * Hook for managing team data in a project
- * @param projectId - The ID of the current project
- */
-export function useTeam(projectId: string | undefined) {
-  const featureData = useFeatureData<TeamData, TeamItem>(
-    projectId,
-    'team',
-    {
-      defaultData: {
-        members: [],
-        tasks: [],
-        responsibilities: []
-      }
+  // Team Responsibility Matrix
+  addResponsibility: (responsibility: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateResponsibility: (params: { id: string; data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  deleteResponsibility: (id: string) => void;
+}
+
+export function useTeam(projectId: string | undefined): UseTeamReturn {
+  const queryClient = useQueryClient();
+
+  // Query keys for different data types
+  const queryKeys = {
+    all: ['team', projectId] as const,
+    members: ['team', projectId, 'members'] as const,
+    tasks: ['team', projectId, 'tasks'] as const,
+    responsibilities: ['team', projectId, 'responsibilities'] as const,
+  };
+
+  // Main query to fetch all team data
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.all,
+    queryFn: () => {
+      if (!projectId) throw new Error('Project ID is required');
+      return teamService.getAllTeamData(projectId);
+    },
+    enabled: !!projectId
+  });
+
+  // === Team Members Mutations ===
+  const addMemberMutation = useMutation({
+    mutationFn: (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      return teamService.addMember(projectId, member);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
     }
-  );
+  });
 
-  // ===== Team Members =====
-  const addTeamMember = useCallback(async (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...member,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as TeamItem, 'members');
-  }, [featureData, projectId]);
+  const updateMemberMutation = useMutation({
+    mutationFn: (params: { id: string; data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>> }) => {
+      return teamService.updateMember(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updateTeamMember = useCallback((id: string, data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<TeamItem>, 'members');
-  }, [featureData]);
+  const deleteMemberMutation = useMutation({
+    mutationFn: (id: string) => {
+      return teamService.deleteMember(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const deleteTeamMember = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'members');
-  }, [featureData]);
+  // === Team Tasks Mutations ===
+  const addTaskMutation = useMutation({
+    mutationFn: (task: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      return teamService.addTask(projectId, task);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  // ===== Team Tasks =====
-  const addTeamTask = useCallback(async (task: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...task,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as TeamItem, 'tasks');
-  }, [featureData, projectId]);
+  const updateTaskMutation = useMutation({
+    mutationFn: (params: { id: string; data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>> }) => {
+      return teamService.updateTask(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updateTeamTask = useCallback((id: string, data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<TeamItem>, 'tasks');
-  }, [featureData]);
+  const deleteTaskMutation = useMutation({
+    mutationFn: (id: string) => {
+      return teamService.deleteTask(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const deleteTeamTask = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'tasks');
-  }, [featureData]);
+  // === Team Responsibility Matrix Mutations ===
+  const addResponsibilityMutation = useMutation({
+    mutationFn: (responsibility: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!projectId) throw new Error('Project ID is required');
+      return teamService.addResponsibility(projectId, responsibility);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  // ===== Team Responsibility Matrix =====
-  const addTeamResponsibility = useCallback(async (responsibility: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!projectId) throw new Error('Project ID is required');
-    return featureData.addItem({
-      ...responsibility,
-      project_id: projectId,
-      created_at: null,
-      updated_at: null
-    } as TeamItem, 'responsibilities');
-  }, [featureData, projectId]);
+  const updateResponsibilityMutation = useMutation({
+    mutationFn: (params: { id: string; data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>> }) => {
+      return teamService.updateResponsibility(params.id, params.data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
-  const updateTeamResponsibility = useCallback((id: string, data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>>) => {
-    return featureData.updateItem(id, data as Partial<TeamItem>, 'responsibilities');
-  }, [featureData]);
-
-  const deleteTeamResponsibility = useCallback((id: string) => {
-    return featureData.deleteItem(id, 'responsibilities');
-  }, [featureData]);
-
-  // Advanced operations
-  const getTeamStats = useCallback(() => {
-    const { members, tasks } = featureData.data || { members: [], tasks: [] };
-    
-    const totalMembers = members.length;
-    const totalTasks = tasks.length;
-    const tasksPerMember = totalMembers > 0 ? totalTasks / totalMembers : 0;
-    
-    const tasksByStatus = tasks.reduce((acc, task) => {
-      const status = task.status || 'not-started';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return {
-      totalMembers,
-      totalTasks,
-      tasksPerMember,
-      tasksByStatus
-    };
-  }, [featureData.data]);
-
-  const getTeamMemberTasks = useCallback((memberId: string) => {
-    const { tasks } = featureData.data || { tasks: [] };
-    return tasks.filter(task => task.team_member_id === memberId);
-  }, [featureData.data]);
+  const deleteResponsibilityMutation = useMutation({
+    mutationFn: (id: string) => {
+      return teamService.deleteResponsibility(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
+    }
+  });
 
   return {
-    // Raw data
-    data: featureData.data,
-    isLoading: featureData.isLoading,
-    error: featureData.error,
-    
+    data: data || {
+      members: [],
+      tasks: [],
+      responsibilities: []
+    },
+    isLoading,
+    error: error as Error | null,
+
     // Team Members
-    members: featureData.data?.members || [],
-    addTeamMember,
-    updateTeamMember,
-    deleteTeamMember,
-    
+    addMember: addMemberMutation.mutate,
+    updateMember: updateMemberMutation.mutate,
+    deleteMember: deleteMemberMutation.mutate,
+
     // Team Tasks
-    tasks: featureData.data?.tasks || [],
-    addTeamTask,
-    updateTeamTask,
-    deleteTeamTask,
-    
+    addTask: addTaskMutation.mutate,
+    updateTask: updateTaskMutation.mutate,
+    deleteTask: deleteTaskMutation.mutate,
+
     // Team Responsibility Matrix
-    responsibilities: featureData.data?.responsibilities || [],
-    addTeamResponsibility,
-    updateTeamResponsibility,
-    deleteTeamResponsibility,
-    
-    // Advanced operations
-    getTeamStats,
-    getTeamMemberTasks,
+    addResponsibility: addResponsibilityMutation.mutate,
+    updateResponsibility: updateResponsibilityMutation.mutate,
+    deleteResponsibility: deleteResponsibilityMutation.mutate,
   };
 } 

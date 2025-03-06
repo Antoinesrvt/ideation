@@ -1,13 +1,19 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Project, ProjectDetails } from '@/types';
-import { useProjectStore } from './project-store';
-import type { ProjectState, ProjectStore } from './types';
+import { useProjectStore, diffMetadataAtom } from './project-store';
+import type { 
+  ProjectState, 
+  ProjectStore, 
+  DiffMetadata, 
+  FeatureDiff, 
+  ItemDiff, 
+  ChangeType 
+} from './types';
 
 interface AppState {
   // Current project
-  currentProject: ProjectDetails | null;
-  setCurrentProject: (project: ProjectDetails | null) => void;
+  currentProject: string | null;
+  setCurrentProject: (project: string | null) => void;
   
   // UI state
   activeSection: 'overview' | 'canvas' | 'grp' | 'market' | 'userflow' | 'documents' | 'external-tools';
@@ -60,5 +66,12 @@ export const useAppStore = create<AppState>()(
   }))
 );
 
-export { useProjectStore };
-export type { ProjectState, ProjectStore };
+export { useProjectStore, diffMetadataAtom };
+export type { 
+  ProjectState, 
+  ProjectStore, 
+  DiffMetadata, 
+  FeatureDiff, 
+  ItemDiff, 
+  ChangeType 
+};

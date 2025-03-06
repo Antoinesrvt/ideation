@@ -1,6 +1,14 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Check, X, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { 
+  RotateCw,
+  Check, 
+  X, 
+  PlusCircle, 
+  Pencil, 
+  Trash 
+} from 'lucide-react';
 import { useAIStore } from '@/hooks/useAIStore';
 
 interface AIComparisonControlsProps {
@@ -9,6 +17,12 @@ interface AIComparisonControlsProps {
   isComparingChanges: boolean;
   className?: string;
   showBanner?: boolean;
+  diffSummary?: {
+    total: number;
+    added: number;
+    modified: number;
+    deleted: number;
+  };
 }
 
 export const AIComparisonControls: React.FC<AIComparisonControlsProps> = ({
@@ -17,35 +31,41 @@ export const AIComparisonControls: React.FC<AIComparisonControlsProps> = ({
   isComparingChanges,
   className = '',
   showBanner = true,
+  diffSummary = { total: 0, added: 0, modified: 0, deleted: 0 }
 }) => {
   if (!isComparingChanges) return null;
 
   return (
     <div className={`${className}`}>
-      {showBanner && (
-        <div className="bg-blue-50 px-4 py-3 rounded-lg flex items-center mb-4">
-          <AlertCircle className="h-5 w-5 text-blue-500 mr-2" />
-          <span className="text-blue-700 text-sm font-medium">
-            Viewing AI-suggested changes. Review the differences and apply or reject them.
+      {showBanner && <AIComparisonBanner isComparingChanges={isComparingChanges} diffSummary={diffSummary} />}
+      
+      <div className="p-3 bg-white border-t border-blue-100 shadow-lg flex justify-between items-center">
+        <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <span className="font-medium">Viewing AI suggested changes</span>
+          <span className="px-2 py-1 bg-blue-50 rounded-full text-xs font-medium">
+            {diffSummary.total} changes
           </span>
         </div>
-      )}
-
-      <div className="flex justify-end gap-2">
-        <Button 
-          variant="outline" 
-          className="text-gray-600" 
-          onClick={onReject}
-        >
-          <X className="mr-2 h-4 w-4" /> Reject Changes
-        </Button>
-        <Button 
-          variant="default" 
-          className="bg-green-600 hover:bg-green-700 text-white" 
-          onClick={onApply}
-        >
-          <Check className="mr-2 h-4 w-4" /> Apply Changes
-        </Button>
+        
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            onClick={onReject}
+            className="flex items-center"
+            size="sm"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Discard
+          </Button>
+          <Button 
+            onClick={onApply}
+            className="flex items-center"
+            size="sm"
+          >
+            <Check className="w-4 h-4 mr-1" />
+            Apply Changes
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -54,15 +74,41 @@ export const AIComparisonControls: React.FC<AIComparisonControlsProps> = ({
 export const AIComparisonBanner: React.FC<{
   isComparingChanges: boolean;
   className?: string;
-}> = ({ isComparingChanges, className = '' }) => {
+  diffSummary?: {
+    total: number;
+    added: number;
+    modified: number;
+    deleted: number;
+  };
+}> = ({ 
+  isComparingChanges, 
+  className = '',
+  diffSummary = { total: 0, added: 0, modified: 0, deleted: 0 }
+}) => {
   if (!isComparingChanges) return null;
 
   return (
-    <div className={`bg-blue-50 px-4 py-3 rounded-lg flex items-center mb-4 ${className}`}>
-      <AlertCircle className="h-5 w-5 text-blue-500 mr-2" />
-      <span className="text-blue-700 text-sm font-medium">
-        Viewing AI-suggested changes
-      </span>
+    <div className={`bg-blue-50 py-2 px-4 border-t border-b border-blue-200 ${className}`}>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <span className="font-medium text-blue-800">AI Suggested Changes</span>
+          
+          <div className="flex space-x-3 text-sm">
+            <div className="flex items-center text-green-600">
+              <PlusCircle className="w-4 h-4 mr-1" />
+              <span>{diffSummary.added} added</span>
+            </div>
+            <div className="flex items-center text-blue-600">
+              <Pencil className="w-4 h-4 mr-1" />
+              <span>{diffSummary.modified} modified</span>
+            </div>
+            <div className="flex items-center text-red-600">
+              <Trash className="w-4 h-4 mr-1" />
+              <span>{diffSummary.deleted} deleted</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -85,48 +131,39 @@ export const AIInstructionPrompt: React.FC<{
   className = '',
 }) => {
   return (
-    <div className={`relative mt-6 ${className}`}>
-      <div className="flex flex-col">
-        <div className="flex items-center justify-between mb-2">
-          <label htmlFor="ai-prompt" className="text-sm font-medium text-gray-700">
-            AI Assistance
-          </label>
-          <span className="text-xs text-gray-500">
-            Powered by OpenAI
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            id="ai-prompt"
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={disabled || isLoading}
-            placeholder={placeholder}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                onSubmit();
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            disabled={disabled || isLoading || !value.trim()}
-            onClick={onSubmit}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+    <div className={`flex items-center space-x-2 bg-white p-2 rounded-lg shadow-lg border border-gray-200 ${className}`}>
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="flex-1"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !disabled) {
+            onSubmit();
+          }
+        }}
+      />
+      <Button 
+        onClick={onSubmit}
+        disabled={disabled || !value.trim()}
+        size="icon"
+        className="h-8 w-8"
+      >
+        {isLoading ? (
+          <RotateCw className="h-4 w-4 animate-spin" />
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-4 w-4"
           >
-            {isLoading ? 'Processing...' : 'Send'}
-          </Button>
-        </div>
-      </div>
-
-      {isLoading && (
-        <div className="mt-2 text-sm text-blue-600 animate-pulse">
-          Analyzing your project and generating suggestions...
-        </div>
-      )}
+            <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
+          </svg>
+        )}
+      </Button>
     </div>
   );
 }; 

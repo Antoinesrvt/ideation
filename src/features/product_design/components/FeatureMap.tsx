@@ -1,22 +1,17 @@
 import React, { useState } from 'react';
 import { PlusCircle, HelpCircle, AlertCircle, Tag, PlayCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
-import { Feature } from '@/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ProductFeature } from '@/store/types';
 
 interface FeatureMapProps {
-  features: Feature[];
+  features: ProductFeature[];
   onAddFeature: (priority: 'must' | 'should' | 'could' | 'wont') => void;
   onEditFeature?: (id: string) => void;
 }
@@ -149,9 +144,9 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
                   <Badge variant="outline" className={priorityBadgeColors[priority]}>
                     {priorityLabels[priority].split(' ')[0]}
                   </Badge>
-                  <Badge variant="outline" className={statusColors[feature.status]}>
-                    {statusIcons[feature.status]}
-                    {statusLabels[feature.status]}
+                  <Badge variant="outline" className={statusColors[(feature.status || 'planned') as 'planned' | 'in-progress' | 'completed']}>
+                    {statusIcons[(feature.status || 'planned') as 'planned' | 'in-progress' | 'completed']}
+                    {statusLabels[(feature.status || 'planned') as 'planned' | 'in-progress' | 'completed']}
                   </Badge>
                 </div>
               </div>

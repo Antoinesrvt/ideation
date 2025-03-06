@@ -2,8 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import './Header.css';
+import { useRouter } from 'next/navigation';
+import { useSupabase } from '@/context/supabase-context';
 
 export default function Header() {
+      const router = useRouter();
+      const { user, loading } = useSupabase();
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -48,7 +53,7 @@ export default function Header() {
           </nav>
           
           <div className="header-actions">
-            <a href="#" className="header-action-link">Login</a>
+            <a href="#" onClick={() => router.push(user ? '/dashboard' : '/login')} className="header-action-link">{user ? 'Dashboard' : 'Login'}</a>
             <a href="#cta" className="btn btn-primary">Start Free Trial</a>
           </div>
           

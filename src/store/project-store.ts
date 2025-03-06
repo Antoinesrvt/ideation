@@ -45,6 +45,10 @@ import {
   RelatedItem,
   ProjectTag,
   FeatureItemTag,
+  // Diff types
+  DiffMetadata,
+  FeatureDiff,
+  ChangeType
 } from './types';
 
 // Initial state
@@ -98,11 +102,50 @@ const initialState: ProjectState = {
   comparisonMode: false,
 };
 
+// Initial diff metadata
+const initialDiffMetadata: DiffMetadata = {
+  project: { additions: [], modifications: [], deletions: [] },
+  canvasSections: { additions: [], modifications: [], deletions: [] },
+  canvasItems: { additions: [], modifications: [], deletions: [] },
+  grpCategories: { additions: [], modifications: [], deletions: [] },
+  grpSections: { additions: [], modifications: [], deletions: [] },
+  grpItems: { additions: [], modifications: [], deletions: [] },
+  marketPersonas: { additions: [], modifications: [], deletions: [] },
+  marketInterviews: { additions: [], modifications: [], deletions: [] },
+  marketCompetitors: { additions: [], modifications: [], deletions: [] },
+  marketTrends: { additions: [], modifications: [], deletions: [] },
+  productWireframes: { additions: [], modifications: [], deletions: [] },
+  productFeatures: { additions: [], modifications: [], deletions: [] },
+  productJourneyStages: { additions: [], modifications: [], deletions: [] },
+  productJourneyActions: { additions: [], modifications: [], deletions: [] },
+  productJourneyPainPoints: { additions: [], modifications: [], deletions: [] },
+  financialRevenueStreams: { additions: [], modifications: [], deletions: [] },
+  financialCostStructure: { additions: [], modifications: [], deletions: [] },
+  financialPricingStrategies: { additions: [], modifications: [], deletions: [] },
+  financialProjections: { additions: [], modifications: [], deletions: [] },
+  validationExperiments: { additions: [], modifications: [], deletions: [] },
+  validationABTests: { additions: [], modifications: [], deletions: [] },
+  validationUserFeedback: { additions: [], modifications: [], deletions: [] },
+  validationHypotheses: { additions: [], modifications: [], deletions: [] },
+  teamMembers: { additions: [], modifications: [], deletions: [] },
+  teamTasks: { additions: [], modifications: [], deletions: [] },
+  teamResponsibilityMatrix: { additions: [], modifications: [], deletions: [] },
+  documents: { additions: [], modifications: [], deletions: [] },
+  documentCollaborators: { additions: [], modifications: [], deletions: [] },
+  notifications: { additions: [], modifications: [], deletions: [] },
+  relatedItems: { additions: [], modifications: [], deletions: [] },
+  projectTags: { additions: [], modifications: [], deletions: [] },
+  featureItemTags: { additions: [], modifications: [], deletions: [] },
+};
+
 // Create the base atom
 export const baseAtom = atom<ProjectState>(initialState);
 
 // Create atoms for persisted UI state
 export const comparisonModeAtom = atomWithStorage('projectComparisonMode', false);
+
+// Create atom for diff metadata
+export const diffMetadataAtom = atom<DiffMetadata>(initialDiffMetadata);
 
 // Helper function to update arrays
 const updateArray = <T extends { id: string }>(
@@ -119,10 +162,188 @@ const updateArray = <T extends { id: string }>(
   ];
 };
 
+// Helper function to calculate diff between two arrays
+const calculateArrayDiff = <T extends { id: string }>(
+  currentArray: T[],
+  stagedArray: T[]
+): FeatureDiff => {
+  const currentIds = new Set(currentArray.map(item => item.id));
+  const stagedIds = new Set(stagedArray.map(item => item.id));
+  
+  // Find additions (items in staged but not in current)
+  const additions = stagedArray
+    .filter(item => !currentIds.has(item.id))
+    .map(item => item.id);
+  
+  // Find deletions (items in current but not in staged)
+  const deletions = currentArray
+    .filter(item => !stagedIds.has(item.id))
+    .map(item => item.id);
+  
+  // Find modifications (items in both but with different values)
+  const modifications = stagedArray
+    .filter(stagedItem => {
+      const currentItem = currentArray.find(c => c.id === stagedItem.id);
+      if (!currentItem) return false;
+      
+      // Compare all properties except id
+      return JSON.stringify(stagedItem) !== JSON.stringify(currentItem);
+    })
+    .map(item => item.id);
+  
+  return {
+    additions,
+    modifications,
+    deletions
+  };
+};
+
 // Create the store with all actions
 export function useProjectStore(): ProjectStore {
   const [state, setState] = useAtom(baseAtom);
   const [comparisonMode, setComparisonMode] = useAtom(comparisonModeAtom);
+  const [diffMetadata, setDiffMetadata] = useAtom(diffMetadataAtom);
+
+  // Calculate diff between current and staged data
+  const calculateDiff = useCallback(() => {
+    if (!state.stagedData) {
+      setDiffMetadata(initialDiffMetadata);
+      return;
+    }
+    
+    const newDiffMetadata: DiffMetadata = { ...initialDiffMetadata };
+    
+    // Calculate diff for each feature
+    Object.keys(state.currentData).forEach(featureKey => {
+      const feature = featureKey as keyof ProjectState['currentData'];
+      
+      // Skip if feature is not an array
+      if (!Array.isArray(state.currentData[feature])) {
+        return;
+      }
+      
+      // Calculate diff for this feature
+      newDiffMetadata[feature] = calculateArrayDiff(
+        state.currentData[feature] as any[],
+        state.stagedData![feature] as any[]
+      );
+    });
+    
+    setDiffMetadata(newDiffMetadata);
+  }, [state.currentData, state.stagedData, setDiffMetadata]);
+  
+  // Get change type for a specific item
+  const getItemChangeType = useCallback((
+    feature: keyof ProjectState['currentData'],
+    id: string
+  ): ChangeType => {
+    if (!diffMetadata[feature]) return 'unchanged';
+    
+    if (diffMetadata[feature]!.additions.includes(id)) return 'added';
+    if (diffMetadata[feature]!.modifications.includes(id)) return 'modified';
+    if (diffMetadata[feature]!.deletions.includes(id)) return 'deleted';
+    
+    return 'unchanged';
+  }, [diffMetadata]);
+  
+  // Apply selected changes
+  const applySelectedChanges = useCallback((changeSelections: Record<string, boolean>) => {
+    if (!state.stagedData) return;
+    
+    setState(prev => {
+      const newCurrentData = { ...prev.currentData };
+      
+      // Process each selected change
+      Object.entries(changeSelections).forEach(([changeId, isSelected]) => {
+        if (!isSelected) return;
+        
+        const [featureKey, id] = changeId.split(':');
+        const feature = featureKey as keyof ProjectState['currentData'];
+        
+        // Skip if feature is not an array
+        if (!Array.isArray(newCurrentData[feature])) return;
+        
+        const changeType = getItemChangeType(feature, id);
+        
+        if (changeType === 'added' || changeType === 'modified') {
+          // Find the item in staged data
+          const stagedItem = (state.stagedData![feature] as any[]).find(item => item.id === id);
+          if (!stagedItem) return;
+          
+          // Add or update the item in current data
+          const index = (newCurrentData[feature] as any[]).findIndex(item => item.id === id);
+          if (index >= 0) {
+            // Update existing item
+            (newCurrentData[feature] as any[])[index] = stagedItem;
+          } else {
+            // Add new item
+            (newCurrentData[feature] as any[]) = [...(newCurrentData[feature] as any[]), stagedItem];
+          }
+        } else if (changeType === 'deleted') {
+          // Remove the item from current data
+          (newCurrentData[feature] as any[]) = (newCurrentData[feature] as any[]).filter(item => item.id !== id);
+        }
+      });
+      
+      return {
+        ...prev,
+        currentData: newCurrentData
+      };
+    });
+    
+    // Recalculate diff after applying changes
+    calculateDiff();
+  }, [state.stagedData, setState, getItemChangeType, calculateDiff]);
+  
+  // Discard selected changes
+  const discardSelectedChanges = useCallback((changeSelections: Record<string, boolean>) => {
+    if (!state.stagedData) return;
+    
+    setState(prev => {
+      const newStagedData = { ...prev.stagedData! };
+      
+      // Process each selected change
+      Object.entries(changeSelections).forEach(([changeId, isSelected]) => {
+        if (!isSelected) return;
+        
+        const [featureKey, id] = changeId.split(':');
+        const feature = featureKey as keyof ProjectState['currentData'];
+        
+        // Skip if feature is not an array
+        if (!Array.isArray(newStagedData[feature])) return;
+        
+        const changeType = getItemChangeType(feature, id);
+        
+        if (changeType === 'added') {
+          // Remove the added item from staged data
+          (newStagedData[feature] as any[]) = (newStagedData[feature] as any[]).filter(item => item.id !== id);
+        } else if (changeType === 'modified') {
+          // Revert to the original item from current data
+          const currentItem = (prev.currentData[feature] as any[]).find(item => item.id === id);
+          if (!currentItem) return;
+          
+          const index = (newStagedData[feature] as any[]).findIndex(item => item.id === id);
+          if (index >= 0) {
+            (newStagedData[feature] as any[])[index] = currentItem;
+          }
+        } else if (changeType === 'deleted') {
+          // Restore the deleted item from current data
+          const currentItem = (prev.currentData[feature] as any[]).find(item => item.id === id);
+          if (!currentItem) return;
+          
+          (newStagedData[feature] as any[]) = [...(newStagedData[feature] as any[]), currentItem];
+        }
+      });
+      
+      return {
+        ...prev,
+        stagedData: newStagedData
+      };
+    });
+    
+    // Recalculate diff after discarding changes
+    calculateDiff();
+  }, [state.stagedData, setState, getItemChangeType, calculateDiff]);
 
   // Set the entire current data state
   const setCurrentData = useCallback((data: ProjectState['currentData']) => {
@@ -138,7 +359,14 @@ export function useProjectStore(): ProjectStore {
       ...prev,
       stagedData: data
     }));
-  }, [setState]);
+    
+    // Calculate diff when staged data changes
+    if (data) {
+      calculateDiff();
+    } else {
+      setDiffMetadata(initialDiffMetadata);
+    }
+  }, [setState, calculateDiff, setDiffMetadata]);
 
   // Commit staged changes
   const commitStagedChanges = useCallback(() => {
@@ -151,7 +379,10 @@ export function useProjectStore(): ProjectStore {
         comparisonMode: false
       };
     });
-  }, [setState]);
+    
+    // Reset diff metadata after committing
+    setDiffMetadata(initialDiffMetadata);
+  }, [setState, setDiffMetadata]);
 
   // Discard staged changes
   const discardStagedChanges = useCallback(() => {
@@ -160,12 +391,22 @@ export function useProjectStore(): ProjectStore {
       stagedData: null,
       comparisonMode: false
     }));
-  }, [setState]);
+    
+    // Reset diff metadata after discarding
+    setDiffMetadata(initialDiffMetadata);
+  }, [setState, setDiffMetadata]);
 
   return {
     // State
     ...state,
     comparisonMode,
+    diffMetadata,
+
+    // Diff tracking
+    calculateDiff,
+    getItemChangeType,
+    applySelectedChanges,
+    discardSelectedChanges,
 
     // Core actions
     setCurrentData,

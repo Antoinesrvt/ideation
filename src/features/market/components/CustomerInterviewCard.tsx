@@ -1,20 +1,18 @@
 import React from 'react';
-import { ChevronRight, FileText, CalendarIcon, Info, MessageCircle, Edit } from 'lucide-react';
-import { CustomerInterview } from '@/types';
+import { FileText, CalendarIcon, Info, MessageCircle, Edit, Trash } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CustomerInterviewCardProps } from '../types';
 
-interface CustomerInterviewCardProps {
-  interview: CustomerInterview;
-  onView?: (id: string) => void;
-}
-
-export const CustomerInterviewCard: React.FC<CustomerInterviewCardProps> = ({ 
+export function CustomerInterviewCard({ 
   interview,
-  onView 
-}) => {
+  onEdit,
+  onUpdate,
+  onDelete,
+  readOnly = false
+}: CustomerInterviewCardProps) {
   const getSentimentColor = (sentiment: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -45,10 +43,21 @@ export const CustomerInterviewCard: React.FC<CustomerInterviewCardProps> = ({
     return sentences.slice(0, 2).map(s => s.trim());
   };
   
-  const keyInsights = extractKeyInsights(interview.notes);
+  const keyInsights = interview.key_insights || extractKeyInsights(interview.notes || '');
+  
+  // Ensure sentiment is one of the valid values
+  const sentiment: 'positive' | 'neutral' | 'negative' = 
+    interview.sentiment === 'positive' ? 'positive' :
+    interview.sentiment === 'negative' ? 'negative' : 
+    'neutral';
   
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div className={`bg-white border rounded-lg p-4 transition-shadow ${
+      interview.status === 'new' ? 'border-green-300 shadow-green-100' :
+      interview.status === 'modified' ? 'border-yellow-300 shadow-yellow-100' :
+      interview.status === 'removed' ? 'border-red-300 shadow-red-100' :
+      'border-gray-200 hover:shadow-md'
+    }`}>
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center">
           <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center mr-3">
@@ -62,13 +71,13 @@ export const CustomerInterviewCard: React.FC<CustomerInterviewCardProps> = ({
             </h3>
             <div className="flex items-center text-sm text-gray-500">
               <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-              <span>{formatDate(interview.date)}</span>
+              <span>{formatDate(interview.interview_date || '')}</span>
             </div>
           </div>
         </div>
-        <Badge variant="outline" className={`flex items-center gap-1 ${getSentimentColor(interview.sentiment)}`}>
-          {getSentimentIcon(interview.sentiment)}
-          <span>{interview.sentiment.charAt(0).toUpperCase() + interview.sentiment.slice(1)}</span>
+        <Badge variant="outline" className={`flex items-center gap-1 ${getSentimentColor(sentiment)}`}>
+          {getSentimentIcon(sentiment)}
+          <span>{sentiment.charAt(0).toUpperCase() + sentiment.slice(1)}</span>
         </Badge>
       </div>
       
@@ -102,15 +111,44 @@ export const CustomerInterviewCard: React.FC<CustomerInterviewCardProps> = ({
         </div>
       )}
       
-      <Button 
-        variant="ghost" 
-        size="sm"
-        className="text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
-        onClick={() => onView && onView(interview.id)}
-      >
-        <Edit className="h-3.5 w-3.5" />
-        View Details
-      </Button>
+      {interview.tags && interview.tags.length > 0 && (
+        <div className="mb-3">
+          <p className="text-sm font-medium text-gray-700 mb-1">Tags</p>
+          <div className="flex flex-wrap gap-1">
+            {interview.tags.map((tag, index) => (
+              <Badge key={index} variant="secondary" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {!readOnly && (
+        <div className="flex justify-between">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-blue-600 flex items-center gap-1 hover:bg-blue-50 px-2.5 py-1.5"
+            onClick={() => onEdit?.(interview.id)}
+          >
+            <Edit className="h-3.5 w-3.5" />
+            Edit Interview
+          </Button>
+          
+          {onDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-red-600 flex items-center gap-1 hover:bg-red-50 px-2.5 py-1.5"
+              onClick={() => onDelete(interview.id)}
+            >
+              <Trash className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
-};
+}
