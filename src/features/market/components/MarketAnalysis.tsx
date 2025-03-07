@@ -22,6 +22,8 @@ import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
 import { useParams } from 'next/navigation';
 import TabList from "@/features/common/components/TabList";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { useToast } from '@/components/ui/use-toast';
+import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
 
 const marketTabs = [
   {
@@ -46,9 +48,6 @@ const marketTabs = [
   },
 ];
 import { SectionTab } from '@/components/ui/section-tab';
-
-// Define animation variants at the top level after imports
-// Add these after the marketTabs declaration
 
 // Animation variants for the tab content
 const tabContentVariants = {
@@ -94,6 +93,7 @@ const itemVariants = {
 export function MarketAnalysis() {
   const params = useParams();
   const projectId = typeof params.id === 'string' ? params.id : undefined;
+  const { toast } = useToast();
   
   const { 
     data,
@@ -156,65 +156,239 @@ export function MarketAnalysis() {
     };
   }, [data]);
 
-  const handleAddPersona = () => {
+  const handleAddPersona = async () => {
     if (!projectId) return;
     
-    addPersona({
-      name: 'New Persona',
-      role: null,
-      demographics: null,
-      pain_points: null,
-      goals: null,
-      project_id: projectId,
-      created_by: null
-    });
+    try {
+      await addPersona({
+        name: 'New Persona',
+        role: null,
+        demographics: null,
+        pain_points: null,
+        goals: null,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'New persona has been added',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to add persona',
+        variant: 'destructive'
+      });
+    }
   };
   
-  const handleAddInterview = () => {
+  const handleAddInterview = async () => {
     if (!projectId) return;
     
-    addInterview({
-      name: 'New Interview',
-      company: null,
-      interview_date: new Date().toISOString(),
-      sentiment: null,
-      notes: null,
-      key_insights: null,
-      tags: null,
-      project_id: projectId,
-      created_by: null
-    });
+    try {
+      await addInterview({
+        name: 'New Interview',
+        company: null,
+        interview_date: new Date().toISOString(),
+        sentiment: null,
+        notes: null,
+        key_insights: null,
+        tags: null,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'New interview has been added',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to add interview',
+        variant: 'destructive'
+      });
+    }
   };
   
-  const handleAddCompetitor = () => {
+  const handleAddCompetitor = async () => {
     if (!projectId) return;
     
-    addCompetitor({
-      name: 'New Competitor',
-      website: null,
-      strengths: null,
-      weaknesses: null,
-      price: null,
-      market_share: null,
-      notes: null,
-      project_id: projectId,
-      created_by: null
-    });
+    try {
+      await addCompetitor({
+        name: 'New Competitor',
+        website: null,
+        strengths: null,
+        weaknesses: null,
+        price: null,
+        market_share: null,
+        notes: null,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'New competitor has been added',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to add competitor',
+        variant: 'destructive'
+      });
+    }
   };
   
-  const handleAddTrend = () => {
+  const handleAddTrend = async () => {
     if (!projectId) return;
     
-    addTrend({
-      name: 'New Trend',
-      direction: null,
-      trend_type: null,
-      description: null,
-      tags: null,
-      sources: null,
-      project_id: projectId,
-      created_by: null
-    });
+    try {
+      await addTrend({
+        name: 'New Trend',
+        direction: null,
+        trend_type: null,
+        description: null,
+        tags: null,
+        sources: null,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'New trend has been added',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to add trend',
+        variant: 'destructive'
+      });
+    }
+  };
+  
+  // Handle updates with proper error handling
+  const handleUpdatePersona = async (params: { id: string; data: any }) => {
+    try {
+      await updatePersona(params);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update persona',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleUpdateInterview = async (params: { id: string; data: any }) => {
+    try {
+      await updateInterview(params);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update interview',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleUpdateCompetitor = async (params: { id: string; data: any }) => {
+    try {
+      await updateCompetitor(params);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update competitor',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleUpdateTrend = async (params: { id: string; data: any }) => {
+    try {
+      await updateTrend(params);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update trend',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Handle deletions with proper error handling
+  const handleDeletePersona = async (id: string) => {
+    try {
+      await deletePersona(id);
+      toast({
+        title: 'Success',
+        description: 'Persona has been deleted',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete persona',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteInterview = async (id: string) => {
+    try {
+      await deleteInterview(id);
+      toast({
+        title: 'Success',
+        description: 'Interview has been deleted',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete interview',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteCompetitor = async (id: string) => {
+    try {
+      await deleteCompetitor(id);
+      toast({
+        title: 'Success',
+        description: 'Competitor has been deleted',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete competitor',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleDeleteTrend = async (id: string) => {
+    try {
+      await deleteTrend(id);
+      toast({
+        title: 'Success',
+        description: 'Trend has been deleted',
+        variant: 'default'
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete trend',
+        variant: 'destructive'
+      });
+    }
   };
   
   // Toggle help section visibility
@@ -228,26 +402,17 @@ export function MarketAnalysis() {
   // Add state for the active tab
   const [activeTab, setActiveTab] = useState<string>("personas");
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full w-f">
-        <div className="text-center">
-          <Activity className="h-8 w-8 animate-spin text-gray-400 mb-4" />
-          <p className="text-gray-500">Loading market analysis data...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mb-4" />
-          <p className="text-red-500">Error loading market analysis data</p>
-          <p className="text-gray-500 text-sm mt-2">{error.message}</p>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <ErrorState 
+            error={error} 
+            onRetry={() => window.location.reload()}
+          />
+        </CardContent>
+      </Card>
     );
   }
 
@@ -434,8 +599,8 @@ export function MarketAnalysis() {
                             <CustomerPersonaCard
                               persona={persona}
                               onEdit={(id) => {}}
-                              onUpdate={updatePersona}
-                              onDelete={deletePersona}
+                              onUpdate={handleUpdatePersona}
+                              onDelete={handleDeletePersona}
                             />
                           </motion.div>
                         ))}
@@ -494,8 +659,8 @@ export function MarketAnalysis() {
                             <CustomerInterviewCard
                               interview={interview}
                               onEdit={(id) => {}}
-                              onUpdate={updateInterview}
-                              onDelete={deleteInterview}
+                              onUpdate={handleUpdateInterview}
+                              onDelete={handleDeleteInterview}
                             />
                           </motion.div>
                         ))}
@@ -552,8 +717,8 @@ export function MarketAnalysis() {
                         competitors={data.competitors}
                         onAdd={handleAddCompetitor}
                         onEdit={(id) => {}}
-                        onUpdate={updateCompetitor}
-                        onDelete={deleteCompetitor}
+                        onUpdate={handleUpdateCompetitor}
+                        onDelete={handleDeleteCompetitor}
                       />
                     </SectionTab>
                   </TabsContent>
@@ -608,8 +773,8 @@ export function MarketAnalysis() {
                             <MarketTrendCard
                               trend={trend}
                               onEdit={(id) => {}}
-                              onUpdate={updateTrend}
-                              onDelete={deleteTrend}
+                              onUpdate={handleUpdateTrend}
+                              onDelete={handleDeleteTrend}
                             />
                           </motion.div>
                         ))}

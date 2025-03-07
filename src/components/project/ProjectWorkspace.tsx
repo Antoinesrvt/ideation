@@ -200,12 +200,19 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
                 {activeSection === "validation" && <Validation />}
 
-                {activeSection === "financials" && <FinancialProjections />}
+                {activeSection === "financials" &&
+                // <FinancialProjections />
+                <div>Financials</div>
+                }
 
-                {activeSection === "team" && <TeamManagement />}
+                {activeSection === "team" && 
+                //<TeamManagement />
+                <div>Team</div>
+                }
+
 
                 {activeSection === "documents" && projectDetails && (
-                  <DocumentGenerator projectId={projectDetails.id} />
+                  <DocumentGenerator />
                 )}
 
                 {activeSection === "external-tools" && <ExternalTools />}

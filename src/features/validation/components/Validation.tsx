@@ -60,6 +60,8 @@ import { useProjectStore } from "@/store";
 import { Progress } from "@/components/ui/progress";
 import { SectionTab } from "@/components/ui/section-tab";
 import TabList from '@/features/common/components/TabList';
+import { useToast } from "@/components/ui/use-toast";
+import { LoadingState, ErrorState } from "@/features/common/components/LoadingAndErrorState";
 
 const tabs = [
   // {
@@ -93,6 +95,7 @@ export const Validation: React.FC = () => {
   // Get the current project ID from the store
   const { currentData } = useProjectStore();
   const projectId = currentData.project?.id;
+  const { toast } = useToast();
 
   // Use the validation hook
   const {
@@ -194,217 +197,285 @@ export const Validation: React.FC = () => {
     return summary;
   };
 
-  const handleHypothesisUpdate = (hypothesis: ValidationHypothesis) => {
-    updateHypothesis({
-      id: hypothesis.id,
-      data: {
-        statement: hypothesis.statement,
-        assumptions: hypothesis.assumptions,
-        validation_method: hypothesis.validation_method,
-        status: hypothesis.status,
-        confidence: hypothesis.confidence,
-        evidence: hypothesis.evidence
-      }
-    });
+  // Handle adding experiments
+  const handleAddExperiment = async (experimentData: any) => {
+    try {
+      if (!projectId) throw new Error("No project ID available");
+      
+      await addExperiment({
+        ...experimentData,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      setExperimentFormOpen(false);
+      toast({
+        title: "Experiment added",
+        description: "The experiment has been successfully added",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding experiment",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
-  const renderOverview = () => {
-    const summary = getStatusSummary();
+  // Handle updating experiments
+  const handleUpdateExperiment = async ({ id, data }: { id: string; data: any }) => {
+    try {
+      await updateExperiment({ id, data });
+      toast({
+        title: "Experiment updated",
+        description: "The experiment has been successfully updated",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error updating experiment",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
-    return (
-      <div className="space-y-6 pt-6">
-        <div className="grid grid-cols-2 gap-4">
-          <Card className="p-4 border-l-4 border-l-blue-500">
-            <h3 className="text-lg font-semibold">Why validate your ideas?</h3>
-            <p className="text-sm text-gray-600 mt-2">
-              Validation helps reduce risk and increase the chances of building
-              something people actually want. It's about testing your
-              assumptions before investing significant time and resources.
-            </p>
-          </Card>
-          <Card className="p-4 border-l-4 border-l-green-500">
-            <h3 className="text-lg font-semibold">Validation framework</h3>
-            <p className="text-sm text-gray-600 mt-2">
-              Start with hypotheses, test them through experiments and A/B
-              tests, collect user feedback, and iterate based on what you learn.
-            </p>
-          </Card>
-        </div>
+  // Handle deleting experiments
+  const handleDeleteExperiment = async (id: string) => {
+    try {
+      await deleteExperiment(id);
+      toast({
+        title: "Experiment deleted",
+        description: "The experiment has been successfully deleted",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error deleting experiment",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Validation Progress</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span>Hypotheses</span>
-                <div className="flex items-center">
-                  <span className="text-sm mr-2">
-                    {summary.hypotheses.validated}/{counts.hypotheses}
-                  </span>
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-500"
-                      style={{
-                        width: `${
-                          counts.hypotheses > 0
-                            ? (summary.hypotheses.validated /
-                                counts.hypotheses) *
-                              100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Experiments</span>
-                <div className="flex items-center">
-                  <span className="text-sm mr-2">
-                    {summary.experiments.completed}/{counts.experiments}
-                  </span>
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500"
-                      style={{
-                        width: `${
-                          counts.experiments > 0
-                            ? (summary.experiments.completed /
-                                counts.experiments) *
-                              100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>A/B Tests</span>
-                <div className="flex items-center">
-                  <span className="text-sm mr-2">
-                    {summary.abTests.completed}/{counts.abTests}
-                  </span>
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-purple-500"
-                      style={{
-                        width: `${
-                          counts.abTests > 0
-                            ? (summary.abTests.completed / counts.abTests) * 100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Feedback</span>
-                <div className="flex items-center">
-                  <span className="text-sm mr-2">
-                    {summary.userFeedback.implemented}/{counts.feedback}
-                  </span>
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500"
-                      style={{
-                        width: `${
-                          counts.feedback > 0
-                            ? (summary.userFeedback.implemented /
-                                counts.feedback) *
-                              100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+  // Handle adding AB tests
+  const handleAddABTest = async (testData: any) => {
+    try {
+      if (!projectId) throw new Error("No project ID available");
+      
+      await addABTest({
+        ...testData,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      setABTestFormOpen(false);
+      toast({
+        title: "A/B Test added",
+        description: "The A/B test has been successfully added",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding A/B Test",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
-          <div>
-            <h3 className="text-lg font-semibold mb-3">
-              Recommended Next Steps
-            </h3>
-            <div className="space-y-3">
-              <Card
-                className="p-3 border-l-4 border-l-blue-500 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setActiveTab("hypotheses")}
-              >
-                <div className="flex items-start">
-                  <Lightbulb className="h-5 w-5 mr-2 text-blue-500" />
-                  <div>
-                    <h4 className="font-medium">Create hypotheses</h4>
-                    <p className="text-sm text-gray-600">
-                      Start by documenting what you believe to be true
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
-                </div>
-              </Card>
+  // Handle updating AB tests
+  const handleUpdateABTest = async ({ id, data }: { id: string; data: any }) => {
+    try {
+      await updateABTest({ id, data });
+      toast({
+        title: "A/B Test updated",
+        description: "The A/B test has been successfully updated",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error updating A/B Test",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
-              <Card
-                className="p-3 border-l-4 border-l-indigo-500 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setActiveTab("experiments")}
-              >
-                <div className="flex items-start">
-                  <Beaker className="h-5 w-5 mr-2 text-indigo-500" />
-                  <div>
-                    <h4 className="font-medium">Design experiments</h4>
-                    <p className="text-sm text-gray-600">
-                      Test your most important assumptions
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
-                </div>
-              </Card>
+  // Handle deleting AB tests
+  const handleDeleteABTest = async (id: string) => {
+    try {
+      await deleteABTest(id);
+      toast({
+        title: "A/B Test deleted",
+        description: "The A/B test has been successfully deleted",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error deleting A/B Test",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
-              <Card
-                className="p-3 border-l-4 border-l-amber-500 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setActiveTab("user-feedback")}
-              >
-                <div className="flex items-start">
-                  <MessageSquare className="h-5 w-5 mr-2 text-amber-500" />
-                  <div>
-                    <h4 className="font-medium">Collect feedback</h4>
-                    <p className="text-sm text-gray-600">
-                      Gather insights directly from users
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
-                </div>
-              </Card>
+  // Handle adding user feedback
+  const handleAddUserFeedback = async (feedbackData: any) => {
+    try {
+      if (!projectId) throw new Error("No project ID available");
+      
+      await addUserFeedback({
+        ...feedbackData,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      setUserFeedbackFormOpen(false);
+      toast({
+        title: "User Feedback added",
+        description: "The user feedback has been successfully added",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding user feedback",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
 
-              <Card
-                className="p-3 border-l-4 border-l-purple-500 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => setActiveTab("ab-tests")}
-              >
-                <div className="flex items-start">
-                  <LineChart className="h-5 w-5 mr-2 text-purple-500" />
-                  <div>
-                    <h4 className="font-medium">Run A/B tests</h4>
-                    <p className="text-sm text-gray-600">
-                      Compare alternatives with quantitative data
-                    </p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 ml-auto text-gray-400" />
-                </div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Handle updating user feedback
+  const handleUpdateUserFeedback = async ({ id, data }: { id: string; data: any }) => {
+    try {
+      await updateUserFeedback({ id, data });
+      toast({
+        title: "User Feedback updated",
+        description: "The user feedback has been successfully updated",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error updating user feedback",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle deleting user feedback
+  const handleDeleteUserFeedback = async (id: string) => {
+    try {
+      await deleteUserFeedback(id);
+      toast({
+        title: "User Feedback deleted",
+        description: "The user feedback has been successfully deleted",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error deleting user feedback",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle adding hypotheses
+  const handleAddHypothesis = async (hypothesisData: any) => {
+    try {
+      if (!projectId) throw new Error("No project ID available");
+      
+      await addHypothesis({
+        ...hypothesisData,
+        project_id: projectId,
+        created_by: null
+      });
+      
+      setHypothesisFormOpen(false);
+      toast({
+        title: "Hypothesis added",
+        description: "The hypothesis has been successfully added",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding hypothesis",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle updating hypotheses
+  const handleUpdateHypothesis = async (hypothesis: ValidationHypothesis) => {
+    try {
+      await updateHypothesis({
+        id: hypothesis.id,
+        data: {
+          statement: hypothesis.statement,
+          assumptions: hypothesis.assumptions,
+          validation_method: hypothesis.validation_method,
+          status: hypothesis.status,
+          confidence: hypothesis.confidence,
+          evidence: hypothesis.evidence
+        }
+      });
+      toast({
+        title: "Hypothesis updated",
+        description: "The hypothesis has been successfully updated",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error updating hypothesis",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle deleting hypotheses
+  const handleDeleteHypothesis = async (id: string) => {
+    try {
+      await deleteHypothesis(id);
+      toast({
+        title: "Hypothesis deleted",
+        description: "The hypothesis has been successfully deleted",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error deleting hypothesis",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <LoadingState message="Loading validation data..." />
+        </CardContent>
+      </Card>
+    );
   }
 
   if (error) {
-    return <div>Error: {error.message}</div>;
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <ErrorState 
+            error={error} 
+            onRetry={() => window.location.reload()} 
+          />
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!projectId) {
@@ -631,15 +702,15 @@ export const Validation: React.FC = () => {
             >
               <HypothesesList
                 hypotheses={validationData.hypotheses}
-                onUpdate={handleHypothesisUpdate}
-                onDelete={deleteHypothesis}
+                onUpdate={handleUpdateHypothesis}
+                onDelete={handleDeleteHypothesis}
               />
             </SectionTab>
 
             <HypothesisForm
               open={hypothesisFormOpen}
               onOpenChange={setHypothesisFormOpen}
-              onSubmit={addHypothesis}
+              onSubmit={handleAddHypothesis}
             />
           </TabsContent>
 
@@ -710,15 +781,15 @@ export const Validation: React.FC = () => {
             >
               <ExperimentsList
                 experiments={validationData.experiments}
-                onUpdate={({ id, data }) => updateExperiment({ id, data })}
-                onDelete={deleteExperiment}
+                onUpdate={handleUpdateExperiment}
+                onDelete={handleDeleteExperiment}
               />
             </SectionTab>
 
             <ExperimentForm
               open={experimentFormOpen}
               onOpenChange={setExperimentFormOpen}
-              onSubmit={addExperiment}
+              onSubmit={handleAddExperiment}
             />
           </TabsContent>
 
@@ -788,15 +859,15 @@ export const Validation: React.FC = () => {
             >
               <ABTestsList
                 tests={validationData.abTests}
-                onUpdate={({ id, data }) => updateABTest({ id, data })}
-                onDelete={deleteABTest}
+                onUpdate={handleUpdateABTest}
+                onDelete={handleDeleteABTest}
               />
             </SectionTab>
 
             <ABTestForm
               open={abTestFormOpen}
               onOpenChange={setABTestFormOpen}
-              onSubmit={addABTest}
+              onSubmit={handleAddABTest}
               // hypotheses={validationData.hypotheses}
             />
           </TabsContent>
@@ -870,15 +941,15 @@ export const Validation: React.FC = () => {
             >
               <UserFeedbackList
                 feedback={validationData.userFeedback}
-                onUpdate={({ id, data }) => updateUserFeedback({ id, data })}
-                onDelete={deleteUserFeedback}
+                onUpdate={handleUpdateUserFeedback}
+                onDelete={handleDeleteUserFeedback}
               />
             </SectionTab>
 
             <UserFeedbackForm
               open={userFeedbackFormOpen}
               onOpenChange={setUserFeedbackFormOpen}
-              onSubmit={addUserFeedback}
+              onSubmit={handleAddUserFeedback}
             />
           </TabsContent>
         </Tabs>

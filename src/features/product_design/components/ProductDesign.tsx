@@ -1,20 +1,25 @@
-import React, { useState, useMemo } from 'react';
-import {
-  Tabs,
-  TabsContent,
-  TabsTrigger
-} from '@/components/ui/tabs';
+import React, { useState, useMemo } from "react";
+import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import {
   Check,
   PlusCircle,
@@ -22,101 +27,97 @@ import {
   Info,
   Layout,
   MapPin,
-  Map
+  Map,
+  AlertCircle,
 } from "lucide-react";
 import { WireframeGallery } from "./WireframeGallery";
 import { FeatureMap } from "./FeatureMap";
 import { UserJourneyMap } from "./UserJourneyMap";
 
-import { useProjectStore } from '@/store';
-import { useAIStore } from '@/hooks/useAIStore';
-import { generateId } from '@/lib/utils';
-import TabList from '@/features/common/components/TabList';
-import { SectionTab } from '@/components/ui/section-tab';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { useProjectStore } from "@/store";
+import { useAIStore } from "@/hooks/useAIStore";
+import { generateId } from "@/lib/utils";
+import TabList from "@/features/common/components/TabList";
+import { SectionTab } from "@/components/ui/section-tab";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import {
+  LoadingState,
+  ErrorState,
+} from "@/features/common/components/LoadingAndErrorState";
+import { useProductDesign } from "@/hooks/features/useProductDesign";
+import { useToast } from "@/components/ui/use-toast";
 
 const tabs = [
   {
-    id: 'wireframes',
-    label: 'Wireframes',
-    icon: <Layout className="h-4 w-4 mr-2" />
+    id: "wireframes",
+    label: "Wireframes",
+    icon: <Layout className="h-4 w-4 mr-2" />,
   },
   {
-    id: 'features',
-    label: 'Feature Map',
-    icon: <MapPin className="h-4 w-4 mr-2" />
+    id: "features",
+    label: "Feature Map",
+    icon: <MapPin className="h-4 w-4 mr-2" />,
   },
   {
-    id: 'journey',
-    label: 'User Journey',
-    icon: <Map className="h-4 w-4 mr-2" />
-  }
+    id: "journey",
+    label: "User Journey",
+    icon: <Map className="h-4 w-4 mr-2" />,
+  },
 ];
 
 // Animation variants for the tab content
 const tabContentVariants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: {
       duration: 0.3,
       ease: "easeOut",
       when: "beforeChildren",
-      staggerChildren: 0.1
-    }
+      staggerChildren: 0.1,
+    },
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     y: -20,
     transition: {
       duration: 0.2,
       ease: "easeIn",
       when: "afterChildren",
       staggerChildren: 0.05,
-      staggerDirection: -1
-    }
-  }
+      staggerDirection: -1,
+    },
+  },
 };
 
 // Animation variants for child elements within each tab
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
-    transition: { duration: 0.2 }
+    transition: { duration: 0.2 },
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     y: -10,
-    transition: { duration: 0.1 }
-  }
+    transition: { duration: 0.1 },
+  },
 };
 
 export const ProductDesign: React.FC = () => {
-  const { 
-    currentData,
-    comparisonMode,
-    stagedData,
-    addProductWireframe,
-    addProductFeature,
-    addProductJourneyStage,
-    updateProductWireframe,
-    updateProductFeature,
-    updateProductJourneyStage,
-    deleteProductWireframe,
-    deleteProductFeature,
-    deleteProductJourneyStage
-  } = useProjectStore();
-  
+  const { currentData, comparisonMode, stagedData } = useProjectStore();
   const { acceptAIChanges, rejectAIChanges } = useAIStore();
-    const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({
-      wireframes: false,
-      features: false,
-      journey: false,
-    });
-  
+  const { toast } = useToast();
+
+  const [activeTab, setActiveTab] = useState("wireframes");
+  const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({
+    wireframes: false,
+    features: false,
+    journey: false,
+  });
+
   // Track which help sections are expanded
   const [expandedHelp, setExpandedHelp] = useState<{
     wireframes: boolean;
@@ -125,141 +126,201 @@ export const ProductDesign: React.FC = () => {
   }>({
     wireframes: false,
     features: false,
-    journey: false
+    journey: false,
   });
 
   // Track which journey stage is currently selected
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
-  
-  // Get current data from the store
-  const data = useMemo(() => ({
-    wireframes: currentData.productWireframes || [],
-    features: currentData.productFeatures || [],
-    journeyStages: currentData.productJourneyStages || []
-  }), [currentData]);
-  
-  // Get staged data if in comparison mode
-  const stagedUIData = useMemo(() => {
-    if (!comparisonMode || !stagedData) return null;
-    
-    return {
-      wireframes: stagedData.productWireframes || [],
-      features: stagedData.productFeatures || [],
-      journeyStages: stagedData.productJourneyStages || []
-    };
-  }, [comparisonMode, stagedData]);
-  
+
+  // Use the hook with proper error handling
+  const {
+    data,
+    isLoading,
+    error,
+
+    // Wireframes
+    addWireframe,
+    updateWireframe,
+    deleteWireframe,
+
+    // Features
+    addFeature,
+    updateFeature,
+    deleteFeature,
+
+    // Journey Stages
+    addJourneyStage,
+    updateJourneyStage,
+    deleteJourneyStage,
+
+    // Diff helpers
+    getWireframeChangeType,
+    getFeatureChangeType,
+    getJourneyStageChangeType,
+    isDiffMode,
+  } = useProductDesign(currentData.project?.id);
+
+  // Get current data from the hook
+  const uiData = useMemo(
+    () => ({
+      wireframes: data?.wireframes || [],
+      features: data?.features || [],
+      journeyStages: data?.journey?.stages || [],
+    }),
+    [data]
+  );
+
   // Helper function to determine if an item is new/modified in comparison mode
   const getItemStatus = (
-    section: 'wireframes' | 'features' | 'journeyStages',
+    section: "wireframes" | "features" | "journeyStages",
     itemId: string
-  ): 'new' | 'modified' | 'unchanged' | 'removed' => {
-    if (!comparisonMode || !stagedUIData) return 'unchanged';
-    
-    const currentItem = data[section].find(item => item.id === itemId);
-    const stagedItem = stagedUIData[section].find(item => item.id === itemId);
-    
-    if (!currentItem && stagedItem) return 'new';
-    if (currentItem && !stagedItem) return 'removed';
-    if (currentItem && stagedItem) {
-      return JSON.stringify(currentItem) !== JSON.stringify(stagedItem) ? 'modified' : 'unchanged';
+  ): "new" | "modified" | "unchanged" | "removed" => {
+    if (!isDiffMode) return "unchanged";
+
+    if (section === "wireframes") {
+      return getWireframeChangeType(itemId) as
+        | "new"
+        | "modified"
+        | "unchanged"
+        | "removed";
+    } else if (section === "features") {
+      return getFeatureChangeType(itemId) as
+        | "new"
+        | "modified"
+        | "unchanged"
+        | "removed";
+    } else if (section === "journeyStages") {
+      return getJourneyStageChangeType(itemId) as
+        | "new"
+        | "modified"
+        | "unchanged"
+        | "removed";
     }
-    
-    return 'unchanged';
+
+    return "unchanged";
   };
-  
-  // Calculate design dashboard metrics
-  const designStats = useMemo(() => {
-    const totalWireframes = data.wireframes.length;
-    const totalFeatures = data.features.length;
-    const totalJourneyStages = data.journeyStages.length;
-    
-    const priorityFeatures = data.features.filter(f => f.priority === 'high').length;
-    
-    return {
-      totalWireframes,
-      totalFeatures,
-      totalJourneyStages,
-      priorityFeatures,
-      designProgress: Math.min(Math.round((totalWireframes + totalFeatures + totalJourneyStages) / 10 * 100), 100)
-    };
-  }, [data]);
+
+  // Convert status to component expected format
+  const convertStatus = (
+    status: "new" | "modified" | "unchanged" | "removed"
+  ): "new" | "modified" | "removed" | undefined => {
+    return status === "unchanged"
+      ? undefined
+      : (status as "new" | "modified" | "removed");
+  };
 
   // Handle adding a new wireframe
-  const handleAddWireframe = () => {
-    const projectId = currentData.project?.id || '';
-    
-    addProductWireframe({
-      id: generateId(),
-      name: 'New Wireframe',
-      description: '',
-      image_url: null,
-      screen_type: 'desktop',
-      order_index: data.wireframes.length,
-      project_id: projectId,
-      created_at: null,
-      created_by: null,
-      updated_at: null,
-      tags: []
-    });
+  const handleAddWireframe = async () => {
+    const projectId = currentData.project?.id || "";
+
+    try {
+      await addWireframe({
+        project_id: projectId,
+        name: "New Wireframe",
+        description: "",
+        image_url: null,
+        screen_type: "desktop",
+        order_index: uiData.wireframes.length,
+        tags: [],
+        created_by: null,
+      });
+
+      toast({
+        title: "Wireframe added",
+        description: "New wireframe has been created successfully.",
+        variant: "default",
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding wireframe",
+        description:
+          err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
   };
-  
+
   // Handle adding a new feature
-  const handleAddFeature = () => {
-    const projectId = currentData.project?.id || '';
-    
-    addProductFeature({
-      id: generateId(),
-      name: 'New Feature',
-      description: '',
-      priority: 'medium',
-      status: 'planned',
-      effort: 2,
-      impact: 2,
-      tags: [],
-      notes: '',
-      project_id: projectId,
-      created_at: null,
-      created_by: null,
-      updated_at: null
-    });
+  const handleAddFeature = async (
+    priority: "must" | "should" | "could" | "wont" = "should"
+  ) => {
+    const projectId = currentData.project?.id || "";
+
+    try {
+      await addFeature({
+        project_id: projectId,
+        name: "New Feature",
+        description: "",
+        priority,
+        status: "planned",
+        effort: 2,
+        impact: 2,
+        tags: [],
+        notes: "",
+        created_by: null,
+      });
+
+      toast({
+        title: "Feature added",
+        description: "New feature has been created successfully.",
+        variant: "default",
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding feature",
+        description:
+          err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
   };
-  
+
   // Handle adding a new journey stage
-  const handleAddJourneyStage = () => {
-    const projectId = currentData.project?.id || '';
-    
-    addProductJourneyStage({
-      id: generateId(),
-      name: 'New Stage',
-      description: '',
-      completed: false,
-      order_index: data.journeyStages.length,
-      project_id: projectId,
-      created_at: null,
-      created_by: null,
-      updated_at: null
-    });
+  const handleAddJourneyStage = async () => {
+    const projectId = currentData.project?.id || "";
+
+    try {
+      await addJourneyStage({
+        project_id: projectId,
+        name: "New Stage",
+        description: "",
+        completed: false,
+        order_index: uiData.journeyStages.length,
+        created_by: null,
+      });
+
+      toast({
+        title: "Journey stage added",
+        description: "New journey stage has been created successfully.",
+        variant: "default",
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding journey stage",
+        description:
+          err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
   };
-  
+
   // Toggle help section visibility
   const toggleHelp = (section: keyof typeof expandedHelp) => {
-    setExpandedHelp(prev => ({
+    setExpandedHelp((prev) => ({
       ...prev,
-      [section]: !prev[section]
+      [section]: !prev[section],
     }));
   };
 
-
+  // Toggle info section visibility
   const toggleInfo = (section: string) => {
     setShowInfo((prev) => ({
       ...prev,
       [section]: !prev[section],
     }));
   };
-  
-  const [activeTab, setActiveTab] = useState('wireframes');
 
+  // Render tabs and content
   return (
     <TooltipProvider>
       <div className="">
@@ -273,19 +334,29 @@ export const ProductDesign: React.FC = () => {
                   Wireframes & Visuals
                   <HoverCard>
                     <HoverCardTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 ml-1"
+                      >
                         <HelpCircle className="h-3.5 w-3.5 text-gray-400" />
                       </Button>
                     </HoverCardTrigger>
                     <HoverCardContent side="top" className="w-80">
-                      <p className="text-xs">Wireframes help visualize your product's interface before development. They're useful for getting early feedback on layouts and user flows.</p>
+                      <p className="text-xs">
+                        Wireframes help visualize your product's interface
+                        before development. They're useful for getting early
+                        feedback on layouts and user flows.
+                      </p>
                     </HoverCardContent>
                   </HoverCard>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold">{designStats.totalWireframes}</p>
+                  <p className="text-2xl font-bold">
+                    {data.wireframes.length}
+                  </p>
                   <p className="text-xs text-gray-500 ml-2">Total wireframes</p>
                 </div>
               </CardContent>
@@ -298,20 +369,32 @@ export const ProductDesign: React.FC = () => {
                   Feature Planning
                   <HoverCard>
                     <HoverCardTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 ml-1"
+                      >
                         <HelpCircle className="h-3.5 w-3.5 text-gray-400" />
                       </Button>
                     </HoverCardTrigger>
                     <HoverCardContent side="top" className="w-80">
-                      <p className="text-xs">Feature mapping helps prioritize what to build. Focus on "Must Have" features for your MVP to validate your core concept quickly.</p>
+                      <p className="text-xs">
+                        Feature mapping helps prioritize what to build. Focus on
+                        "Must Have" features for your MVP to validate your core
+                        concept quickly.
+                      </p>
                     </HoverCardContent>
                   </HoverCard>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold">{designStats.priorityFeatures} / {designStats.totalFeatures}</p>
-                  <p className="text-xs text-gray-500 ml-2">MVP / Total features</p>
+                  <p className="text-2xl font-bold">
+                    {data.features.filter((feature) => feature.priority === "must").length} / {data.features.length}
+                  </p>
+                  <p className="text-xs text-gray-500 ml-2">
+                    MVP / Total features
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -323,31 +406,50 @@ export const ProductDesign: React.FC = () => {
                   User Journey
                   <HoverCard>
                     <HoverCardTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0 ml-1"
+                      >
                         <HelpCircle className="h-3.5 w-3.5 text-gray-400" />
                       </Button>
                     </HoverCardTrigger>
                     <HoverCardContent side="top" className="w-80">
-                      <p className="text-xs">User journey maps visualize the complete user experience from start to finish. Identify pain points and opportunities to improve the user experience.</p>
+                      <p className="text-xs">
+                        User journey maps visualize the complete user experience
+                        from start to finish. Identify pain points and
+                        opportunities to improve the user experience.
+                      </p>
                     </HoverCardContent>
                   </HoverCard>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold">{designStats.totalJourneyStages}</p>
+                  <p className="text-2xl font-bold">
+                    {data.journey.stages.length}
+                  </p>
                   <p className="text-xs text-gray-500 ml-2">Total stages</p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
-        
+
         <LayoutGroup id="product-design-tabs">
           <div className="space-y-6">
-            <Tabs defaultValue="wireframes" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              defaultValue="wireframes"
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <div className="flex justify-between items-center mb-4">
-                <TabList tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+                <TabList
+                  tabs={tabs}
+                  activeTab={activeTab}
+                  onTabChange={setActiveTab}
+                />
               </div>
 
               <AnimatePresence mode="wait">
@@ -361,7 +463,11 @@ export const ProductDesign: React.FC = () => {
                     className="w-full"
                     layoutId="tab-content"
                   >
-                    <TabsContent value="wireframes" className="mt-0 border-none shadow-none" forceMount>
+                    <TabsContent
+                      value="wireframes"
+                      className="mt-0 border-none shadow-none"
+                      forceMount
+                    >
                       <SectionTab
                         icon={<Layout className="h-5 w-5 text-primary-700" />}
                         title="Wireframes"
@@ -377,21 +483,31 @@ export const ProductDesign: React.FC = () => {
                                 Wireframes help you:
                               </p>
                               <ul className="list-disc list-inside text-dark-600 space-y-1">
-                                <li>Visualize page layouts without visual design distractions</li>
+                                <li>
+                                  Visualize page layouts without visual design
+                                  distractions
+                                </li>
                                 <li>Test user flows before development</li>
                                 <li>Get early stakeholder feedback</li>
                                 <li>Define content hierarchy and structure</li>
-                                <li>Plan responsive layouts and interactions</li>
+                                <li>
+                                  Plan responsive layouts and interactions
+                                </li>
                               </ul>
                             </div>
-                          )
+                          ),
                         }}
                         hasItems={data.wireframes.length > 0}
                         emptyState={{
-                          description: "Start by adding wireframes to visualize your product's interface and user flows."
+                          description:
+                            "Start by adding wireframes to visualize your product's interface and user flows.",
                         }}
                       >
-                        <WireframeGallery wireframes={data.wireframes} onAdd={handleAddWireframe} onSelect={(id) => console.log(id)} />
+                        <WireframeGallery
+                          wireframes={data.wireframes}
+                          onAdd={handleAddWireframe}
+                          onSelect={(id) => console.log(id)}
+                        />
                       </SectionTab>
                     </TabsContent>
                   </motion.div>
@@ -407,7 +523,11 @@ export const ProductDesign: React.FC = () => {
                     className="w-full"
                     layoutId="tab-content"
                   >
-                    <TabsContent value="features" className="mt-0 border-none shadow-none" forceMount>
+                    <TabsContent
+                      value="features"
+                      className="mt-0 border-none shadow-none"
+                      forceMount
+                    >
                       <SectionTab
                         icon={<MapPin className="h-5 w-5 text-primary-700" />}
                         title="Feature Map"
@@ -424,31 +544,52 @@ export const ProductDesign: React.FC = () => {
                               </p>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="p-2 bg-red-50 border border-red-100 rounded">
-                                  <h5 className="text-xs font-medium text-red-800">Must Have</h5>
-                                  <p className="text-xs text-red-600">Critical for MVP</p>
+                                  <h5 className="text-xs font-medium text-red-800">
+                                    Must Have
+                                  </h5>
+                                  <p className="text-xs text-red-600">
+                                    Critical for MVP
+                                  </p>
                                 </div>
                                 <div className="p-2 bg-yellow-50 border border-yellow-100 rounded">
-                                  <h5 className="text-xs font-medium text-yellow-800">Should Have</h5>
-                                  <p className="text-xs text-yellow-600">Important but not critical</p>
+                                  <h5 className="text-xs font-medium text-yellow-800">
+                                    Should Have
+                                  </h5>
+                                  <p className="text-xs text-yellow-600">
+                                    Important but not critical
+                                  </p>
                                 </div>
                                 <div className="p-2 bg-green-50 border border-green-100 rounded">
-                                  <h5 className="text-xs font-medium text-green-800">Could Have</h5>
-                                  <p className="text-xs text-green-600">Nice to have</p>
+                                  <h5 className="text-xs font-medium text-green-800">
+                                    Could Have
+                                  </h5>
+                                  <p className="text-xs text-green-600">
+                                    Nice to have
+                                  </p>
                                 </div>
                                 <div className="p-2 bg-gray-50 border border-gray-100 rounded">
-                                  <h5 className="text-xs font-medium text-gray-800">Won't Have</h5>
-                                  <p className="text-xs text-gray-600">Future consideration</p>
+                                  <h5 className="text-xs font-medium text-gray-800">
+                                    Won't Have
+                                  </h5>
+                                  <p className="text-xs text-gray-600">
+                                    Future consideration
+                                  </p>
                                 </div>
                               </div>
                             </div>
-                          )
+                          ),
                         }}
                         hasItems={data.features.length > 0}
                         emptyState={{
-                          description: "Define and prioritize your product features using the MoSCoW method."
+                          description:
+                            "Define and prioritize your product features using the MoSCoW method.",
                         }}
                       >
-                        <FeatureMap features={data.features} onAddFeature={handleAddFeature} onEditFeature={(id) => console.log(id)} />
+                        <FeatureMap
+                          features={data.features}
+                          onAddFeature={handleAddFeature}
+                          onEditFeature={(id) => console.log(id)}
+                        />
                       </SectionTab>
                     </TabsContent>
                   </motion.div>
@@ -464,13 +605,17 @@ export const ProductDesign: React.FC = () => {
                     className="w-full"
                     layoutId="tab-content"
                   >
-                    <TabsContent value="journey" className="mt-0 border-none shadow-none" forceMount>
+                    <TabsContent
+                      value="journey"
+                      className="mt-0 border-none shadow-none"
+                      forceMount
+                    >
                       <SectionTab
                         icon={<Map className="h-5 w-5 text-primary-700" />}
                         title="User Journey"
                         description="Map out your user's experience with your product"
                         onCreate={handleAddJourneyStage}
-                        count={data.journeyStages.length}
+                        count={data.journey.stages.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
                           title: "User Journey Mapping",
@@ -480,26 +625,31 @@ export const ProductDesign: React.FC = () => {
                                 Key elements of journey mapping:
                               </p>
                               <ul className="list-disc list-inside text-dark-600 space-y-1">
-                                <li>Define clear user stages and touchpoints</li>
+                                <li>
+                                  Define clear user stages and touchpoints
+                                </li>
                                 <li>Identify pain points and opportunities</li>
                                 <li>Map user emotions and expectations</li>
-                                <li>Connect stages to features and solutions</li>
+                                <li>
+                                  Connect stages to features and solutions
+                                </li>
                                 <li>Track user progress and success metrics</li>
                               </ul>
                             </div>
-                          )
+                          ),
                         }}
-                        hasItems={data.journeyStages.length > 0}
+                        hasItems={data.journey.stages.length > 0}
                         emptyState={{
-                          description: "Create a user journey map to visualize the complete user experience with your product."
+                          description:
+                            "Create a user journey map to visualize the complete user experience with your product.",
                         }}
                       >
-                        <UserJourneyMap 
-                          stages={data.journeyStages} 
-                          selectedStage={selectedStageId || undefined} 
-                          onSelectStage={setSelectedStageId} 
-                          onAddStage={handleAddJourneyStage} 
-                          onEditStage={(id) => console.log(id)} 
+                        <UserJourneyMap
+                          stages={data.journey.stages}
+                          selectedStage={selectedStageId || undefined}
+                          onSelectStage={setSelectedStageId}
+                          onAddStage={handleAddJourneyStage}
+                          onEditStage={(id) => console.log(id)}
                         />
                       </SectionTab>
                     </TabsContent>

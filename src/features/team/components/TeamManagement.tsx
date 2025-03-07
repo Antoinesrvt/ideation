@@ -49,44 +49,25 @@ import {
   Users, 
   CheckSquare, 
   Grid, 
-  Plus, 
-  User, 
-  Calendar, 
-  Mail, 
+
   Trash2, 
   Edit, 
-  Check,
-  AlertCircle,
-  Clock,
   Info,
-  AlertTriangle,
-  Activity,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  ListChecks,
-  PlusCircle,
-  UserCheck,
   CheckCircle,
   Award,
   UserCog
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTeam } from '@/hooks/features/useTeam';
 import { useProjectStore } from '@/store';
 import { TeamMember, TeamTask, TeamResponsibilityMatrix } from "@/store/types";
 import TabList from '@/features/common/components/TabList';
 import { SectionTab } from '@/components/ui/section-tab';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
-
+import RoleCard, { Role } from './RoleCard';
+import RACIMatrix from './RACIMatrix';
+import Members from './Members';
+import TasksTable from './TasksTable';
 // Types for team data
 export interface TeamData {
   members: TeamMember[];
@@ -95,14 +76,6 @@ export interface TeamData {
   raci: TeamResponsibilityMatrix[];
 }
 
-
-interface Role {
-  id: string;
-  title: string;
-  description: string;
-  responsibilities: string[];
-  requiredSkills: string[];
-}
 
 
 const tabs = [
@@ -186,7 +159,7 @@ const tabContentVariants = {
 };
 
 // Animation variants for child elements within each tab
-const itemVariants = {
+export const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { 
     opacity: 1, 
@@ -199,6 +172,15 @@ const itemVariants = {
     transition: { duration: 0.1 }
   }
 };
+
+  export const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
+  };
+
 
 export const TeamManagement: React.FC<TeamManagementProps> = ({
   data,
@@ -295,21 +277,12 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     { value: 'informed', label: 'Informed', description: 'Person kept up-to-date on progress' }
   ];
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
-  };
 
   const getMemberById = (id: string) => {
     return safeData.members.find(member => member.id === id);
   };
 
-  const getRoleById = (title: string) => {
-    return safeData.roles.find(role => role.title === title);
-  };
+
 
   const handleAddTeamMember = (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,29 +296,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     // Implementation for adding task
   };
 
-  const getTaskStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">Completed</Badge>;
-      case 'in_progress':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">In Progress</Badge>;
-      case 'blocked':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">Blocked</Badge>;
-      default:
-        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-0">Not Started</Badge>;
-    }
-  };
 
-  const getTaskPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">High</Badge>;
-      case 'medium':
-        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-0">Medium</Badge>;
-      default:
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">Low</Badge>;
-    }
-  };
 
   const getRaciTypeColor = (type: string) => {
     switch (type) {
@@ -439,7 +390,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
               <div className="flex items-center">
                 <Award className="h-5 w-5 text-amber-500 mr-2" />
                 <span className="text-2xl font-bold">
-                  {Array.from(new Set(safeData.members.flatMap(m => m.skills))).length}
+                  {Array.from(new Set(safeData.members.flatMap(m => m.expertise))).length}
                 </span>
               </div>
               <HoverCard>
@@ -531,94 +482,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                         description: "Start building your team by adding members and assigning their roles."
                       }}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        {safeData.members.map((member) => (
-                          <motion.div
-                            key={member.id}
-                            variants={itemVariants}
-                          >
-                            <Card className="overflow-hidden">
-                              <div className="p-6 flex items-start">
-                                <Avatar className="h-12 w-12 mr-4">
-                                  {/* <AvatarImage src={member.avatarUrl} /> */ //TODO: Add avatarUrl
-                                  } 
-                                  <AvatarFallback className="bg-blue-100 text-blue-700">{getInitials(member.name)}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <h3 className="font-semibold text-lg">{member.name}</h3>
-                                    </div>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-                                            {member.role}
-                                          </Badge>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="w-60">
-                                            {getRoleById(member.role)?.description || 'No description available'}
-                                          </p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </div>
-                                  
-                                  <div className="mt-3">
-                                    <p className="text-xs font-medium text-gray-500 mb-1">SKILLS</p>
-                                    <div className="flex flex-wrap gap-1">
-                                      {member.expertise?.map((skill, index) => (
-                                        <Badge key={index} variant="secondary" className="text-xs">
-                                          {skill}
-                                        </Badge>
-                                      ))}
-                                      {member.expertise?.length === 0 && (
-                                        <span className="text-sm text-gray-400">No skills added</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="mt-3">
-                                    <p className="text-xs font-medium text-gray-500 mb-1">ASSIGNED TASKS</p>
-                                    <div className="space-y-1">
-                                      {member.tasksAssigned.map((taskId) => {
-                                        const task = safeData.tasks.find(t => t.id === taskId);
-                                        return task ? (
-                                          <div key={taskId} className="flex items-center">
-                                            <div className="w-2 h-2 rounded-full mr-2" 
-                                              style={{ 
-                                                backgroundColor: 
-                                                  task.status === 'completed' ? 'rgb(22, 163, 74)' : 
-                                                  task.status === 'in_progress' ? 'rgb(37, 99, 235)' : 
-                                                  task.status === 'blocked' ? 'rgb(220, 38, 38)' : 'rgb(156, 163, 175)'
-                                              }}
-                                            />
-                                            <span className="text-sm">{task.title}</span>
-                                          </div>
-                                        ) : null;
-                                      })}
-                                      {member.tasksAssigned.length === 0 && (
-                                        <span className="text-sm text-gray-400">No tasks assigned</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="border-t border-gray-100 bg-gray-50 px-6 py-3 flex justify-end">
-                                <Button variant="ghost" size="sm" className="h-8 text-gray-500 hover:text-gray-700">
-                                  <Edit className="h-3.5 w-3.5 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 text-red-500 hover:text-red-700">
-                                  <Trash2 className="h-3.5 w-3.5 mr-1" />
-                                  Remove
-                                </Button>
-                              </div>
-                            </Card>
-                          </motion.div>
-                        ))}
-                      </div>
+                        <Members members={safeData.members} roles={safeData.roles} tasks={safeData.tasks} />
                     </SectionTab>
                   </TabsContent>
                 </motion.div>
@@ -664,82 +528,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                         description: "Create and assign tasks to track team progress and manage workload."
                       }}
                     >
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Assigned To</TableHead>
-                            <TableHead>Due Date</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead className="text-right">Progress</TableHead>
-                            <TableHead className="w-[100px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {safeData.tasks.map((task) => (
-                            <TableRow key={task.id}>
-                              <TableCell className="font-medium">
-                                <div>
-                                  <p>{task.title}</p>
-                                  <p className="text-xs text-gray-500 mt-1">{task.description}</p>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex -space-x-2">
-                                  {task.assignedTo.map((memberId) => {
-                                    const member = getMemberById(memberId);
-                                    return member ? (
-                                      <TooltipProvider key={memberId}>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <Avatar className="h-8 w-8 border-2 border-white">
-                                              <AvatarImage src={member.avatarUrl} />
-                                              <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
-                                                {getInitials(member.name)}
-                                              </AvatarFallback>
-                                            </Avatar>
-                                          </TooltipTrigger>
-                                          <TooltipContent>
-                                            <p>{member.name}</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    ) : null;
-                                  })}
-                                  {task.assignedTo.length === 0 && (
-                                    <span className="text-sm text-gray-400">Unassigned</span>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>{new Date(task.dueDate).toLocaleDateString()}</TableCell>
-                              <TableCell>{getTaskStatusBadge(task.status)}</TableCell>
-                              <TableCell>{getTaskPriorityBadge(task.priority)}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end">
-                                  <span className="text-sm mr-2">{task.progress}%</span>
-                                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                    <div 
-                                      className="h-full bg-blue-500" 
-                                      style={{ width: `${task.progress}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex justify-end">
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <TasksTable tasks={safeData.tasks} members={safeData.members} />
                     </SectionTab>
                   </TabsContent>
                 </motion.div>
@@ -787,66 +576,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                         {safeData.roles.map((role) => (
-                          <motion.div
-                            key={role.id}
-                            variants={itemVariants}
-                          >
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>{role.title}</CardTitle>
-                                <CardDescription>{role.description}</CardDescription>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="space-y-4">
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Responsibilities</h4>
-                                    <ul className="list-disc pl-5 space-y-1">
-                                      {role.responsibilities.map((responsibility, index) => (
-                                        <li key={index} className="text-sm">{responsibility}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Required Skills</h4>
-                                    <div className="flex flex-wrap gap-1">
-                                      {role.requiredSkills.map((skill, index) => (
-                                        <Badge key={index} variant="secondary" className="text-xs">
-                                          {skill}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  <div className="mt-2">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Team Members in this Role</h4>
-                                    <div className="flex flex-wrap gap-2">
-                                      {safeData.members
-                                        .filter(member => member.role === role.title)
-                                        .map(member => (
-                                          <TooltipProvider key={member.id}>
-                                            <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                <Avatar className="h-8 w-8">
-                                                  <AvatarImage src={member.avatarUrl} />
-                                                  <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
-                                                    {getInitials(member.name)}
-                                                  </AvatarFallback>
-                                                </Avatar>
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                <p>{member.name}</p>
-                                              </TooltipContent>
-                                            </Tooltip>
-                                          </TooltipProvider>
-                                        ))}
-                                      {safeData.members.filter(member => member.role === role.title).length === 0 && (
-                                        <span className="text-sm text-gray-400">No members assigned</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </motion.div>
+                          <RoleCard key={role.id} role={role} members={safeData.members} />
                         ))}
                       </div>
                     </SectionTab>
@@ -894,41 +624,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                         description: "Create a RACI matrix to clarify roles and responsibilities for key activities."
                       }}
                     >
-                      <Table className="border">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-1/4">Activity</TableHead>
-                            {safeData.members.map((member) => (
-                              <TableHead key={member.id} className="text-center w-1/5">
-                                <div className="flex flex-col items-center">
-                                  <Avatar className="h-8 w-8 mb-1">
-                                    <AvatarImage src={member.avatarUrl} />
-                                    <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
-                                      {getInitials(member.name)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">
-                                    {member.name}
-                                  </span>
-                                  <span className="text-xs text-gray-500">{member.role}</span>
-                                </div>
-                              </TableHead>
-                            ))}
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {safeData.raci.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-medium">{item.activity}</TableCell>
-                              {safeData.members.map((member) => (
-                                <TableCell key={member.id} className="text-center">
-                                  {getRaciTypeColor(item.assignments.find(a => a.memberId === member.id)?.type || '')}
-                                </TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <RACIMatrix members={safeData.members} raci={safeData.raci} />
                     </SectionTab>
                   </TabsContent>
                 </motion.div>

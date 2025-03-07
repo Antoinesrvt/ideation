@@ -7,12 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Check, Edit, HelpCircle, Lightbulb, PlusCircle, Trash2, Smartphone, Laptop } from 'lucide-react';
+import { Check, Edit, HelpCircle, Lightbulb, PlusCircle, Trash2, Smartphone, Laptop, Loader2, AlertCircle } from 'lucide-react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { useBusinessModel } from '@/hooks/features/useBusinessModel';
 import { useProjectStore } from '@/store';
 import { Database } from '@/types/database';
 import { useParams } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
+import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
+import { BusinessModelCanvas as BusinessModelCanvasType, CanvasSectionKey } from '@/lib/services/features/business-model-service';
 
 // Import types from database
 type CanvasItem = Database['public']['Tables']['canvas_items']['Row'];
@@ -131,75 +134,95 @@ const sectionGuidance = {
 export const BusinessModelCanvas: React.FC = () => {
   const params = useParams();
   const projectId = typeof params.id === 'string' ? params.id : undefined;
-  const { data, addItem, updateItem, deleteItem } = useBusinessModel(projectId);
-  const { comparisonMode, currentData, stagedData } = useProjectStore();
+  const { toast } = useToast();
   
-  const [activeSection, setActiveSection] = useState<keyof typeof data | null>(null);
-  const [editingItem, setEditingItem] = useState<{ section: keyof typeof data; item: ExtendedCanvasItem } | null>(null);
+  const { 
+    data,
+    isLoading,
+    error,
+    addItem,
+    updateItem,
+    deleteItem,
+    moveItem,
+    getItemChangeType,
+    isDiffMode
+  } = useBusinessModel(projectId);
   
+  const { comparisonMode, stagedData } = useProjectStore();
+  
+  // State to track which item is being edited
+  const [editingItem, setEditingItem] = useState<{ 
+    section: CanvasSectionKey; 
+    item: ExtendedCanvasItem 
+  } | null>(null);
+  
+  // Create form instance using react-hook-form
   const form = useForm<FormValues>({
     defaultValues: {
       text: '',
-      details: '',
+      details: ''
     }
   });
   
-  // Create a default canvas when no data exists
-  const defaultCanvas = {
-    keyPartners: [],
-    keyActivities: [],
-    keyResources: [],
-    valuePropositions: [],
-    customerRelationships: [],
-    channels: [],
-    customerSegments: [],
-    costStructure: [],
-    revenueStreams: []
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <LoadingState message="Loading business model canvas data..." />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <ErrorState 
+            error={error} 
+            onRetry={() => window.location.reload()}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Prepare data for rendering, ensuring all properties exist for safety
+  const safeData = {
+    keyPartners: data?.keyPartners || [],
+    keyActivities: data?.keyActivities || [],
+    keyResources: data?.keyResources || [],
+    valuePropositions: data?.valuePropositions || [],
+    customerRelationships: data?.customerRelationships || [],
+    channels: data?.channels || [],
+    customerSegments: data?.customerSegments || [],
+    costStructure: data?.costStructure || [],
+    revenueStreams: data?.revenueStreams || []
   };
   
-  // Use the correct data source based on comparison mode
-  const safeData = useMemo(() => {
-    if (!data) return defaultCanvas;
-    return data;
-  }, [data]);
-  
-  // Check if any content exists in the canvas
-  const hasContent = Object.values(safeData).some(section => section && section.length > 0);
-  
-  // Maps canvas items to display with visual indicators for comparison mode
-  const mapCanvasItemsToDisplay = (section: keyof typeof safeData): ExtendedCanvasItem[] => {
-    if (!comparisonMode || !stagedData) {
-      return safeData[section] as ExtendedCanvasItem[];
-    }
-    
-    // In comparison mode, we need to mark items as new/modified/removed
-    const currentItems = currentData.canvasItems.filter(item => {
-      // Find the section for this item
-      const sectionObj = currentData.canvasSections.find(s => s.id === item.section_id);
-      const sectionType = sectionObj?.section_type;
-      // Map section_type to the camelCase key in our BusinessModelCanvas
-      const sectionKey = sectionType?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      return sectionKey === section;
+  // If we're editing an item, populate the form with its values
+  if (editingItem) {
+    form.reset({
+      text: editingItem.item.text,
+      details: editingItem.item.details || ''
     });
+  }
+  
+  // Helper to convert canvas items for display
+  const mapCanvasItemsToDisplay = (section: CanvasSectionKey): ExtendedCanvasItem[] => {
+    // Get the items for this section
+    const items = safeData[section];
     
-    const stagedItems = stagedData.canvasItems.filter(item => {
-      // Find the section for this item
-      const sectionObj = stagedData.canvasSections.find(s => s.id === item.section_id);
-      const sectionType = sectionObj?.section_type;
-      // Map section_type to the camelCase key in our BusinessModelCanvas
-      const sectionKey = sectionType?.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      return sectionKey === section;
-    });
-    
-    // Mark items as new, modified, or unchanged
-    return stagedItems.map(item => {
-      const currentItem = currentItems.find(i => i.id === item.id);
-      let status: 'new' | 'modified' | 'unchanged' = 'unchanged';
+    // For each item, check if it's modified in comparison mode
+    return items.map(item => {
+      // Default status is unchanged
+      let status: 'new' | 'modified' | 'unchanged' | 'removed' = 'unchanged';
       
-      if (!currentItem) {
-        status = 'new';
-      } else if (JSON.stringify(currentItem) !== JSON.stringify(item)) {
-        status = 'modified';
+      // In comparison mode, determine if item is new or modified
+      if (isDiffMode) {
+        status = getItemChangeType(item.id) as 'new' | 'modified' | 'unchanged' | 'removed';
       }
       
       return {
@@ -209,8 +232,15 @@ export const BusinessModelCanvas: React.FC = () => {
     });
   };
   
-  const handleAddItem = (section: keyof typeof safeData) => {
-    if (!projectId) return;
+  const handleAddItem = async (section: CanvasSectionKey) => {
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No active project found",
+        variant: "destructive"
+      });
+      return;
+    }
     
     const newItem: NewCanvasItem = {
       text: '',
@@ -224,58 +254,127 @@ export const BusinessModelCanvas: React.FC = () => {
 
     try {
       // Add the item to the section
-      addItem(section, newItem)
-      // We don't need the returned item from addBlockItem
-      // The data will be updated via the store automatically
-      // Just create a temporary item for editing
-      const tempItem: ExtendedCanvasItem = {
-          ...newItem,
-          id: 'temp-' + Date.now(), // Temporary ID just for UI purposes
-          project_id: projectId,
-          created_at: null,
-          created_by: null,
-          updated_at: null
+      const result = await addItem(section, newItem);
+      
+      if (result) {
+        // Create a temporary item for editing
+        const tempItem: ExtendedCanvasItem = {
+          ...result,
+          details: ''
         };
         
         setEditingItem({ 
           section, 
           item: tempItem
         });
-    } catch (error) {
-      console.error('Failed to add item:', error);
+        
+        toast({
+          title: "Success",
+          description: "Item added successfully",
+          variant: "default"
+        });
+      } else {
+        throw new Error("Failed to add item");
+      }
+    } catch (err) {
+      toast({
+        title: "Error adding item",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
     }
   };
   
-  const handleUpdateItem = (
-    section: keyof typeof safeData,
+  const handleUpdateItem = async (
+    section: CanvasSectionKey,
     itemId: string,
     updates: Partial<NewCanvasItem>
   ) => {
-    if (!projectId) return;
-    updateItem(section, itemId, updates);
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No active project found",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const result = await updateItem(section, itemId, updates);
+      
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Item updated successfully",
+          variant: "default"
+        });
+      } else {
+        throw new Error("Failed to update item");
+      }
+    } catch (err) {
+      toast({
+        title: "Error updating item",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
   
-  const handleRemoveItem = (section: keyof typeof safeData, itemId: string) => {
-    if (!projectId) return;
-    deleteItem(section, itemId);
+  const handleRemoveItem = async (section: CanvasSectionKey, itemId: string) => {
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No active project found",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const result = await deleteItem(section, itemId);
+      
+      if (result) {
+        toast({
+          title: "Success",
+          description: "Item deleted successfully",
+          variant: "default"
+        });
+      } else {
+        throw new Error("Failed to delete item");
+      }
+    } catch (err) {
+      toast({
+        title: "Error deleting item",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
   
-  const saveItemChanges = (values: FormValues) => {
+  const saveItemChanges = async (values: FormValues) => {
     if (!editingItem || !projectId) return;
     
-    // Only update supported properties from the database type
-    handleUpdateItem(
-      editingItem.section,
-      editingItem.item.id,
-      { 
-        text: values.text,
-      }
-    );
-    
-    setEditingItem(null);
+    try {
+      // Only update supported properties from the database type
+      await handleUpdateItem(
+        editingItem.section,
+        editingItem.item.id,
+        { 
+          text: values.text,
+        }
+      );
+      
+      setEditingItem(null);
+    } catch (err) {
+      toast({
+        title: "Error saving changes",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
   
-  const renderCanvasItems = (section: keyof typeof safeData) => {
+  const renderCanvasItems = (section: CanvasSectionKey) => {
     const items = mapCanvasItemsToDisplay(section);
     
     return (
@@ -284,7 +383,7 @@ export const BusinessModelCanvas: React.FC = () => {
           {items.map(item => {
             // Get status classes for comparison mode
             let statusClass = '';
-            if (comparisonMode && stagedData) {
+            if (isDiffMode) {
               if (item.status === 'new') {
                 statusClass = 'bg-green-50 border-green-200';
               } else if (item.status === 'modified') {
@@ -293,56 +392,66 @@ export const BusinessModelCanvas: React.FC = () => {
             }
             
             return (
-          <div 
-            key={item.id}
+              <div 
+                key={item.id}
                 className={`p-2 ${item.checked ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'} ${statusClass} rounded-md flex items-start group hover:shadow-sm transition-all duration-200`}
-          >
+              >
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!item.text && 'text-gray-500 italic'}`}>
-              {item.text || `Add ${section.replace(/([A-Z])/g, ' $1').toLowerCase()}...`}
-            </p>
-                  {item.details && (
-                    <p className="text-xs text-gray-500 mt-1 truncate">{item.details}</p>
-            )}
-          </div>
-                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                  <button
-                    className="p-1 hover:bg-gray-200 rounded"
-                    onClick={() => setEditingItem({ section, item })}
-                  >
-                    <Edit className="h-3 w-3 text-gray-500" />
-                  </button>
-                  <button
-                    className="p-1 hover:bg-gray-200 rounded"
-                    onClick={() => handleUpdateItem(section, item.id, { checked: !item.checked })}
-                  >
-                    <Check className="h-3 w-3 text-green-500" />
-                  </button>
-                  <button
-                    className="p-1 hover:bg-gray-200 rounded"
-                    onClick={() => handleRemoveItem(section, item.id)}
-                  >
-                    <Trash2 className="h-3 w-3 text-red-500" />
-                  </button>
+                  <p className="text-sm text-gray-800 break-words">{item.text}</p>
                 </div>
-          </div>
+                <div className="flex items-center ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600"
+                        onClick={() => setEditingItem({ section, item })}
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Edit item</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+                        onClick={() => handleRemoveItem(section, item.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete item</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
             );
           })}
         </div>
-        <Button 
-          variant="ghost" 
-          className="w-full border border-dashed border-gray-300 hover:border-gray-400 flex items-center justify-center text-gray-500 hover:text-gray-700"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1 h-auto w-full flex items-center justify-center"
           onClick={() => handleAddItem(section)}
         >
-          <PlusCircle className="h-4 w-4 mr-2" />
-          <span>Add Item</span>
+          <PlusCircle className="h-3.5 w-3.5 mr-1" />
+          <span className="text-xs">Add Item</span>
         </Button>
       </>
     );
   };
   
   // Render a section with a tooltip containing guidance
-  const renderSection = (section: keyof typeof safeData, className: string = "") => {
+  const renderSection = (section: CanvasSectionKey, className: string = "") => {
     const guidance = sectionGuidance[section];
     
     return (

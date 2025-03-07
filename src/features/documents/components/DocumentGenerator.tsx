@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Activity, Target, ChevronRight, Download, Trash2, HelpCircle, BarChart, Clock, FileCheck, Info } from 'lucide-react';
+import { FileText, Activity, Target, ChevronRight, Download, Trash2, HelpCircle, BarChart, Clock, FileCheck, Info, Loader2, PlusCircle } from 'lucide-react';
 import { Document } from '@/store/types';
 import { formatDate } from '@/lib/utils';
 import { useDocuments } from '@/hooks/features/useDocuments';
@@ -17,28 +17,77 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useProjectStore } from '@/store';
+import { useToast } from '@/components/ui/use-toast';
+import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
 
-interface DocumentGeneratorProps {
-  projectId: string;
-  documents?: Document[];
-}
+export const DocumentGenerator: React.FC = () => {
+  // Get project ID from the store
+  const { currentData } = useProjectStore();
+  const projectId = currentData.project?.id;
+  const { toast } = useToast();
 
-export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
-  projectId,
-  documents: propDocuments
-}) => {
-  const { documents: hookDocuments, generateDocument, deleteDocument } = useDocuments(projectId);
+  // Use documents hook for data and operations
+  const { 
+    documents, 
+    generateDocument, 
+    deleteDocument,
+    isDiffMode
+  } = useDocuments(projectId);
+  
   const [generating, setGenerating] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState<{[key: string]: boolean}>({});
   
-  // Use provided documents from props if available, otherwise use the ones from the hook
-  const documents = propDocuments || hookDocuments.data || [];
+  const handleGenerateDocument = async (type: 'business-plan' | 'pitch-deck' | 'financial-projections') => {
+    if (!projectId) {
+      toast({
+        title: "Error",
+        description: "No active project found",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  const handleGenerateDocument = (type: 'business-plan' | 'pitch-deck' | 'financial-projections') => {
-    setGenerating(type);
-    generateDocument({ projectId, type });
-    // Simulate turning off the generating state after a short delay
-    setTimeout(() => setGenerating(null), 2000);
+    try {
+      setGenerating(type);
+      
+      const result = await generateDocument({ projectId, type });
+      
+      if (result) {
+        toast({
+          title: "Document generated",
+          description: `Your ${type.replace('-', ' ')} has been successfully generated`,
+          variant: "default"
+        });
+      } else {
+        throw new Error("Failed to generate document");
+      }
+    } catch (err) {
+      toast({
+        title: "Error generating document",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const handleDeleteDocument = async (id: string) => {
+    try {
+      await deleteDocument(id);
+      toast({
+        title: "Document deleted",
+        description: "Document has been successfully deleted",
+        variant: "default"
+      });
+    } catch (err) {
+      toast({
+        title: "Error deleting document",
+        description: err instanceof Error ? err.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   // Format relative time for display
@@ -64,13 +113,13 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
 
   // Calculate stats for the dashboard
   const documentStats = {
-    totalDocuments: documents.length,
-    recentlyGenerated: documents.length > 0 ? formatDistanceToNow(documents[0].created_at) : 'None',
+    totalDocuments: documents.data.length,
+    recentlyGenerated: documents.data.length > 0 ? formatDistanceToNow(documents.data[0].created_at) : 'None',
     // Group documents by type
     byType: {
-      'business-plan': documents.filter(d => d.type === 'business-plan').length,
-      'pitch-deck': documents.filter(d => d.type === 'pitch-deck').length,
-      'financial-projections': documents.filter(d => d.type === 'financial-projections').length
+      'business-plan': documents.data.filter(d => d.type === 'business-plan').length,
+      'pitch-deck': documents.data.filter(d => d.type === 'pitch-deck').length,
+      'financial-projections': documents.data.filter(d => d.type === 'financial-projections').length
     }
   };
   
@@ -119,27 +168,25 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
       [docType]: !prev[docType]
     }));
   };
+
+
+  // Handle error state
+  if (documents.error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <ErrorState 
+            error={documents.error} 
+            onRetry={() => window.location.reload()}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <TooltipProvider>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Document Generation</h2>
-            <p className="text-gray-600">Create professional documents based on your project data</p>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <HelpCircle className="h-4 w-4" />
-                <span className="sr-only">Help</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left" align="end" className="max-w-sm">
-              <p>Generate documents based on your project data. Hover over elements for more information.</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+      <div className="">
 
         {/* Dashboard Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
@@ -219,100 +266,101 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
             </CardContent>
           </Card>
         </div>
-        
-        <div className="grid grid-cols-3 gap-6 mb-6">
-          {documentTypes.map(doc => (
-            <Card key={doc.type} className="hover:shadow-md transition-shadow border border-gray-200">
-              <CardContent className="p-0">
-                <div className="p-6 border-b border-gray-200">
-                  <div className="flex items-center justify-center h-32">
-                    {doc.icon}
+
+        {/* Document Generation Cards */}
+        <div className="mb-8">
+          <h2 className="text-lg font-heading font-semibold mb-4">Generate Documents</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {documentTypes.map((docType) => (
+              <Card key={docType.type} className="hover:shadow-md transition-all">
+                <CardHeader>
+                  <div className="flex justify-between">
+                    {docType.icon}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-500 hover:text-gray-700"
+                      onClick={() => toggleHelp(docType.type)}
+                    >
+                      <Info className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <h3 className="text-xl font-semibold text-center mt-4">{doc.title}</h3>
-                  <p className="text-sm text-gray-500 text-center mt-1">{doc.description}</p>
-                </div>
-                
-                <Collapsible open={showHelp[doc.type]} onOpenChange={() => toggleHelp(doc.type)}>
-                  <div className="px-6 py-2 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                    <h4 className="text-sm font-medium text-gray-700">Benefits</h4>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
-                        <Info className="h-4 w-4 text-gray-500" />
-                        <span className="sr-only">Toggle benefits</span>
-                      </Button>
-                    </CollapsibleTrigger>
-                  </div>
-                  <CollapsibleContent>
-                    <div className="px-6 py-2 bg-gray-50 border-b border-gray-200">
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        {doc.benefits.map((benefit, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="text-green-500 mr-1">•</span> {benefit}
+                  <CardTitle className="text-primary-900 mt-3">{docType.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">
+                    {docType.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Collapsible open={showHelp[docType.type]}>
+                    <CollapsibleContent className="mb-4 border-l-2 border-l-blue-500 pl-3 bg-blue-50/30 p-2 rounded text-sm">
+                      <p className="font-medium text-primary-800 mb-1">Key Benefits:</p>
+                      <ul className="space-y-1">
+                        {docType.benefits.map((benefit, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <ChevronRight className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5 mr-1" />
+                            <span className="text-gray-700">{benefit}</span>
                           </li>
                         ))}
                       </ul>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                
-                <div className="p-4">
-                  <Button 
-                    variant="default" 
-                    className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
-                    onClick={() => handleGenerateDocument(doc.type)}
-                    disabled={generating === doc.type}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                    onClick={() => handleGenerateDocument(docType.type)}
+                    disabled={generating === docType.type}
                   >
-                    {generating === doc.type ? (
-                      <>Generating...</>
+                    {generating === docType.type ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
                     ) : (
                       <>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate Document
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Generate {docType.title}
                       </>
                     )}
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </div>
-        
-        <Card className="mt-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Document History</CardTitle>
-              <CardDescription>Previously generated documents</CardDescription>
-            </div>
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <HelpCircle className="h-4 w-4 text-gray-400" />
-                </Button>
-              </HoverCardTrigger>
-              <HoverCardContent className="w-80">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">About Document History</h4>
-                  <p className="text-sm text-gray-500">
-                    Documents are generated based on your project data. Ensure your project details are complete for best results.
-                  </p>
-                </div>
-              </HoverCardContent>
-            </HoverCard>
+
+        {/* Document List */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-lg">Your Documents</CardTitle>
+            <CardDescription>
+              Generated documents for your project
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {documents.length > 0 ? (
-                documents.map(doc => (
-                  <div key={doc.id} className="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center hover:shadow-sm transition-shadow">
+              {documents.data.length > 0 ? (
+                documents.data.map((doc) => (
+                  <div key={doc.id} className="p-4 border rounded-lg flex justify-between items-center hover:bg-gray-50">
                     <div className="flex items-center">
-                      {doc.type === 'business-plan' && <FileText className="h-5 w-5 text-blue-500 mr-3" />}
-                      {doc.type === 'pitch-deck' && <Activity className="h-5 w-5 text-green-500 mr-3" />}
-                      {doc.type === 'financial-projections' && <Target className="h-5 w-5 text-amber-500 mr-3" />}
+                      <div className="mr-3">
+                        {doc.type === 'business-plan' && <FileText className="h-6 w-6 text-blue-500" />}
+                        {doc.type === 'pitch-deck' && <Activity className="h-6 w-6 text-green-500" />}
+                        {doc.type === 'financial-projections' && <Target className="h-6 w-6 text-amber-500" />}
+                      </div>
                       <div>
-                        <h4 className="font-medium">{doc.name}</h4>
-                        <div className="flex items-center">
-                          <p className="text-xs text-gray-500">Generated {formatDate(doc.created_at)}</p>
-                          <Badge variant="outline" className="ml-2 text-xs bg-gray-100 text-gray-700">
+                        <h3 className="font-medium">
+                          {doc.name || (
+                            <>
+                              {doc.type === 'business-plan' && 'Business Plan'}
+                              {doc.type === 'pitch-deck' && 'Pitch Deck'}
+                              {doc.type === 'financial-projections' && 'Financial Projections'}
+                            </>
+                          )}
+                        </h3>
+                        <div className="flex space-x-2 text-xs text-gray-500">
+                          <span>Created {formatDate(doc.created_at)}</span>
+                          <Badge variant="outline" className="text-xs p-1">
                             {doc.type === 'business-plan' && 'Business Plan'}
                             {doc.type === 'pitch-deck' && 'Pitch Deck'}
                             {doc.type === 'financial-projections' && 'Financial Projections'}
@@ -343,7 +391,7 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
                           <Button 
                             variant="outline" 
                             className="text-red-600 border-red-200 hover:bg-red-50 px-2 py-1 rounded-md text-sm"
-                            onClick={() => deleteDocument && deleteDocument(doc.id)}
+                            onClick={() => handleDeleteDocument(doc.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete</span>

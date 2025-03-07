@@ -575,9 +575,21 @@ export const GRPModel: React.FC = () => {
     color: string,
     prompt: string
   ) => {
-    const sectionData = dataStructure.categories[section] || {};
-    const items = (sectionData[subsection as keyof typeof sectionData] ||
-      []) as GrpItem[];
+    // Find the category and section to get the items
+    const category = currentData.grpCategories.find(
+      (c) => c.category_type === section
+    );
+    const sectionObj = category
+      ? currentData.grpSections.find(
+          (s) =>
+            s.category_id === category.id &&
+            s.name?.toLowerCase() === subsection.toLowerCase()
+        )
+      : null;
+
+    const items = sectionObj
+      ? currentData.grpItems.filter((item) => item.section_id === sectionObj.id)
+      : [];
 
     // Map color string to specific color utility classes
     const colorClasses = {
@@ -710,222 +722,290 @@ export const GRPModel: React.FC = () => {
   };
 
   return (
-    <div className="">
-      {/* GRP Model - Grid Layout */}
-      <div className="space-y-4">
-        {/* G Row - Génération de la valeur (yellow) */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-yellow-400 text-white p-6 rounded-lg flex flex-col items-center justify-center text-center">
-            <span className="text-6xl font-bold">G</span>
-            <div className="mt-2">
-              <p className="font-semibold">Génération</p>
-              <p>de la valeur</p>
-            </div>
-          </div>
-
-          {renderGRPCell(
-            "generation",
-            "porteurs",
-            "G1",
-            "Porteur(s)",
-            <Users className="h-6 w-6" />,
-            "yellow",
-            "Who are the project leaders and what are their roles?"
-          )}
-
-          {expandedCell !== "G1" && (
-            <>
-              {renderGRPCell(
-                "generation",
-                "propositionValeur",
-                "G2",
-                "Proposition de valeur",
-                <Target className="h-6 w-6" />,
-                "yellow",
-                "What value does your solution provide to customers?"
-              )}
-
-              {renderGRPCell(
-                "generation",
-                "fabricationValeur",
-                "G3",
-                "Fabrication de la valeur",
-                <Activity className="h-6 w-6" />,
-                "yellow",
-                "How is your solution produced and delivered?"
-              )}
-            </>
-          )}
-        </div>
-
-        {/* R Row - Rémunération de la valeur (blue) */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-blue-500 text-white p-6 rounded-lg flex flex-col items-center justify-center text-center">
-            <span className="text-6xl font-bold">R</span>
-            <div className="mt-2">
-              <p className="font-semibold">Rémunération</p>
-              <p>de la valeur</p>
-            </div>
-          </div>
-
-          {renderGRPCell(
-            "remuneration",
-            "sourcesRevenus",
-            "R1",
-            "Sources de revenus",
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>,
-            "blue",
-            "What are your revenue streams?"
-          )}
-
-          {expandedCell !== "R1" && (
-            <>
-              {renderGRPCell(
-                "remuneration",
-                "volumeRevenus",
-                "R2",
-                "Volume des revenus",
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                  />
-                </svg>,
-                "blue",
-                "What is your revenue volume and projection?"
-              )}
-
-              {renderGRPCell(
-                "remuneration",
-                "performance",
-                "R3",
-                "Performance",
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
-                  />
-                </svg>,
-                "blue",
-                "What are your key performance metrics?"
-              )}
-            </>
-          )}
-        </div>
-
-        {/* P Row - Partage de la valeur (coral/red) */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-red-500 text-white p-6 rounded-lg flex flex-col items-center justify-center text-center">
-            <span className="text-6xl font-bold">P</span>
-            <div className="mt-2">
-              <p className="font-semibold">Partage</p>
-              <p>de la valeur</p>
-            </div>
-          </div>
-
-          {renderGRPCell(
-            "partage",
-            "partiesPrenantes",
-            "P1",
-            "Parties prenantes",
-            <Users className="h-6 w-6" />,
-            "red",
-            "Who are your stakeholders in your ecosystem?"
-          )}
-
-          {expandedCell !== "P1" && (
-            <>
-              {renderGRPCell(
-                "partage",
-                "conventions",
-                "P2",
-                "Conventions",
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>,
-                "red",
-                "What agreements do you have with stakeholders?"
-              )}
-
-              {renderGRPCell(
-                "partage",
-                "ecosysteme",
-                "P3",
-                "Écosystème",
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>,
-                "red",
-                "How does your business fit into the broader ecosystem?"
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Info and Actions */}
-      <div className="mt-6 flex items-center p-4 border border-blue-100 rounded-lg bg-blue-50">
-        <AlertCircle className="h-5 w-5 text-blue-500 mr-3" />
+    <div className="space-y-6">
+      {/* Header with title and stats */}
+      <div className="flex justify-between items-start">
         <div>
-          <p className="text-sm text-blue-700">
-            Click on any cell to expand and edit its content. The GRP model
-            helps you structure your business model through Generation (how
-            value is created), Remuneration (how value is monetized), and
-            Partage (how value is shared).
+          <h2 className="text-2xl font-semibold text-gray-800">GRP Model</h2>
+          <p className="text-gray-500 mt-1">
+            The GRP model helps you analyze your business through Generation,
+            Remuneration, and Partage.
           </p>
         </div>
+        <div className="flex items-center space-x-4">
+          {isDiffMode && (
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => acceptAIChanges()}
+                className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Accept Changes
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => rejectAIChanges()}
+                className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Reject Changes
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 flex flex-col items-center justify-center">
+            <div className="text-2xl font-bold text-blue-500">
+              {stats.totalCategories}
+            </div>
+            <p className="text-gray-500 text-sm">Categories</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex flex-col items-center justify-center">
+            <div className="text-2xl font-bold text-green-500">
+              {stats.totalSections}
+            </div>
+            <p className="text-gray-500 text-sm">Sections</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex flex-col items-center justify-center">
+            <div className="text-2xl font-bold text-purple-500">
+              {stats.totalItems}
+            </div>
+            <p className="text-gray-500 text-sm">Items</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex flex-col items-center justify-center">
+            <div className="flex justify-between w-full mb-2">
+              <span className="text-sm text-gray-500">Completion</span>
+              <span className="text-sm font-semibold">
+                {stats.completionPercentage}%
+              </span>
+            </div>
+            <Progress value={stats.completionPercentage} className="w-full" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* GRP Model Tabs */}
+      <Tabs defaultValue="generation">
+        <TabsList className="mb-4">
+          <TabsTrigger value="generation" className="flex items-center">
+            <Lightbulb className="h-4 w-4 mr-2" />
+            Generation
+          </TabsTrigger>
+          <TabsTrigger value="remuneration" className="flex items-center">
+            <Banknote className="h-4 w-4 mr-2" />
+            Remuneration
+          </TabsTrigger>
+          <TabsTrigger value="partage" className="flex items-center">
+            <Share2 className="h-4 w-4 mr-2" />
+            Partage
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Generation Tab */}
+        <TabsContent value="generation">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl">Generation</CardTitle>
+                  <CardDescription>
+                    How your business creates value
+                  </CardDescription>
+                </div>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold">Generation</h4>
+                      <p className="text-sm text-gray-500">
+                        Value generation focuses on how your business creates
+                        value through its people, value propositions, and
+                        manufacturing processes.
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderGRPCell(
+                  "generation",
+                  "porteurs",
+                  "generation-porteurs",
+                  "Porteurs",
+                  <Users className="h-4 w-4" />,
+                  "blue",
+                  "Who drives value creation in your business?"
+                )}
+                {renderGRPCell(
+                  "generation",
+                  "propositionValeur",
+                  "generation-proposition",
+                  "Proposition de Valeur",
+                  <Lightbulb className="h-4 w-4" />,
+                  "blue",
+                  "What value do you deliver to customers?"
+                )}
+                {renderGRPCell(
+                  "generation",
+                  "fabricationValeur",
+                  "generation-fabrication",
+                  "Fabrication de Valeur",
+                  <PencilRuler className="h-4 w-4" />,
+                  "blue",
+                  "How do you create this value?"
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Remuneration Tab */}
+        <TabsContent value="remuneration">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl">Remuneration</CardTitle>
+                  <CardDescription>
+                    How your business captures value
+                  </CardDescription>
+                </div>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold">Remuneration</h4>
+                      <p className="text-sm text-gray-500">
+                        Value capture describes how your business monetizes its
+                        value proposition, including revenue sources, volume,
+                        and performance metrics.
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderGRPCell(
+                  "remuneration",
+                  "sourcesRevenus",
+                  "remuneration-sources",
+                  "Sources de Revenus",
+                  <BarChart2 className="h-4 w-4" />,
+                  "green",
+                  "What are your business revenue sources?"
+                )}
+                {renderGRPCell(
+                  "remuneration",
+                  "volumeRevenus",
+                  "remuneration-volume",
+                  "Volume de Revenus",
+                  <PieChart className="h-4 w-4" />,
+                  "green",
+                  "What is your revenue volume and structure?"
+                )}
+                {renderGRPCell(
+                  "remuneration",
+                  "performance",
+                  "remuneration-performance",
+                  "Performance",
+                  <Activity className="h-4 w-4" />,
+                  "green",
+                  "How do you measure business performance?"
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Partage Tab */}
+        <TabsContent value="partage">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-xl">Partage</CardTitle>
+                  <CardDescription>
+                    How your business shares value
+                  </CardDescription>
+                </div>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Info className="h-4 w-4" />
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold">Partage</h4>
+                      <p className="text-sm text-gray-500">
+                        Value sharing explores how your business distributes
+                        value among stakeholders, conventions, and the broader
+                        ecosystem.
+                      </p>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {renderGRPCell(
+                  "partage",
+                  "partiesPrenantes",
+                  "partage-parties",
+                  "Parties Prenantes",
+                  <Users className="h-4 w-4" />,
+                  "purple",
+                  "Who are your key stakeholders?"
+                )}
+                {renderGRPCell(
+                  "partage",
+                  "conventions",
+                  "partage-conventions",
+                  "Conventions",
+                  <Target className="h-4 w-4" />,
+                  "purple",
+                  "What agreements govern your business relationships?"
+                )}
+                {renderGRPCell(
+                  "partage",
+                  "ecosysteme",
+                  "partage-ecosysteme",
+                  "Écosystème",
+                  <Share2 className="h-4 w-4" />,
+                  "purple",
+                  "How does your business interact with its ecosystem?"
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
