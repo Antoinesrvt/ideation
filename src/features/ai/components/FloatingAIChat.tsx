@@ -1,184 +1,383 @@
-import React, { useState, FormEvent } from 'react';
-import { Send, Bot, Paperclip, Mic, CornerDownLeft, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  ExpandableChat,
-  ExpandableChatHeader,
-  ExpandableChatBody,
-  ExpandableChatFooter,
-} from '@/components/ui/expandable-chat';
-import {
-  ChatBubble,
-  ChatBubbleAvatar,
-  ChatBubbleMessage,
-} from '@/components/ui/chat-bubble';
-import { ChatInput } from '@/components/ui/chat-input';
-import { ChatMessageList } from '@/components/ui/chat-message-list';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useRef, MouseEvent } from "react";
+import "../styles/nucleus.css"; // We'll include the CSS separately
 
-export const FloatingAIChat: React.FC = () => {
-  const [messages, setMessages] = useState([
+interface Message {
+  type: string;
+  text: string;
+  index?: number;
+}
+
+interface CustomCSSProperties extends React.CSSProperties {
+  '--index'?: number;
+}
+
+export const FloatingAIChat = () => {
+  // State for the component
+  const [expanded, setExpanded] = useState(false);
+  const [expanding, setExpanding] = useState(false);
+  const [collapsing, setCollapsing] = useState(false);
+  const [landing, setLanding] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [messageCounter, setMessageCounter] = useState(0);
+  const [messages, setMessages] = useState<Message[]>([
     {
-      id: 1,
-      content: "Hello! I'm your startup assistant. How can I help you with your business idea today?",
-      sender: "ai",
-    }
+      type: "ai",
+      text: "Hi there! I'm your Kickoff Assistant. How can I help with your project today?",
+    },
   ]);
-  
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
-  
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    
-    // Add user message
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        content: input,
-        sender: "user",
-      },
-    ]);
-    setInput('');
-    setIsLoading(true);
-    setShowSuggestions(false);
-    
-    // Simulate AI response
+
+  // Refs with proper types
+  const nucleusRef = useRef<HTMLDivElement>(null);
+  const nucleusPulseRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Create particles
+  useEffect(() => {
+    createParticles();
+  }, []);
+
+  const createParticles = () => {
+    const particles = document.getElementById("particles");
+    if (!particles) return;
+
+    // Clear existing particles
+    particles.innerHTML = "";
+
+    // Create exactly 15 particles as specified
+    for (let i = 0; i < 15; i++) {
+      const particle = document.createElement("div") as HTMLDivElement;
+      particle.classList.add("particle");
+
+      // Size between 2-4px
+      const size = Math.random() * 2 + 2;
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+
+      // Random position within nucleus
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * 20;
+      const x = Math.cos(angle) * distance + 50;
+      const y = Math.sin(angle) * distance + 50;
+      particle.style.left = `${x}%`;
+      particle.style.top = `${y}%`;
+
+      // 30% chance of using cyan, otherwise white
+      const color = Math.random() < 0.3 ? "#00c2ff" : "white";
+      particle.style.background = color;
+
+      particles.appendChild(particle);
+    }
+  };
+
+  // Animate pulse before transformation
+  const animatePulse = () => {
+    if (nucleusPulseRef.current) {
+      nucleusPulseRef.current.style.animation =
+        "pulse-click 0.8s ease-out forwards";
+
+      // Reset animation after completion
+      setTimeout(() => {
+        if (nucleusPulseRef.current) {
+          nucleusPulseRef.current.style.animation = "none";
+        }
+      }, 800);
+    }
+  };
+
+  // Toggle assistant state
+  const toggleAssistant = () => {
+    if (expanded) {
+      // Collapse process
+      setLanding(false);
+      setCollapsing(true);
+      setExpanding(false);
+
+      // Apply 3D rotation before collapsing
+      if (nucleusRef.current) {
+        nucleusRef.current.style.transform = "translateZ(0) rotateX(3deg)";
+      }
+
+      // Start collapse
+      setTimeout(() => {
+        setExpanded(false);
+        setTyping(false);
+      }, 120);
+
+      // Reset particles during collapse
+      setTimeout(() => {
+        const collapseParticles = document.querySelectorAll(".particle") as NodeListOf<HTMLDivElement>;
+        collapseParticles.forEach((particle, i) => {
+          const angle = Math.random() * Math.PI * 2;
+          const distance = Math.random() * 20;
+          const x = Math.cos(angle) * distance + 50;
+          const y = Math.sin(angle) * distance + 50;
+
+          particle.style.transition = `all ${700 + Math.random() * 600}ms var(--expand-timing)`;
+          particle.style.opacity = "0.7";
+
+          setTimeout(() => {
+            particle.style.left = `${x}%`;
+            particle.style.top = `${y}%`;
+            particle.style.transform = "none";
+          }, i * 30);
+        });
+      }, 300);
+
+      // Remove transition classes
+      setTimeout(() => {
+        setCollapsing(false);
+      }, 800);
+    } else {
+      // Expansion process
+      // Play pulse animation first (120ms as specified)
+      animatePulse();
+
+      // Mark as expanding
+      setExpanding(true);
+
+      // Apply initial 3D perspective
+      if (nucleusRef.current) {
+        nucleusRef.current.style.transform = "translateZ(30px) rotateX(8deg)";
+      }
+
+      // Start expansion after pulse
+      setTimeout(() => {
+        setExpanded(true);
+
+        // Animate particles to create the "energy flow" effect
+        const expandParticles = document.querySelectorAll(".particle") as NodeListOf<HTMLDivElement>;
+        expandParticles.forEach((particle, i) => {
+          const tx = Math.random() * 300 - 150;
+          const ty = Math.random() * 500 - 250;
+          const duration = 700 + Math.random() * 600;
+
+          particle.style.setProperty("--tx", `${tx}px`);
+          particle.style.setProperty("--ty", `${ty}px`);
+
+          setTimeout(() => {
+            particle.style.transition = `transform ${duration}ms var(--expand-timing), opacity ${duration * 0.8}ms var(--expand-timing)`;
+            particle.style.transform = `translate(${tx}px, ${ty}px)`;
+            particle.style.opacity = "0";
+          }, i * 50);
+        });
+
+        // Add landing animation
+        setTimeout(() => {
+          setLanding(true);
+        }, 750);
+      }, 200);
+
+      // Remove expanding class when done
+      setTimeout(() => {
+        setExpanding(false);
+      }, 1000);
+    }
+  };
+
+  // Add new message to the chat
+  const addNewMessage = () => {
+    const newCounter = messageCounter + 1;
+    setMessageCounter(newCounter);
+
+    const userMsg = {
+      type: "user",
+      text: `This is test message ${newCounter} from the user`,
+      index: newCounter,
+    };
+
+    setMessages([...messages, userMsg]);
+
+    // Safe scroll handling
+    const scrollToBottom = (element: HTMLDivElement) => {
+      element.scrollTop = element.scrollHeight;
+    };
+
+    const content = contentRef.current;
+    if (content) {
+      setTimeout(() => scrollToBottom(content), 100);
+    }
+
+    setTyping(true);
+
     setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          content: "Thanks for your message! This is a placeholder response. In the full implementation, I would provide intelligent assistance based on your startup needs.",
-          sender: "ai",
-        },
-      ]);
-      setIsLoading(false);
-    }, 1000);
+      setTyping(false);
+
+      const aiMsg = {
+        type: "ai",
+        text: `This is a response from the Kickoff AI to your message ${newCounter}. How can I help you further?`,
+        index: newCounter + 1,
+      };
+
+      setMessages((messages) => [...messages, aiMsg]);
+
+      const content = contentRef.current;
+      if (content) {
+        setTimeout(() => scrollToBottom(content), 100);
+      }
+    }, 1500);
   };
-  
-  const handleAttachFile = () => {
-    // Placeholder for file attachment functionality
+
+  // Initialize ambient nucleus animation
+  useEffect(() => {
+    const animateNucleus = () => {
+      if (!expanded) {
+        const nucleusParticles = document.querySelectorAll(".particle") as NodeListOf<HTMLDivElement>;
+        if (nucleusParticles.length) {
+          const randomIndex = Math.floor(Math.random() * nucleusParticles.length);
+          const randomParticle = nucleusParticles[randomIndex];
+
+          randomParticle.style.boxShadow = "0 0 8px 2px rgba(0, 194, 255, 0.7)";
+          randomParticle.style.opacity = "1";
+
+          setTimeout(() => {
+            randomParticle.style.boxShadow = "none";
+            randomParticle.style.opacity = "0.7";
+          }, 800);
+        }
+      }
+
+      setTimeout(animateNucleus, 2000 + Math.random() * 3000);
+    };
+
+    const animationTimer = setTimeout(animateNucleus, 1000);
+
+    return () => {
+      clearTimeout(animationTimer);
+    };
+  }, [expanded]);
+
+  // Handle tilt on mousemove
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!expanded && nucleusRef.current) {
+        const rect = nucleusRef.current.getBoundingClientRect();
+        const nucleusX = rect.left + rect.width / 2;
+        const nucleusY = rect.top + rect.height / 2;
+
+        // Calculate distance from nucleus center
+        const distX = e.clientX - nucleusX;
+        const distY = e.clientY - nucleusY;
+
+        // Calculate tilt angle (max 10 degrees)
+        const distance = Math.sqrt(distX * distX + distY * distY);
+        const maxDistance = 300;
+        const tiltFactor = Math.min(distance / maxDistance, 1);
+
+        const tiltX = (distY / maxDistance) * 10 * tiltFactor;
+        const tiltY = (-distX / maxDistance) * 10 * tiltFactor;
+
+        // Only apply tilt when nearby
+        if (distance < maxDistance) {
+          nucleusRef.current.style.transform = `scale(1) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+        } else {
+          nucleusRef.current.style.transform = "scale(1)";
+        }
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove as unknown as EventListener);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove as unknown as EventListener);
+    };
+  }, [expanded]);
+
+  // Button click handlers
+  const handleAddMessageClick = () => {
+    if (!expanded) {
+      toggleAssistant();
+      setTimeout(addNewMessage, 1000);
+    } else {
+      addNewMessage();
+    }
   };
-  
-  const handleMicrophoneClick = () => {
-    // Placeholder for voice input functionality
+
+  const handleCloseClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    toggleAssistant();
   };
-  
-  const suggestedPrompts = [
-    "Help me refine my value proposition",
-    "Analyze my competitor research",
-    "Suggest revenue streams for my business model",
-    "How can I validate my startup idea?"
-  ];
-  
-  const handleSuggestedPrompt = (prompt: string) => {
-    setInput(prompt);
-    setShowSuggestions(false);
+
+  // Nucleus click handler
+  const handleNucleusClick = () => {
+    if (!expanded) {
+      toggleAssistant();
+    }
   };
-  
+
   return (
-    <ExpandableChat
-      size="lg"
-      position="bottom-right"
-      icon={<Bot className="h-6 w-6" />}
-    >
-      <ExpandableChatHeader className="flex-col text-center justify-center">
-        <h1 className="text-xl font-semibold">Startup AI Assistant ✨</h1>
-        <p className="text-sm text-muted-foreground">
-          Ask me anything about your startup
-        </p>
-      </ExpandableChatHeader>
-      
-      <ExpandableChatBody>
-        <ChatMessageList>
-          {messages.map((message) => (
-            <ChatBubble
-              key={message.id}
-              variant={message.sender === "user" ? "sent" : "received"}
-            >
-              <ChatBubbleAvatar
-                className="h-8 w-8 shrink-0"
-                fallback={message.sender === "user" ? "You" : "AI"}
-              />
-              <ChatBubbleMessage
-                variant={message.sender === "user" ? "sent" : "received"}
-              >
-                {message.content}
-              </ChatBubbleMessage>
-            </ChatBubble>
-          ))}
-          
-          {isLoading && (
-            <ChatBubble variant="received">
-              <ChatBubbleAvatar
-                className="h-8 w-8 shrink-0"
-                fallback="AI"
-              />
-              <ChatBubbleMessage isLoading />
-            </ChatBubble>
-          )}
-          
-          {showSuggestions && messages.length === 1 && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-500 mb-2">Try asking about:</p>
-              <div className="grid grid-cols-1 gap-2">
-                {suggestedPrompts.map((prompt, index) => (
-                  <div 
-                    key={index}
-                    className="p-2 bg-gray-50 border border-gray-200 rounded-md text-sm cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSuggestedPrompt(prompt)}
-                  >
-                    {prompt}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </ChatMessageList>
-      </ExpandableChatBody>
-      
-      <ExpandableChatFooter>
-        <form
-          onSubmit={handleSubmit}
-          className="relative rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring p-1"
-        >
-          <ChatInput
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            className="min-h-12 resize-none rounded-lg bg-background border-0 p-3 shadow-none focus-visible:ring-0"
-          />
-          <div className="flex items-center p-3 pt-0 justify-between">
-            <div className="flex">
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={handleAttachFile}
-              >
-                <Paperclip className="size-4" />
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                type="button"
-                onClick={handleMicrophoneClick}
-              >
-                <Mic className="size-4" />
-              </Button>
-            </div>
-            <Button type="submit" size="sm" className="ml-auto gap-1.5">
-              Send Message
-              <CornerDownLeft className="size-3.5" />
-            </Button>
+    <div className="container">
+      <div
+        className={`ai-container ${expanded ? "ai-expanded" : ""} ${
+          expanding ? "ai-expanding" : ""
+        } ${collapsing ? "ai-collapsing" : ""} ${landing ? "ai-landing" : ""} ${
+          typing ? "ai-typing" : ""
+        }`}
+      >
+        <div className="landing-shadow"></div>
+        <div className="nucleus" ref={nucleusRef} onClick={handleNucleusClick}>
+          <div className="nucleus-inner">
+            <div className="nucleus-glass"></div>
+            <div className="nucleus-highlight"></div>
+            <div className="nucleus-core"></div>
           </div>
-        </form>
-      </ExpandableChatFooter>
-    </ExpandableChat>
+          <div className="orbital-system">
+            <div className="orbital-ring"></div>
+            <div className="orbital-ring"></div>
+            <div className="orbital-ring"></div>
+          </div>
+          <div className="morphing-container">
+            <div className="morphing-gradient"></div>
+          </div>
+          {/* <div className="k-symbol">K</div> */}
+          <div className="particles" id="particles"></div>
+          <div className="nucleus-pulse" ref={nucleusPulseRef}></div>
+          <div
+            className="transformation-ripple"
+            id="transformation-ripple"
+          ></div>
+          <div className="assistant">
+            <div className="assistant-header">
+              <div className="assistant-logo">K</div>
+              <div className="assistant-title">Kickoff Assistant</div>
+              <button className="close-btn" onClick={handleCloseClick}>
+                ×
+              </button>
+            </div>
+            <div className="assistant-content" ref={contentRef}>
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`message ${message.type}`}
+                  style={{ "--index": message.index || index } as CustomCSSProperties}
+                >
+                  {message.text}
+                </div>
+              ))}
+            </div>
+            <div className="assistant-input">
+              <input
+                type="text"
+                className="input-field"
+                placeholder="Type your message..."
+              />
+              <button className="send-btn">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
+
+export default FloatingAIChat;
