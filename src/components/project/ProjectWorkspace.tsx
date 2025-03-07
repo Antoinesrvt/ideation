@@ -16,7 +16,6 @@ import { DocumentGenerator } from '@/features/documents/components/DocumentGener
 import { ExternalTools } from '@/features/tools/components/ExternalTools';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { FloatingAIChat } from '@/features/ai/components/FloatingAIChat';
 import { Button } from '@/components/ui/button';
 import { FinancialProjections } from '@/features/financials/components/FinancialProjections';
 import { TeamManagement } from '@/features/team/components/TeamManagement';
@@ -26,7 +25,7 @@ import { ProjectState } from '@/store/types';
 import { AIDashboard } from '@/features/ai/components/AIDashboard';
 // Import Database type for proper typing
 import { Database } from '@/types/database';
-import { FloatingChatWrapper } from '@/features/ai/components/UIAssistantWrapper';
+import { FloatingAIChat } from "@/features/ai/components/FloatingAIChat";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -215,7 +214,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         </div>
 
         {/* Floating AI Chat */}
-        <FloatingChatWrapper />
+        <FloatingAIChat />
       </div>
     </QueryClientProvider>
   );
