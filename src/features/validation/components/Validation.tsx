@@ -62,11 +62,11 @@ import { SectionTab } from "@/components/ui/section-tab";
 import TabList from '@/features/common/components/TabList';
 
 const tabs = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    icon: <Info className="h-4 w-4 mr-2" />
-  },
+  // {
+  //   id: 'overview',
+  //   label: 'Overview',
+  //   icon: <Info className="h-4 w-4 mr-2" />
+  // },
   {
     id: "hypotheses",
     label: "Hypotheses",
@@ -113,7 +113,7 @@ export const Validation: React.FC = () => {
     deleteHypothesis,
   } = useValidation(projectId);
 
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [activeTab, setActiveTab] = useState<string>("hypotheses");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Add form state
@@ -548,7 +548,7 @@ export const Validation: React.FC = () => {
         <Tabs value={activeTab} className="w-full" onValueChange={setActiveTab}>
           <TabList tabs={tabs} />
 
-          <TabsContent value="overview">{renderOverview()}</TabsContent>
+          {/* <TabsContent value="overview">{renderOverview()}</TabsContent> */}
 
           <TabsContent value="hypotheses" variant="pills">
             <SectionTab

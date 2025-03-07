@@ -14,7 +14,7 @@
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-glow: rgba(255, 255, 255, 0.9);
   
-  /* Updated animation timings for more natural feel */
+  /* Standard animation timings */
   --expand-timing: cubic-bezier(0.16, 1, 0.3, 1); /* Snappier start, smooth end */
   --collapse-timing: cubic-bezier(0.6, -0.28, 0.735, 0.045); /* Quick collapse */
   --breathe-timing: cubic-bezier(0.4, 0, 0.2, 1); /* Smooth natural breathe */
@@ -26,6 +26,7 @@
   --assistant-height: 520px;
 }
 
+/* Container setup */
 .container {
   position: relative;
   width: 100%;
@@ -35,13 +36,22 @@
   align-items: center;
 }
 
+/* Main AI container */
 .ai-container {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 1000;
+  z-index: 100;
   transform-style: preserve-3d;
   perspective: 1000px;
+  border-radius: 50%;
+  transition: all 0.5s var(--expand-timing);
+  transform-origin: center;
+  will-change: transform;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  border: none;
 }
 
 /* NUCLEUS STYLES */
@@ -51,14 +61,12 @@
   border-radius: 50%;
   position: relative;
   transform-style: preserve-3d;
-  cursor: pointer;
   overflow: hidden;
   transition: width 0.5s var(--expand-timing),
               height 0.5s var(--expand-timing),
               border-radius 0.5s var(--expand-timing),
               transform 0.5s var(--expand-timing),
               box-shadow 0.5s var(--expand-timing);
-  animation: breathe 3s infinite var(--breathe-timing);
   box-shadow: 0 8px 32px rgba(74, 35, 196, 0.3),
               0 4px 8px rgba(0, 0, 80, 0.15),
               0 0 0 1px var(--glass-border);
@@ -68,14 +76,31 @@
     var(--primary-medium) 60%,
     var(--primary-dark) 100%
   );
-  transform: translateZ(0) rotateX(0deg) rotateY(0deg);
+  z-index: 1;
+  cursor: pointer;
 }
 
+/* Enhance hover effect for a more magical feeling */
+.nucleus:not(.ai-expanded):hover {
+  transform: scale(1.02) translateY(-2px);
+  box-shadow: 0 12px 36px rgba(74, 35, 196, 0.5),
+              0 6px 12px rgba(0, 0, 80, 0.25),
+              0 0 0 1px var(--glass-border);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Don't show pointer cursor when expanded */
+.ai-expanded.nucleus {
+  cursor: default;
+}
+
+/* Breathing animation */
 @keyframes breathe {
-  0%, 100% { transform: scale(1) translateZ(0); }
-  50% { transform: scale(1.03) translateZ(0); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1); }
 }
 
+/* Nucleus inner components */
 .nucleus-inner {
   position: absolute;
   width: 100%;
@@ -83,9 +108,14 @@
   border-radius: inherit;
   overflow: hidden;
   transform-style: preserve-3d;
-  transition: all 0.8s var(--expand-timing);
+  transition: opacity 0.5s var(--expand-timing);
+  top: 0;
+  left: 0;
+  cursor: pointer;
+  z-index: 3;
 }
 
+/* Glass layer */
 .nucleus-glass {
   position: absolute;
   top: 0;
@@ -98,11 +128,10 @@
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   opacity: 0.3;
-  transform: translateZ(1px);
   pointer-events: none;
-  transition: all 0.8s var(--expand-timing);
 }
 
+/* Highlight effect */
 .nucleus-highlight {
   position: absolute;
   top: -40%;
@@ -115,12 +144,11 @@
     transparent 70%
   );
   opacity: 0.7;
-  transform: translateZ(2px);
   pointer-events: none;
   filter: blur(2px);
-  transition: all 0.8s var(--expand-timing);
 }
 
+/* Core element */
 .nucleus-core {
   position: absolute;
   top: 50%;
@@ -139,7 +167,6 @@
   filter: blur(5px);
   animation: rotate-core 10s linear infinite;
   pointer-events: none;
-  transition: all 0.8s var(--expand-timing);
 }
 
 @keyframes rotate-core {
@@ -147,7 +174,7 @@
   to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-/* ORBITAL SYSTEM */
+/* Orbital system */
 .orbital-system {
   position: absolute;
   width: 100%;
@@ -157,7 +184,6 @@
   border-radius: inherit;
   pointer-events: none;
   transform-style: preserve-3d;
-  transition: all 0.8s var(--expand-timing);
 }
 
 .orbital-ring {
@@ -168,7 +194,6 @@
   opacity: 0.4;
   border-radius: 50%;
   transform-style: preserve-3d;
-  transition: all 0.8s var(--expand-timing);
 }
 
 .orbital-ring:nth-child(1) {
@@ -208,7 +233,7 @@
   to { transform: translate(-50%, -50%) rotateX(70deg) rotateY(0deg) rotateZ(360deg); }
 }
 
-/* TRANSFORMATION VISUALS */
+/* Transformation ripple effect */
 .transformation-ripple {
   position: absolute;
   top: 0;
@@ -221,27 +246,12 @@
     var(--primary-light) 0%,
     transparent 70%
   );
-  opacity: 0;
   pointer-events: none;
   transform-origin: center;
-  z-index: 5;
+  z-index: 2;
 }
 
-/* K SYMBOL */
-.k-symbol {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-weight: bold;
-  font-size: 24px;
-  z-index: 10;
-  transition: all 0.8s var(--expand-timing);
-  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-}
-
-/* PARTICLES */
+/* Particles */
 .particles {
   position: absolute;
   width: 100%;
@@ -251,8 +261,7 @@
   overflow: hidden;
   border-radius: inherit;
   pointer-events: none;
-  z-index: 5;
-  transition: border-radius 0.8s var(--expand-timing);
+  z-index: 2;
 }
 
 .particle {
@@ -261,10 +270,47 @@
   border-radius: 50%;
   opacity: 0.7;
   pointer-events: none;
-  transition: opacity 0.2s, transform 0.4s var(--expand-timing);
+  transition: opacity 0.2s, box-shadow 0.4s, left 0.4s, top 0.4s;
+  animation: particle-glow 5s infinite alternate;
+  animation-delay: var(--hover-delay, 0s);
 }
 
-/* NUCLEUS PULSE */
+/* Particle glow animation */
+@keyframes particle-glow {
+  0% { 
+    opacity: 0.7;
+    box-shadow: none;
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 8px 2px rgba(0, 194, 255, 0.7);
+  }
+  100% { 
+    opacity: 0.7;
+    box-shadow: none;
+  }
+}
+
+/* Add glow to particles on hover */
+.nucleus:hover .particle {
+  animation: particle-hover 2s infinite alternate;
+  filter: drop-shadow(0 0 3px rgba(0, 194, 255, 0.5));
+}
+
+@keyframes particle-hover {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(var(--hover-x, 3px), var(--hover-y, 3px));
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+/* Nucleus pulse */
 .nucleus-pulse {
   position: absolute;
   top: 50%;
@@ -278,59 +324,52 @@
     transparent 70%
   );
   transform: translate(-50%, -50%);
-  opacity: 0;
   pointer-events: none;
-  z-index: 4;
+  z-index: 3;
 }
 
 /* ASSISTANT STYLES */
 .assistant {
   position: absolute;
   top: 0;
-  right: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   border-radius: inherit;
   overflow: hidden;
   transform-origin: center;
-  transform: scale(0);
-  pointer-events: none;
-  transition: transform 0.8s var(--expand-timing),
-              opacity 0.5s ease;
-  z-index: 3;
+  pointer-events: all;
+  z-index: 5;
+  transition: all 0.5s var(--expand-timing);
+  will-change: transform, opacity;
+  background: linear-gradient(
+    135deg,
+    var(--primary-light),
+    var(--primary-medium) 60%,
+    var(--primary-dark) 100%
+  );
+  border: none;
+  outline: none;
 }
 
+/* Header */
 .assistant-header {
   display: flex;
   align-items: center;
   padding: 15px 20px;
-  background: linear-gradient(to right, var(--primary-dark), var(--primary-medium), var(--primary-light));
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-medium) 60%, var(--primary-dark) 100%);
   color: white;
   font-weight: 500;
   border-top-left-radius: inherit;
   border-top-right-radius: inherit;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all 0.3s ease 0.2s;
   position: relative;
-  z-index: 3;
+  z-index: 5;
   overflow: hidden;
+  border: none;
+  outline: none;
 }
 
-/* Gradient header overlay to match nucleus */
-.assistant-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, var(--primary-light), var(--primary-medium), var(--primary-dark));
-  opacity: 0;
-  transition: opacity 0.8s var(--expand-timing);
-  z-index: -1;
-}
-
+/* Assistant logo */
 .assistant-logo {
   width: 32px;
   height: 32px;
@@ -365,6 +404,7 @@
   flex: 1;
 }
 
+/* Close button */
 .close-btn {
   background: none;
   border: none;
@@ -385,22 +425,21 @@
 .close-btn:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.2);
-  transform: none;
-  box-shadow: none;
 }
 
+/* Content area */
 .assistant-content {
   padding: 20px;
   height: calc(100% - 145px);
   overflow-y: auto;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.3s ease 0.3s;
   background: white;
   position: relative;
-  z-index: 2;
+  z-index: 4;
+  border: none;
+  outline: none;
 }
 
+/* Messages */
 .message {
   margin-bottom: 16px;
   max-width: 85%;
@@ -409,7 +448,6 @@
   line-height: 1.5;
   font-size: 14px;
   position: relative;
-  transition: all 0.5s ease;
   opacity: 0;
   transform: translateY(10px);
 }
@@ -419,16 +457,19 @@
   border-bottom-left-radius: 4px;
   align-self: flex-start;
   margin-right: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .message.user {
-  background: var(--primary-medium);
+  background: linear-gradient(135deg, var(--primary-medium), var(--primary-dark));
   color: white;
   border-bottom-right-radius: 4px;
   align-self: flex-end;
   margin-left: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Input area */
 .assistant-input {
   position: absolute;
   bottom: 0;
@@ -439,10 +480,9 @@
   border-top: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s ease 0.4s;
-  z-index: 2;
+  z-index: 4;
+  border: none;
+  outline: none;
 }
 
 .input-field {
@@ -484,38 +524,80 @@
   box-shadow: 0 4px 8px rgba(71, 35, 196, 0.3);
 }
 
-/* MORPHING HELPERS */
-.morphing-container {
+/* Animated border */
+.assistant-border {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 194, 255, 0.8) 0%,
+    rgba(106, 71, 232, 0.8) 25%, 
+    rgba(71, 35, 196, 0.8) 50%,
+    rgba(18, 8, 90, 0.8) 75%,
+    rgba(0, 194, 255, 0.8) 100%
+  );
+  opacity: 0;
+  z-index: 4;
+  transform: scale(0);
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.5s var(--expand-timing);
+  overflow: hidden;
+  background-size: 400% 400%;
+  animation: none;
+  box-shadow: 0 0 15px rgba(0, 194, 255, 0.2);
+}
+
+/* Border animation */
+@keyframes rotate-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Inner white content area */
+.assistant-border::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
   background: white;
   border-radius: inherit;
-  transform: scale(0);
-  opacity: 0;
   z-index: 1;
-  pointer-events: none;
-  transition: all 0.8s var(--expand-timing);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.02);
 }
 
-.morphing-gradient {
+/* Assistant background */
+.assistant-background {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--primary-light), var(--primary-medium), var(--primary-dark));
-  opacity: 1;
-  transform: scale(1);
-  transform-origin: center;
+  background-color: white;
+  opacity: 0;
+  z-index: 4;
   pointer-events: none;
-  transition: all 0.8s var(--expand-timing);
+  transition: opacity 0.3s ease;
+  border: none;
+  outline: none;
+  margin: -1px;
+  padding: 1px;
 }
 
-/* 3D LANDING ANIMATION */
+/* Landing shadow */
 .landing-shadow {
   position: absolute;
   bottom: -10px;
@@ -529,10 +611,10 @@
   transform: scale(0.5);
   transition: all 0.6s var(--landing-timing);
   pointer-events: none;
-  z-index: -1;
+  z-index: 0;
 }
 
-/* EXPANDED STATE */
+/* EXPANDED STATE STYLES */
 .ai-expanded .nucleus {
   width: var(--assistant-width);
   height: var(--assistant-height);
@@ -543,287 +625,159 @@
               0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
-.ai-expanded .nucleus-inner {
-  opacity: 0;
-}
-
-.ai-expanded .orbital-system {
-  opacity: 0;
-  transform: scale(1.5);
-}
-
 .ai-expanded .assistant {
   transform: scale(1);
   pointer-events: all;
-}
-
-.ai-expanded .assistant-header {
   opacity: 1;
-  transform: translateY(0);
 }
 
-.ai-expanded .assistant-header::before {
-  opacity: 0;
-}
-
-.ai-expanded .assistant-content {
+.ai-expanded .assistant-border {
   opacity: 1;
-  transform: translateY(0);
-}
-
-.ai-expanded .assistant-input {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.ai-expanded .message {
-  opacity: 1;
-  transform: translateY(0);
-  transition-delay: calc(0.3s + (0.1s * var(--index, 0)));
-}
-
-.ai-expanded .k-symbol {
-  font-size: 16px;
-  top: 23px;
-  left: 27px;
-  transform: translate(0, 0);
-}
-
-.ai-expanded .morphing-container {
   transform: scale(1);
-  opacity: 1;
+  animation: rotate-border 12s linear infinite;
 }
 
-.ai-expanded .morphing-gradient {
-  height: 64px;
-  transform: scale(1);
-}
-
-.ai-expanded .landing-shadow {
-  opacity: 0.25;
-  transform: scale(1);
-}
-
-/* 3D landing animation */
-.ai-landing .nucleus {
-  animation: landing-bounce 0.2s var(--landing-timing) forwards;
-}
-
-@keyframes landing-bounce {
-  0% { transform: translateZ(20px) rotateX(5deg); }
-  50% { transform: translateZ(3px) rotateX(0deg); }
-  75% { transform: translateZ(8px) rotateX(1deg); }
-  100% { transform: translateZ(0) rotateX(0deg); }
-}
-
-.ai-expanding .transformation-ripple {
-  animation: expansion-ripple 0.5s forwards;
-}
-
-@keyframes expansion-ripple {
-  0% { 
-    opacity: 0.7; 
-    transform: scale(1); 
-  }
-  60% { 
-    opacity: 0.5;
-    transform: scale(1.1);
-  }
-  100% { 
-    opacity: 0;
-    transform: scale(1.3);
-  }
-}
-
-.ai-collapsing .transformation-ripple {
-  animation: collapse-ripple 0.5s forwards;
-}
-
-@keyframes collapse-ripple {
-  0% { 
-    opacity: 0.5; 
-    transform: scale(1.5); 
-  }
-  100% { 
-    opacity: 0;
-    transform: scale(1);
-  }
-}
-
-/* HOVER & INTERACTION STATES */
-.nucleus:hover:not(.ai-expanded .nucleus) {
-  transform: scale(1.02) translateY(-2px) rotateX(3deg);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 12px 36px rgba(74, 35, 196, 0.4),
-              0 6px 12px rgba(0, 0, 80, 0.2),
-              0 0 0 1px var(--glass-border);
-}
-
-.ai-typing .message.ai:last-child::after {
-  content: '';
+/* TYPING INDICATOR */
+.typing-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
-  margin-left: 3px;
-  background: var(--primary-medium);
+  margin: 0 3px;
+  background: var(--accent-cyan);
   border-radius: 50%;
-  animation: typing-indicator 1.5s infinite;
-  vertical-align: middle;
+  opacity: 0.7;
+  animation: typing-pulse 1.5s infinite;
 }
 
-@keyframes typing-indicator {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 1; }
-}
-
-/* ANIMATIONS */
-@keyframes pulse-click {
-  0% { 
-    opacity: 0.7; 
-    transform: translate(-50%, -50%) scale(0.95);
-  }
-  70% { 
-    opacity: 0.5; 
-    transform: translate(-50%, -50%) scale(1.1);
-  }
-  100% { 
-    opacity: 0; 
-    transform: translate(-50%, -50%) scale(1.2);
-  }
-}
-
-@keyframes particle-flow {
-  0% { opacity: 0.7; transform: translate(0, 0); }
-  100% { opacity: 0; transform: translate(var(--tx), var(--ty)); }
-}
-
-/* DEMO CONTROLS */
-.demo-controls {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 100;
-}
-
-.demo-controls button {
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-  margin-right: 8px;
-}
-
-.demo-controls button:hover {
-  background: #f5f5f5;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Update particle hover animations */
-.nucleus:hover:not(.ai-expanded .nucleus) .particle {
-  animation: particle-hover 1.2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Create varied particle movements */
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(1) { --hover-x: 4px; --hover-y: 3px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(2) { --hover-x: -3px; --hover-y: 4px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(3) { --hover-x: 5px; --hover-y: -2px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(4) { --hover-x: -4px; --hover-y: -3px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(5) { --hover-x: 3px; --hover-y: 5px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(6) { --hover-x: -5px; --hover-y: 2px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(7) { --hover-x: 2px; --hover-y: -4px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(8) { --hover-x: -2px; --hover-y: -5px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(9) { --hover-x: 4px; --hover-y: 4px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(10) { --hover-x: -4px; --hover-y: 4px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(11) { --hover-x: 3px; --hover-y: -3px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(12) { --hover-x: -3px; --hover-y: -4px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(13) { --hover-x: 5px; --hover-y: 2px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(14) { --hover-x: -2px; --hover-y: 5px; }
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(15) { --hover-x: 4px; --hover-y: -5px; }
-
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(odd) {
+.typing-dot:nth-child(2) {
   animation-delay: 0.2s;
 }
 
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(3n) {
+.typing-dot:nth-child(3) {
   animation-delay: 0.4s;
 }
 
-.nucleus:hover:not(.ai-expanded .nucleus) .particle:nth-child(5n) {
-  animation-delay: 0.6s;
+@keyframes typing-pulse {
+  0%, 100% { 
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }
 
-@keyframes particle-hover {
+/* Content wrapper */
+.assistant-content-wrapper {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 4;
+  border: none;
+  outline: none;
+}
+
+/* ANIMATION CLASS */
+.ai-animating {
+  pointer-events: none;
+}
+
+/* Add magical flowing gradient border to the nucleus */
+.nucleus::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(
+    135deg,
+    rgba(106, 71, 232, 0), 
+    rgba(0, 194, 255, 0.8) 25%,
+    rgba(106, 71, 232, 0.8) 50%,
+    rgba(255, 52, 120, 0.8) 75%,
+    rgba(106, 71, 232, 0)
+  );
+  border-radius: inherit;
+  z-index: -1;
+  animation: rotate-border-nucleus 6s linear infinite;
+  background-size: 400% 400%;
+  filter: blur(3px);
+  opacity: 0.7;
+  transition: opacity 0.5s var(--expand-timing);
+}
+
+/* Keep background static on hover/focus states */
+.nucleus:hover::before {
+  opacity: 1;
+  animation-duration: 3s;
+}
+
+/* Animation for flowing border */
+@keyframes rotate-border-nucleus {
   0% {
-    transform: translate(0, 0);
+    background-position: 0% 50%;
   }
   50% {
-    transform: translate(var(--hover-x, 3px), var(--hover-y, 3px));
-    opacity: 1;
+    background-position: 100% 100%;
   }
   100% {
-    transform: translate(0, 0);
+    background-position: 0% 50%;
   }
 }
 
-/* Add orbital ring hover effect */
-.nucleus:hover:not(.ai-expanded .nucleus) .orbital-ring {
-  opacity: 0.6;
+/* Update expanded nucleus to have larger, more subtle border glow */
+.ai-expanded .nucleus::before {
+  opacity: 0.9;
+  filter: blur(5px);
+  animation-duration: 10s;
+  background: linear-gradient(
+    135deg,
+    rgba(106, 71, 232, 0), 
+    rgba(0, 194, 255, 0.6) 25%,
+    rgba(106, 71, 232, 0.6) 50%,
+    rgba(255, 52, 120, 0.6) 75%,
+    rgba(106, 71, 232, 0)
+  );
+}
+
+/* Make orbital rings more visible on hover */
+.nucleus:hover .orbital-ring {
+  opacity: 0.7;
   transition: opacity 0.3s ease;
 }
 
-.nucleus:hover:not(.ai-expanded .nucleus) .orbital-ring:nth-child(1) {
-  animation: orbit-1 8s linear infinite, orbit-pulse 2s infinite;
-}
-
-.nucleus:hover:not(.ai-expanded .nucleus) .orbital-ring:nth-child(2) {
-  animation: orbit-2 12s linear infinite, orbit-pulse 2s infinite 0.6s;
-}
-
-.nucleus:hover:not(.ai-expanded .nucleus) .orbital-ring:nth-child(3) {
-  animation: orbit-3 16s linear infinite, orbit-pulse 2s infinite 1.2s;
-}
-
-@keyframes orbit-pulse {
-  0%, 100% {
-    border-width: 1px;
-    opacity: 0.4;
-  }
-  50% {
-    border-width: 2px;
-    opacity: 0.6;
-  }
-}
-
-/* Add nucleus core hover effect */
-.nucleus:hover:not(.ai-expanded .nucleus) .nucleus-core {
-  filter: blur(4px);
+/* Enhance the nucleus core on hover */
+.nucleus:hover .nucleus-core {
+  filter: blur(4px) brightness(1.2);
   transform: translate(-50%, -50%) scale(1.1);
-  animation: rotate-core 8s linear infinite, core-pulse 2s infinite;
+  transition: all 0.3s ease;
 }
 
-@keyframes core-pulse {
-  0%, 100% {
-    opacity: 0.8;
+/* Add subtle float animation to make it appear magical and floating */
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
   }
   50% {
-    opacity: 1;
+    transform: translateY(-5px) rotate(0.5deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
   }
 }
 
-/* Add glass effect hover animation */
-.nucleus:hover:not(.ai-expanded .nucleus) .nucleus-glass {
-  opacity: 0.4;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+/* Apply floating animation to non-expanded nucleus */
+.nucleus:not(.ai-expanded):not(:hover) {
+  animation: float 6s ease-in-out infinite;
 }
 
-/* Add highlight hover effect */
-.nucleus:hover:not(.ai-expanded .nucleus) .nucleus-highlight {
-  opacity: 0.8;
-  transform: translateZ(2px) scale(1.05);
-  filter: blur(1px);
+/* Ensure animations don't conflict during expansion */
+.ai-animating.nucleus {
+  animation: none !important;
 }

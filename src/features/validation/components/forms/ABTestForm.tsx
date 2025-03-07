@@ -19,7 +19,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { ValidationForm } from '../common/ValidationForm';
-import { ABTest } from '@/types';
+import { ValidationABTest as ABTest } from '@/store/types';
 import { HelpCircle } from 'lucide-react';
 import {
   Tooltip,

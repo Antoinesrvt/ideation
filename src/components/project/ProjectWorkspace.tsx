@@ -23,8 +23,10 @@ import { TeamManagement } from '@/features/team/components/TeamManagement';
 import { Validation } from '@/features/validation/components/Validation';
 import { AIProjectWrapper } from '@/components/project/AIProjectWrapper';
 import { ProjectState } from '@/store/types';
+import { AIDashboard } from '@/features/ai/components/AIDashboard';
 // Import Database type for proper typing
 import { Database } from '@/types/database';
+import { FloatingChatWrapper } from '@/features/ai/components/UIAssistantWrapper';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -41,7 +43,7 @@ interface ProjectWorkspaceProps {
   projectId: string;
 }
 
-export type ActiveSection = 'overview' | 'canvas' | 'grp' | 'market' | 'product-design' | 'validation' | 'financials' | 'team' | 'documents' | 'external-tools';
+export type ActiveSection = 'overview' | 'canvas' | 'grp' | 'market' | 'product-design' | 'validation' | 'financials' | 'team' | 'documents' | 'external-tools' | 'ai';
 
 export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   // Get project data from API (will be used for initial loading and syncing)
@@ -161,9 +163,9 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col w-full h-full min-h-screen bg-gray-50">
         {/* Header */}
-        <Header 
-          activeSection={activeSection} 
-          projectName={projectDetails.title || ""} 
+        <Header
+          activeSection={activeSection}
+          projectName={projectDetails.title || ""}
           sidebarCollapsed={sidebarCollapsed}
           // toggleSidebar={toggleSidebar}
         />
@@ -184,8 +186,9 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           <div className="flex-1 overflow-auto p-6">
             <ErrorBoundary>
               <AIProjectWrapper>
-                {activeSection === "overview" && <div>Overview</div> //<ProjectOverview />
-                }
+                {activeSection === "overview" && <div>Overview</div>}
+
+                {activeSection === "ai" && <AIDashboard />}
 
                 {activeSection === "canvas" && <BusinessModelCanvas />}
 
@@ -212,7 +215,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         </div>
 
         {/* Floating AI Chat */}
-        <FloatingAIChat />
+        <FloatingChatWrapper />
       </div>
     </QueryClientProvider>
   );

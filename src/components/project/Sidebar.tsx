@@ -14,7 +14,8 @@ import {
   PieChart,
   TrendingUp,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -80,6 +81,7 @@ export function Sidebar({
       title: 'Analytics',
       items: [
         { id: 'overview', icon: Layout, label: 'Dashboard' },
+        { id: 'ai', icon: Bot, label: 'AI Dashboard' },
         { id: 'financials', icon: BarChart2, label: 'Performance' },
         { id: 'validation', icon: TrendingUp, label: 'Trends' },
         { id: 'market', icon: PieChart, label: 'Market Research' },
