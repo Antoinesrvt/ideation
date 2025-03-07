@@ -498,7 +498,7 @@ export const GRPModel: React.FC = () => {
   };
     
   return (
-    <div className="p-6">
+    <div className="">
       
       {/* GRP Model - Grid Layout */}
       <div className="space-y-4">

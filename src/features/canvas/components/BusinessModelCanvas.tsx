@@ -378,7 +378,7 @@ export const BusinessModelCanvas: React.FC = () => {
   };
   
   return (
-    <div className="p-6">
+    <div className="">
       {/* Edit Item Dialog */}
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
         <DialogContent className="sm:max-w-md">
@@ -439,37 +439,7 @@ export const BusinessModelCanvas: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
-      <div className="mb-6 flex justify-between items-start">
-        <div>
-        <h2 className="text-2xl font-bold text-gray-900">Business Model Canvas</h2>
-        <p className="text-gray-600">Map out all the essential components of your business model</p>
-        </div>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Lightbulb className="h-4 w-4 mr-2" />
-                <span className="hidden md:inline">Canvas Guide</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-sm p-4">
-              <h4 className="font-bold mb-2">How to Use the Business Model Canvas</h4>
-              <ol className="list-decimal pl-5 space-y-1 text-sm">
-                <li>Start with <strong>Customer Segments</strong> to identify who you're creating value for</li>
-                <li>Define your <strong>Value Propositions</strong> - what problems you're solving</li>
-                <li>Determine <strong>Channels</strong> to reach your customers</li>
-                <li>Establish <strong>Customer Relationships</strong> to maintain</li>
-                <li>Identify <strong>Revenue Streams</strong> from each segment</li>
-                <li>List <strong>Key Resources</strong> required for your business</li>
-                <li>Define <strong>Key Activities</strong> you must perform</li>
-                <li>Establish <strong>Key Partners</strong> who will help you</li>
-                <li>Calculate <strong>Cost Structure</strong> based on your activities and resources</li>
-              </ol>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+
       
       {/* First-time user guidance if no content exists */}
       {/* {!hasContent && (

@@ -60,6 +60,14 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
   
+  // Add state for sidebar collapse
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Toggle sidebar collapse function
+  const toggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
+  
   // Set the current project in the store when it loads
   useEffect(() => {
     if (project.data) {
@@ -153,10 +161,15 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     <QueryClientProvider client={queryClient}>
       <div className="flex flex-col w-full h-full min-h-screen bg-gray-50">
         {/* Header */}
-        <Header onExport={handleExport} />
+        <Header 
+          activeSection={activeSection} 
+          projectName={projectDetails.title || ""} 
+          sidebarCollapsed={sidebarCollapsed}
+          // toggleSidebar={toggleSidebar}
+        />
 
         {/* Main Content */}
-        <main className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
           <Sidebar
             projectName={projectDetails.title || ""}
@@ -164,10 +177,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
             completion={0} //TODO: add real completion
             activeSection={activeSection}
             setActiveSection={setActiveSection}
+            collapsed={sidebarCollapsed}
           />
 
           {/* Content Area */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto p-6">
             <ErrorBoundary>
               <AIProjectWrapper>
                 {activeSection === "overview" && <div>Overview</div> //<ProjectOverview />
@@ -195,7 +209,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               </AIProjectWrapper>
             </ErrorBoundary>
           </div>
-        </main>
+        </div>
 
         {/* Floating AI Chat */}
         <FloatingAIChat />

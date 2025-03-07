@@ -1,11 +1,19 @@
 import React, { useState, useMemo } from 'react';
-
-import {   Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
-import {  Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';  
+import {
+  Tabs,
+  TabsContent,
+  TabsTrigger
+} from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
   Check,
@@ -14,9 +22,7 @@ import {
   Info,
   Layout,
   MapPin,
-  Map,
-  ChevronDown,
-  ChevronUp,
+  Map
 } from "lucide-react";
 import { WireframeGallery } from "./WireframeGallery";
 import { FeatureMap } from "./FeatureMap";
@@ -25,21 +31,68 @@ import { UserJourneyMap } from "./UserJourneyMap";
 import { useProjectStore } from '@/store';
 import { useAIStore } from '@/hooks/useAIStore';
 import { generateId } from '@/lib/utils';
-import { ProductFeature, ProductWireframe, ProductJourneyStage } from '@/store/types';
+import TabList from '@/features/common/components/TabList';
+import { SectionTab } from '@/components/ui/section-tab';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
-// Extended types for UI that add status for comparison mode
-interface ExtendedProductFeature extends Omit<ProductFeature, 'status'> {
-  status?: 'new' | 'modified' | 'unchanged' | 'removed' | string | null;
-}
+const tabs = [
+  {
+    id: 'wireframes',
+    label: 'Wireframes',
+    icon: <Layout className="h-4 w-4 mr-2" />
+  },
+  {
+    id: 'features',
+    label: 'Feature Map',
+    icon: <MapPin className="h-4 w-4 mr-2" />
+  },
+  {
+    id: 'journey',
+    label: 'User Journey',
+    icon: <Map className="h-4 w-4 mr-2" />
+  }
+];
 
-interface ExtendedProductWireframe extends ProductWireframe {
-  status?: 'new' | 'modified' | 'unchanged' | 'removed';
-}
+// Animation variants for the tab content
+const tabContentVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut",
+      when: "beforeChildren",
+      staggerChildren: 0.1
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    y: -20,
+    transition: {
+      duration: 0.2,
+      ease: "easeIn",
+      when: "afterChildren",
+      staggerChildren: 0.05,
+      staggerDirection: -1
+    }
+  }
+};
 
-interface ExtendedProductJourneyStage extends ProductJourneyStage {
-  status?: 'new' | 'modified' | 'unchanged' | 'removed';
-}
-
+// Animation variants for child elements within each tab
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.2 }
+  },
+  exit: { 
+    opacity: 0, 
+    y: -10,
+    transition: { duration: 0.1 }
+  }
+};
 
 export const ProductDesign: React.FC = () => {
   const { 
@@ -205,10 +258,11 @@ export const ProductDesign: React.FC = () => {
     }));
   };
   
+  const [activeTab, setActiveTab] = useState('wireframes');
+
   return (
     <TooltipProvider>
-      <div className="p-6">
-
+      <div className="">
         {/* Dashboard Overview */}
         <div className="mb-6">
           <div className="grid grid-cols-3 gap-4">
@@ -289,190 +343,172 @@ export const ProductDesign: React.FC = () => {
           </div>
         </div>
         
-        <Tabs defaultValue="wireframes">
-          <TabsList className="mb-4">
-            <TabsTrigger value="wireframes">Wireframes</TabsTrigger>
-            <TabsTrigger value="features">Feature Mapping</TabsTrigger>
-            <TabsTrigger value="journey">User Journey</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="wireframes" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>App Wireframes</CardTitle>
-                    <CardDescription>Visualize your product's interface and user flow</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Collapsible open={showInfo.wireframes} onOpenChange={() => toggleInfo('wireframes')}>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" size="sm" className="flex gap-1">
-                          <Info className="h-4 w-4" />
-                          {showInfo.wireframes ? (
-                            <span className="text-xs flex items-center">Hide Info <ChevronUp className="h-3 w-3 ml-1" /></span>
-                          ) : (
-                            <span className="text-xs flex items-center">What are wireframes? <ChevronDown className="h-3 w-3 ml-1" /></span>
-                          )}
-                        </Button>
-                      </CollapsibleTrigger>
-                    </Collapsible>
-                    
-                    <Button 
-                      variant="default" 
-                      className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm flex items-center"
-                      onClick={handleAddWireframe}
-                    >
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      New Wireframe
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Collapsible open={showInfo.wireframes}>
-                  <CollapsibleContent>
-                    <div className="mb-4 pb-4 border-b border-gray-100">
-                      <h4 className="text-sm font-medium text-gray-600 mb-2">What are wireframes?</h4>
-                      <p className="text-sm text-gray-500">
-                        Wireframes are simplified visual representations of your product's interface. They help you:
-                      </p>
-                      <ul className="mt-2 space-y-1 text-sm text-gray-500">
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          Visualize page layouts and elements without getting distracted by visual design
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          Test user flows and navigation before investing in development
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          Get stakeholder feedback on interface concepts early in the process
-                        </li>
-                      </ul>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                <WireframeGallery wireframes={data.wireframes} onAdd={handleAddWireframe} onSelect={(id) => console.log(id)} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="features" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>Product Feature Map</CardTitle>
-                    <CardDescription>Prioritize features for your product roadmap</CardDescription>
-                  </div>
-                  <Collapsible open={showInfo.features} onOpenChange={() => toggleInfo('features')}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex gap-1">
-                        <Info className="h-4 w-4" />
-                        {showInfo.features ? (
-                          <span className="text-xs flex items-center">Hide Info <ChevronUp className="h-3 w-3 ml-1" /></span>
-                        ) : (
-                          <span className="text-xs flex items-center">What is MoSCoW? <ChevronDown className="h-3 w-3 ml-1" /></span>
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </Collapsible>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Collapsible open={showInfo.features}>
-                  <CollapsibleContent>
-                    <div className="mb-4 pb-4 border-b border-gray-100">
-                      <h4 className="text-sm font-medium text-gray-600 mb-2">MoSCoW Method</h4>
-                      <p className="text-sm text-gray-500">
-                        The MoSCoW method helps you prioritize features and scope your MVP:
-                      </p>
-                      <div className="mt-2 grid grid-cols-4 gap-3">
-                        <div className="p-2 bg-red-50 border border-red-100 rounded">
-                          <h5 className="text-xs font-medium text-red-800">Must Have</h5>
-                          <p className="text-xs text-red-600">Critical for your MVP</p>
-                        </div>
-                        <div className="p-2 bg-yellow-50 border border-yellow-100 rounded">
-                          <h5 className="text-xs font-medium text-yellow-800">Should Have</h5>
-                          <p className="text-xs text-yellow-600">Important but not critical</p>
-                        </div>
-                        <div className="p-2 bg-green-50 border border-green-100 rounded">
-                          <h5 className="text-xs font-medium text-green-800">Could Have</h5>
-                          <p className="text-xs text-green-600">Valuable if resources allow</p>
-                        </div>
-                        <div className="p-2 bg-gray-50 border border-gray-100 rounded">
-                          <h5 className="text-xs font-medium text-gray-800">Won't Have (now)</h5>
-                          <p className="text-xs text-gray-600">Out of current scope</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                <FeatureMap features={data.features} onAddFeature={handleAddFeature} onEditFeature={(id) => console.log(id)} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="journey" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <CardTitle>User Journey Map</CardTitle>
-                    <CardDescription>Map out your user's experience with your product</CardDescription>
-                  </div>
-                  <Collapsible open={showInfo.journey} onOpenChange={() => toggleInfo('journey')}>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex gap-1">
-                        <Info className="h-4 w-4" />
-                        {showInfo.journey ? (
-                          <span className="text-xs flex items-center">Hide Info <ChevronUp className="h-3 w-3 ml-1" /></span>
-                        ) : (
-                          <span className="text-xs flex items-center">What is a User Journey? <ChevronDown className="h-3 w-3 ml-1" /></span>
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
-                  </Collapsible>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Collapsible open={showInfo.journey}>
-                  <CollapsibleContent>
-                    <div className="mb-4 pb-4 border-b border-gray-100">
-                      <h4 className="text-sm font-medium text-gray-600 mb-2">User Journey Mapping</h4>
-                      <p className="text-sm text-gray-500">
-                        User journey maps help you visualize the end-to-end experience of your users:
-                      </p>
-                      <ul className="mt-2 space-y-1 text-sm text-gray-500">
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          Break down the user experience into discrete stages
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          Identify pain points and opportunities at each stage
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-4 w-4 text-green-500 mr-2 mt-0.5" />
-                          Connect user needs to specific features and solutions
-                        </li>
-                      </ul>
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-                <UserJourneyMap 
-                  stages={data.journeyStages} 
-                  selectedStage={selectedStageId} 
-                  onSelectStage={setSelectedStageId} 
-                  onAddStage={handleAddJourneyStage} 
-                  onEditStage={(id) => console.log(id)} 
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <LayoutGroup id="product-design-tabs">
+          <div className="space-y-6">
+            <Tabs defaultValue="wireframes" value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="flex justify-between items-center mb-4">
+                <TabList tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+              </div>
+
+              <AnimatePresence mode="wait">
+                {activeTab === "wireframes" && (
+                  <motion.div
+                    key="wireframes"
+                    variants={tabContentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="w-full"
+                    layoutId="tab-content"
+                  >
+                    <TabsContent value="wireframes" className="mt-0 border-none shadow-none" forceMount>
+                      <SectionTab
+                        icon={<Layout className="h-5 w-5 text-primary-700" />}
+                        title="Wireframes"
+                        description="Visualize your product's interface and user flow"
+                        onCreate={handleAddWireframe}
+                        count={data.wireframes.length}
+                        helper={{
+                          icon: <Info className="h-5 w-5" />,
+                          title: "Creating Effective Wireframes",
+                          content: (
+                            <div className="space-y-3">
+                              <p className="text-dark-700">
+                                Wireframes help you:
+                              </p>
+                              <ul className="list-disc list-inside text-dark-600 space-y-1">
+                                <li>Visualize page layouts without visual design distractions</li>
+                                <li>Test user flows before development</li>
+                                <li>Get early stakeholder feedback</li>
+                                <li>Define content hierarchy and structure</li>
+                                <li>Plan responsive layouts and interactions</li>
+                              </ul>
+                            </div>
+                          )
+                        }}
+                        hasItems={data.wireframes.length > 0}
+                        emptyState={{
+                          description: "Start by adding wireframes to visualize your product's interface and user flows."
+                        }}
+                      >
+                        <WireframeGallery wireframes={data.wireframes} onAdd={handleAddWireframe} onSelect={(id) => console.log(id)} />
+                      </SectionTab>
+                    </TabsContent>
+                  </motion.div>
+                )}
+
+                {activeTab === "features" && (
+                  <motion.div
+                    key="features"
+                    variants={tabContentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="w-full"
+                    layoutId="tab-content"
+                  >
+                    <TabsContent value="features" className="mt-0 border-none shadow-none" forceMount>
+                      <SectionTab
+                        icon={<MapPin className="h-5 w-5 text-primary-700" />}
+                        title="Feature Map"
+                        description="Prioritize features for your product roadmap"
+                        onCreate={handleAddFeature}
+                        count={data.features.length}
+                        helper={{
+                          icon: <Info className="h-5 w-5" />,
+                          title: "MoSCoW Prioritization Method",
+                          content: (
+                            <div className="space-y-3">
+                              <p className="text-dark-700">
+                                The MoSCoW method helps prioritize features:
+                              </p>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="p-2 bg-red-50 border border-red-100 rounded">
+                                  <h5 className="text-xs font-medium text-red-800">Must Have</h5>
+                                  <p className="text-xs text-red-600">Critical for MVP</p>
+                                </div>
+                                <div className="p-2 bg-yellow-50 border border-yellow-100 rounded">
+                                  <h5 className="text-xs font-medium text-yellow-800">Should Have</h5>
+                                  <p className="text-xs text-yellow-600">Important but not critical</p>
+                                </div>
+                                <div className="p-2 bg-green-50 border border-green-100 rounded">
+                                  <h5 className="text-xs font-medium text-green-800">Could Have</h5>
+                                  <p className="text-xs text-green-600">Nice to have</p>
+                                </div>
+                                <div className="p-2 bg-gray-50 border border-gray-100 rounded">
+                                  <h5 className="text-xs font-medium text-gray-800">Won't Have</h5>
+                                  <p className="text-xs text-gray-600">Future consideration</p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        }}
+                        hasItems={data.features.length > 0}
+                        emptyState={{
+                          description: "Define and prioritize your product features using the MoSCoW method."
+                        }}
+                      >
+                        <FeatureMap features={data.features} onAddFeature={handleAddFeature} onEditFeature={(id) => console.log(id)} />
+                      </SectionTab>
+                    </TabsContent>
+                  </motion.div>
+                )}
+
+                {activeTab === "journey" && (
+                  <motion.div
+                    key="journey"
+                    variants={tabContentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="w-full"
+                    layoutId="tab-content"
+                  >
+                    <TabsContent value="journey" className="mt-0 border-none shadow-none" forceMount>
+                      <SectionTab
+                        icon={<Map className="h-5 w-5 text-primary-700" />}
+                        title="User Journey"
+                        description="Map out your user's experience with your product"
+                        onCreate={handleAddJourneyStage}
+                        count={data.journeyStages.length}
+                        helper={{
+                          icon: <Info className="h-5 w-5" />,
+                          title: "User Journey Mapping",
+                          content: (
+                            <div className="space-y-3">
+                              <p className="text-dark-700">
+                                Key elements of journey mapping:
+                              </p>
+                              <ul className="list-disc list-inside text-dark-600 space-y-1">
+                                <li>Define clear user stages and touchpoints</li>
+                                <li>Identify pain points and opportunities</li>
+                                <li>Map user emotions and expectations</li>
+                                <li>Connect stages to features and solutions</li>
+                                <li>Track user progress and success metrics</li>
+                              </ul>
+                            </div>
+                          )
+                        }}
+                        hasItems={data.journeyStages.length > 0}
+                        emptyState={{
+                          description: "Create a user journey map to visualize the complete user experience with your product."
+                        }}
+                      >
+                        <UserJourneyMap 
+                          stages={data.journeyStages} 
+                          selectedStage={selectedStageId || undefined} 
+                          onSelectStage={setSelectedStageId} 
+                          onAddStage={handleAddJourneyStage} 
+                          onEditStage={(id) => console.log(id)} 
+                        />
+                      </SectionTab>
+                    </TabsContent>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Tabs>
+          </div>
+        </LayoutGroup>
       </div>
     </TooltipProvider>
   );

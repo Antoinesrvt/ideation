@@ -1,34 +1,95 @@
 import React, { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  ArrowUpRight, BarChart2, ChevronRight, LightbulbIcon, PlusCircle, 
-  Users, UserSearch, Search, TrendingUp, Activity, AlertCircle, Info,
-  Target, ScaleIcon, LineChart, HelpCircle, ChevronDown, Check, X
+  ArrowUpRight, BarChart2, ChevronRight, Info, PlusCircle, 
+  Users, UserSearch, Search, TrendingUp, Activity, AlertCircle,
+  Target, ScaleIcon, LineChart, HelpCircle
 } from 'lucide-react';
 import { CustomerPersonaCard } from './CustomerPersonaCard';
 import { CustomerInterviewCard } from './CustomerInterviewCard';
 import { CompetitorTable } from './CompetitorTable';
 import { MarketTrendCard } from './MarketTrendCard';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useProjectStore } from '@/store';
 import { useAIStore } from '@/hooks/useAIStore';
 import { generateId } from '@/lib/utils';
 import { useMarketAnalysis } from '@/hooks/useMarketAnalysis';
 import { useParams } from 'next/navigation';
-import { 
-  MarketAnalysisUIData,
-  PersonaFormValues,
-  InterviewFormValues,
-  CompetitorFormValues,
-  TrendFormValues
-} from '../types';
+import TabList from "@/features/common/components/TabList";
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+
+const marketTabs = [
+  {
+    id: "personas",
+    label: "Customer Personas",
+    icon: <Users className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: "interviews",
+    label: "Customer Interviews",
+    icon: <UserSearch className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: "competitors",
+    label: "Competitors",
+    icon: <Target className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: "trends",
+    label: "Market Trends",
+    icon: <TrendingUp className="h-4 w-4 mr-2" />,
+  },
+];
+import { SectionTab } from '@/components/ui/section-tab';
+
+// Define animation variants at the top level after imports
+// Add these after the marketTabs declaration
+
+// Animation variants for the tab content
+const tabContentVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut",
+      when: "beforeChildren",
+      staggerChildren: 0.1
+    }
+  },
+  exit: { 
+    opacity: 0, 
+    y: -20,
+    transition: {
+      duration: 0.2,
+      ease: "easeIn",
+      when: "afterChildren",
+      staggerChildren: 0.05,
+      staggerDirection: -1
+    }
+  }
+};
+
+// Animation variants for child elements within each tab
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.2 }
+  },
+  exit: { 
+    opacity: 0, 
+    y: -10,
+    transition: { duration: 0.1 }
+  }
+};
 
 export function MarketAnalysis() {
   const params = useParams();
@@ -164,9 +225,12 @@ export function MarketAnalysis() {
     }));
   };
 
+  // Add state for the active tab
+  const [activeTab, setActiveTab] = useState<string>("personas");
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full w-f">
         <div className="text-center">
           <Activity className="h-8 w-8 animate-spin text-gray-400 mb-4" />
           <p className="text-gray-500">Loading market analysis data...</p>
@@ -188,7 +252,7 @@ export function MarketAnalysis() {
   }
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-8">
       {/* Market Insights Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -309,250 +373,255 @@ export function MarketAnalysis() {
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="personas" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="personas" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Customer Personas
-          </TabsTrigger>
-          <TabsTrigger value="interviews" className="flex items-center gap-2">
-            <UserSearch className="h-4 w-4" />
-            Customer Interviews
-          </TabsTrigger>
-          <TabsTrigger value="competitors" className="flex items-center gap-2">
-            <Target className="h-4 w-4" />
-            Competitors
-          </TabsTrigger>
-          <TabsTrigger value="trends" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Market Trends
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="personas" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold">Customer Personas</h2>
-              <Badge variant="outline" className="ml-2">
-                {data.personas.length}
-              </Badge>
+      <LayoutGroup id="market-analysis-tabs">
+        <div className="space-y-6">
+          <Tabs defaultValue="personas" value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex justify-between items-center mb-4">
+              <TabList tabs={marketTabs} activeTab={activeTab} onTabChange={setActiveTab} />
             </div>
-            <Button onClick={handleAddPersona}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Persona
-            </Button>
-          </div>
 
-          <Collapsible open={expandedHelp.personas}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleHelp("personas")}
-                className="flex items-center gap-2 mb-4"
-              >
-                <HelpCircle className="h-4 w-4" />
-                Persona Development Guide
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="bg-blue-50 p-4 rounded-lg mb-4">
-              <h3 className="font-medium mb-2 flex items-center gap-2">
-                <LightbulbIcon className="h-4 w-4 text-blue-600" />
-                Tips for Creating Effective Personas
-              </h3>
-              <ul className="list-disc list-inside text-sm space-y-1 text-gray-600">
-                <li>Base personas on real customer research and interviews</li>
-                <li>Include demographic information, goals, and pain points</li>
-                <li>
-                  Focus on behaviors and motivations rather than assumptions
-                </li>
-                <li>Update personas as you learn more about your customers</li>
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
+            {/* Add AnimatePresence to handle the exit animations properly */}
+            <AnimatePresence mode="wait">
+              {activeTab === "personas" && (
+                <motion.div
+                  key="personas"
+                  variants={tabContentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="w-full"
+                  layoutId="tab-content"
+                >
+                  <TabsContent value="personas" className="mt-0 border-none shadow-none" forceMount>
+                    <SectionTab
+                      icon={<Users className="h-5 w-5 text-primary-700" />}
+                      title="Customer Personas"
+                      description="Create detailed profiles of your target customers to better understand their needs, behaviors, and pain points."
+                      onCreate={handleAddPersona}
+                      count={data.personas.length}
+                      helper={{
+                        icon: <Info className="h-5 w-5" />,
+                        title: "Creating Effective Personas",
+                        content: (
+                          <div className="space-y-3">
+                            <p className="text-dark-700">
+                              Effective customer personas should include:
+                            </p>
+                            <ul className="list-disc list-inside text-dark-600 space-y-1">
+                              <li>Demographics (age, occupation, income level)</li>
+                              <li>Goals and motivations</li>
+                              <li>Pain points and challenges</li>
+                              <li>Purchasing behaviors</li>
+                              <li>Decision-making factors</li>
+                            </ul>
+                            <p className="text-dark-600 pt-2">
+                              Focus on 3-5 primary personas that represent your core customer segments.
+                            </p>
+                          </div>
+                        )
+                      }}
+                      hasItems={data.personas.length > 0}
+                      emptyState={{
+                        description: "Define who your target customers are, what they need, and what motivates their decisions."
+                      }}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {data.personas.map((persona) => (
+                          <motion.div
+                            key={persona.id}
+                            variants={itemVariants}
+                          >
+                            <CustomerPersonaCard
+                              persona={persona}
+                              onEdit={(id) => {}}
+                              onUpdate={updatePersona}
+                              onDelete={deletePersona}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </SectionTab>
+                  </TabsContent>
+                </motion.div>
+              )}
 
-          <ScrollArea className="h-[600px]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.personas.map((persona) => (
-                <CustomerPersonaCard
-                  key={persona.id}
-                  persona={persona}
-                  onEdit={(id) => {}}
-                  onUpdate={updatePersona}
-                  onDelete={deletePersona}
-                />
-              ))}
-            </div>
-          </ScrollArea>
-        </TabsContent>
+              {activeTab === "interviews" && (
+                <motion.div
+                  key="interviews"
+                  variants={tabContentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="w-full"
+                  layoutId="tab-content"
+                >
+                  <TabsContent value="interviews" className="mt-0 border-none shadow-none" forceMount>
+                    <SectionTab
+                      icon={<UserSearch className="h-5 w-5 text-primary-700" />}
+                      title="Customer Interviews"
+                      description="Document insights from customer conversations to validate your ideas and identify needs."
+                      onCreate={handleAddInterview}
+                      count={data.interviews.length}
+                      helper={{
+                        icon: <Info className="h-5 w-5" />,
+                        title: "Conducting Effective Interviews",
+                        content: (
+                          <div className="space-y-3">
+                            <p className="text-dark-700">
+                              Tips for effective customer interviews:
+                            </p>
+                            <ul className="list-disc list-inside text-dark-600 space-y-1">
+                              <li>Ask open-ended questions</li>
+                              <li>Focus on their problems, not your solutions</li>
+                              <li>Listen more than you talk</li>
+                              <li>Look for patterns across multiple interviews</li>
+                              <li>Take detailed notes and ask for clarification</li>
+                            </ul>
+                          </div>
+                        )
+                      }}
+                      hasItems={data.interviews.length > 0}
+                      emptyState={{
+                        description: "Record insights from customer conversations to understand their needs and pain points."
+                      }}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {data.interviews.map((interview) => (
+                          <motion.div
+                            key={interview.id}
+                            variants={itemVariants}
+                          >
+                            <CustomerInterviewCard
+                              interview={interview}
+                              onEdit={(id) => {}}
+                              onUpdate={updateInterview}
+                              onDelete={deleteInterview}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </SectionTab>
+                  </TabsContent>
+                </motion.div>
+              )}
 
-        <TabsContent value="interviews" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold">Customer Interviews</h2>
-              <Badge variant="outline" className="ml-2">
-                {data.interviews.length}
-              </Badge>
-            </div>
-            <Button onClick={handleAddInterview}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Interview
-            </Button>
-          </div>
+              {activeTab === "competitors" && (
+                <motion.div
+                  key="competitors"
+                  variants={tabContentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="w-full"
+                  layoutId="tab-content"
+                >
+                  <TabsContent value="competitors" className="mt-0 border-none shadow-none" forceMount>
+                    <SectionTab
+                      icon={<Target className="h-5 w-5 text-primary-700" />}
+                      title="Competitive Analysis"
+                      description="Analyze your competitors to identify market gaps and opportunities for your product."
+                      onCreate={handleAddCompetitor}
+                      count={data.competitors.length}
+                      helper={{
+                        icon: <Info className="h-5 w-5" />,
+                        title: "Conducting Competitive Analysis",
+                        content: (
+                          <div className="space-y-3">
+                            <p className="text-dark-700">
+                              When analyzing competitors, consider:
+                            </p>
+                            <ul className="list-disc list-inside text-dark-600 space-y-1">
+                              <li>Direct vs. indirect competitors</li>
+                              <li>Their key strengths and weaknesses</li>
+                              <li>Pricing strategies and market positioning</li>
+                              <li>Marketing and distribution channels</li>
+                              <li>Customer reviews and sentiment</li>
+                            </ul>
+                            <p className="text-dark-600 pt-2">
+                              Look for gaps in the market that your product can address.
+                            </p>
+                          </div>
+                        )
+                      }}
+                      hasItems={data.competitors.length > 0}
+                      emptyState={{
+                        description: "Analyze competitors to identify market gaps and opportunities for differentiation."
+                      }}
+                    >
+                      <CompetitorTable
+                        competitors={data.competitors}
+                        onAdd={handleAddCompetitor}
+                        onEdit={(id) => {}}
+                        onUpdate={updateCompetitor}
+                        onDelete={deleteCompetitor}
+                      />
+                    </SectionTab>
+                  </TabsContent>
+                </motion.div>
+              )}
 
-          <Collapsible open={expandedHelp.interviews}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleHelp("interviews")}
-                className="flex items-center gap-2 mb-4"
-              >
-                <HelpCircle className="h-4 w-4" />
-                Interview Best Practices
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="bg-blue-50 p-4 rounded-lg mb-4">
-              <h3 className="font-medium mb-2 flex items-center gap-2">
-                <LightbulbIcon className="h-4 w-4 text-blue-600" />
-                Tips for Conducting Effective Interviews
-              </h3>
-              <ul className="list-disc list-inside text-sm space-y-1 text-gray-600">
-                <li>
-                  Ask open-ended questions to encourage detailed responses
-                </li>
-                <li>
-                  Focus on understanding the customer's context and challenges
-                </li>
-                <li>Record verbatim quotes and specific examples</li>
-                <li>Look for patterns across multiple interviews</li>
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <ScrollArea className="h-[600px]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.interviews.map((interview) => (
-                <CustomerInterviewCard
-                  key={interview.id}
-                  interview={interview}
-                  onEdit={(id) => {}}
-                  onUpdate={updateInterview}
-                  onDelete={deleteInterview}
-                />
-              ))}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="competitors" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold">Competitor Analysis</h2>
-              <Badge variant="outline" className="ml-2">
-                {data.competitors.length}
-              </Badge>
-            </div>
-          </div>
-
-          <Collapsible open={expandedHelp.competitors}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleHelp("competitors")}
-                className="flex items-center gap-2 mb-4"
-              >
-                <HelpCircle className="h-4 w-4" />
-                Competitive Analysis Guide
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="bg-blue-50 p-4 rounded-lg mb-4">
-              <h3 className="font-medium mb-2 flex items-center gap-2">
-                <LightbulbIcon className="h-4 w-4 text-blue-600" />
-                Tips for Effective Competitor Analysis
-              </h3>
-              <ul className="list-disc list-inside text-sm space-y-1 text-gray-600">
-                <li>Research both direct and indirect competitors</li>
-                <li>Analyze their strengths and weaknesses objectively</li>
-                <li>Monitor their pricing strategies and market positioning</li>
-                <li>Look for gaps in the market that you can fill</li>
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <ScrollArea className="h-[600px]">
-            <CompetitorTable
-              competitors={data.competitors}
-              onAdd={handleAddCompetitor}
-              onEdit={(id) => {}}
-              onUpdate={updateCompetitor}
-              onDelete={deleteCompetitor}
-            />
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold">Market Trends</h2>
-              <Badge variant="outline" className="ml-2">
-                {data.trends.length}
-              </Badge>
-            </div>
-            <Button onClick={handleAddTrend}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Trend
-            </Button>
-          </div>
-
-          <Collapsible open={expandedHelp.trends}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleHelp("trends")}
-                className="flex items-center gap-2 mb-4"
-              >
-                <HelpCircle className="h-4 w-4" />
-                Market Trend Analysis Guide
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="bg-blue-50 p-4 rounded-lg mb-4">
-              <h3 className="font-medium mb-2 flex items-center gap-2">
-                <LightbulbIcon className="h-4 w-4 text-blue-600" />
-                Tips for Identifying Market Trends
-              </h3>
-              <ul className="list-disc list-inside text-sm space-y-1 text-gray-600">
-                <li>Monitor industry publications and research reports</li>
-                <li>
-                  Track technological advancements and their potential impact
-                </li>
-                <li>Consider social and economic factors</li>
-                <li>Validate trends through customer feedback and data</li>
-              </ul>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <ScrollArea className="h-[600px]">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.trends.map((trend) => (
-                <MarketTrendCard
-                  key={trend.id}
-                  trend={trend}
-                  onEdit={(id) => {}}
-                  onUpdate={updateTrend}
-                  onDelete={deleteTrend}
-                />
-              ))}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+              {activeTab === "trends" && (
+                <motion.div
+                  key="trends"
+                  variants={tabContentVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="w-full"
+                  layoutId="tab-content"
+                >
+                  <TabsContent value="trends" className="mt-0 border-none shadow-none" forceMount>
+                    <SectionTab
+                      icon={<TrendingUp className="h-5 w-5 text-primary-700" />}
+                      title="Market Trends"
+                      description="Monitor industry trends to understand market direction and potential opportunities or threats."
+                      onCreate={handleAddTrend}
+                      count={data.trends.length}
+                      helper={{
+                        icon: <Info className="h-5 w-5" />,
+                        title: "Identifying Market Trends",
+                        content: (
+                          <div className="space-y-3">
+                            <p className="text-dark-700">
+                              How to identify and analyze market trends:
+                            </p>
+                            <ul className="list-disc list-inside text-dark-600 space-y-1">
+                              <li>Monitor industry publications and research reports</li>
+                              <li>Track technological advancements and their potential impact</li>
+                              <li>Consider social and economic factors</li>
+                              <li>Validate trends through customer feedback and data</li>
+                            </ul>
+                          </div>
+                        )
+                      }}
+                      hasItems={data.trends.length > 0}
+                      emptyState={{
+                        description: "Track industry trends to identify opportunities and threats for your product strategy."
+                      }}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                        {data.trends.map((trend) => (
+                          <motion.div
+                            key={trend.id}
+                            variants={itemVariants}
+                          >
+                            <MarketTrendCard
+                              trend={trend}
+                              onEdit={(id) => {}}
+                              onUpdate={updateTrend}
+                              onDelete={deleteTrend}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </SectionTab>
+                  </TabsContent>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Tabs>
+        </div>
+      </LayoutGroup>
     </div>
   );
 }

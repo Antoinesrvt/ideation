@@ -43,11 +43,7 @@ export const ExternalTools: React.FC = () => {
   ];
   
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">External Tools</h2>
-        <p className="text-gray-600">Connect with powerful tools to enhance your startup planning</p>
-      </div>
+    <div className="">
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tools.map(tool => (

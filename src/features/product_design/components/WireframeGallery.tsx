@@ -4,6 +4,8 @@ import { formatDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import {
   Collapsible,
   CollapsibleContent,
@@ -11,8 +13,13 @@ import {
 } from "@/components/ui/collapsible";
 import { ProductWireframe } from '@/store/types';
 
+// Add extended type for ProductWireframe to include status
+interface ExtendedProductWireframe extends ProductWireframe {
+  status?: 'new' | 'modified' | 'removed';
+}
+
 interface WireframeGalleryProps {
-  wireframes: ProductWireframe[];
+  wireframes: ExtendedProductWireframe[];
   onAdd?: () => void;
   onSelect?: (id: string) => void;
 }
@@ -34,138 +41,163 @@ export const WireframeGallery: React.FC<WireframeGalleryProps> = ({
 
   return (
     <TooltipProvider>
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex justify-between items-center mb-4">
           {wireframes.length > 0 && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-dark-500">
               {wireframes.length} wireframe{wireframes.length !== 1 ? 's' : ''}
             </p>
           )}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBestPractices(!showBestPractices)}
+            className="text-primary-700 border-primary-200 hover:border-primary-300 hover:bg-primary-50"
+          >
+            <Info className="h-3.5 w-3.5 mr-1.5" />
+            {showBestPractices ? 'Hide' : 'Show'} Best Practices
+            {showBestPractices ? <ChevronUp className="h-3.5 w-3.5 ml-1.5" /> : <ChevronDown className="h-3.5 w-3.5 ml-1.5" />}
+          </Button>
         </div>
         
-        {wireframes.length === 0 && (
-          <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
-            <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
-              <Image className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-800 mb-2">No Wireframes Yet</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Create wireframes to visualize your product's interface.
+        <Collapsible open={showBestPractices} className="mb-6">
+          <CollapsibleContent>
+            <Card variant="default" className="border-primary-100 bg-primary-50/30">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-heading font-semibold text-primary-800 mb-2">
+                  Wireframing Best Practices
+                </h3>
+                <ul className="space-y-2 text-sm text-dark-600">
+                  <li className="flex items-start">
+                    <span className="text-primary-600 mr-2">•</span>
+                    <span>
+                      <strong className="font-medium text-primary-700">Keep it simple:</strong> Use grayscale and focus on layout rather than details. The goal is to communicate structure, not design.
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-primary-600 mr-2">•</span>
+                    <span>
+                      <strong className="font-medium text-primary-700">Be consistent:</strong> Use the same representation for the same type of element throughout your wireframes.
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-primary-600 mr-2">•</span>
+                    <span>
+                      <strong className="font-medium text-primary-700">Annotate when needed:</strong> Add notes to explain interactions or elements that might not be obvious.
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-primary-600 mr-2">•</span>
+                    <span>
+                      <strong className="font-medium text-primary-700">Use real content:</strong> When possible, use real content instead of lorem ipsum to get a better feel for how the interface will work.
+                    </span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
+        
+        {wireframes.length === 0 ? (
+          <Card variant="default" className="border-dashed border-gray-300">
+            <CardContent className="p-8 flex flex-col items-center justify-center text-center">
+              <Image className="h-12 w-12 text-dark-400 mb-4" />
+              <h3 className="text-lg font-heading font-medium text-primary-800 mb-2">No Wireframes Yet</h3>
+              <p className="text-dark-500 max-w-sm mb-4">
+                Wireframes help visualize your product's interface and layout before detailed design.
               </p>
-              <button 
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                onClick={onAdd}
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Create Your First Wireframe
-              </button>
-            </div>
-          </div>
-        )}
-
-        {wireframes.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
+              {onAdd && (
+                <Button 
+                  variant="default" 
+                  onClick={onAdd}
+                  className="bg-gradient-primary text-white"
+                >
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  Add Your First Wireframe
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {wireframes.map(wireframe => (
-              <div 
-                key={wireframe.id} 
-                className="border border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all group"
-                onClick={() => onSelect && onSelect(wireframe.id)}
+              <Card 
+                key={wireframe.id}
+                variant="default"
+                className={`hover:shadow-md transition-all ${
+                  wireframe.status === 'new' ? 'border-l-4 border-l-green-500 bg-green-50/60' :
+                  wireframe.status === 'modified' ? 'border-l-4 border-l-yellow-500 bg-yellow-50/60' :
+                  wireframe.status === 'removed' ? 'border-l-4 border-l-red-500 bg-red-50/60' :
+                  'hover:border-primary-200'
+                }`}
               >
-                <div className="bg-gray-100 p-8 flex items-center justify-center">
-                  {wireframe.image_url ? (
-                    <img 
-                      src={wireframe.image_url} 
-                      alt={wireframe.name} 
-                      className="w-full h-40 object-contain"
-                    />
-                  ) : (
-                    <div className="bg-white border border-gray-300 w-full h-40 rounded-md shadow-sm relative group-hover:border-blue-300 transition-colors">
-                      <div className="absolute top-0 left-0 right-0 h-8 border-b border-gray-300 bg-gray-50 flex items-center px-2">
-                        <div className="w-3 h-3 rounded-full bg-red-300 mr-1"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-300 mr-1"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-300"></div>
-                        
-                        <div className="ml-auto text-xs text-gray-400">
-                          {getWireframeType(wireframe.name)}
-                        </div>
+                <CardContent className="p-0">
+                  <div 
+                    className="relative cursor-pointer aspect-video bg-gray-100 flex items-center justify-center overflow-hidden rounded-t-md"
+                    onClick={() => onSelect && onSelect(wireframe.id)}
+                  >
+                    {wireframe.image_url ? (
+                      <img 
+                        src={wireframe.image_url} 
+                        alt={wireframe.name || 'Wireframe'} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6 text-dark-400">
+                        <Image className="h-10 w-10 mb-2" />
+                        <p className="text-sm">No image uploaded</p>
                       </div>
-                      <div className="p-2 mt-8">
-                        <div className="w-full h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="w-3/4 h-4 bg-gray-200 rounded mb-4"></div>
-                        <div className="flex space-x-2">
-                          <div className="w-20 h-6 bg-blue-200 rounded"></div>
-                          <div className="w-14 h-6 bg-gray-200 rounded"></div>
-                        </div>
-                      </div>
-                      
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-gray-800/10">
-                        <Badge className="bg-blue-500 text-white px-2 py-1">
-                          <Upload className="h-3 w-3 mr-1" />
-                          Add Image
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="p-3 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">{wireframe.name}</h4>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="h-4 w-4 text-gray-400" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Click to edit this wireframe</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    )}
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute top-2 right-2 bg-black/60 text-white backdrop-blur-sm"
+                    >
+                      {getWireframeType(wireframe.name || '')}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-gray-500">Created {formatDate(wireframe.created_at ?? "")}</p>
-                </div>
-              </div>
+                </CardContent>
+                <CardFooter className="p-3 flex justify-between items-center bg-white/80 backdrop-blur-sm">
+                  <div>
+                    <h4 className="font-heading font-medium text-primary-800 mb-0.5 text-sm">
+                      {wireframe.name || 'Unnamed Wireframe'}
+                    </h4>
+                    <p className="text-xs text-dark-500">
+                      {wireframe.created_at && formatDate(wireframe.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {onSelect && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 text-primary-700 hover:bg-primary-50"
+                        onClick={() => onSelect(wireframe.id)}
+                      >
+                        View
+                      </Button>
+                    )}
+                  </div>
+                </CardFooter>
+              </Card>
             ))}
             
-            <div 
-              className="border border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center text-gray-500 h-64 cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={onAdd}
-            >
-              <PlusCircle className="h-8 w-8 mb-2" />
-              <p className="mb-1">Add New Wireframe</p>
-              <p className="text-xs text-gray-400 text-center max-w-[180px]">
-                Visualize your product interfaces
-              </p>
-            </div>
-          </div>
-        )}
-
-        {wireframes.length > 0 && (
-          <Collapsible
-            open={showBestPractices}
-            onOpenChange={setShowBestPractices}
-            className="mt-4"
-          >
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="outline" 
-                className="w-full border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 flex justify-between"
+            {onAdd && (
+              <Card 
+                variant="outline"
+                className="border-dashed border-gray-300 hover:border-primary-300 hover:bg-primary-50/10 transition-colors cursor-pointer"
+                onClick={onAdd}
               >
-                <div className="flex items-center">
-                  <HelpCircle className="h-4 w-4 mr-2" />
-                  Wireframing Tips
-                </div>
-                {showBestPractices ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-4">
-                <h4 className="font-medium text-blue-800 text-sm mb-1">Wireframing Best Practices</h4>
-                <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• Focus on layout and functionality, not visual design details</li>
-                  <li>• Use wireframes to test navigation and user flows early</li>
-                  <li>• Keep elements simple with placeholders for images and content</li>
-                  <li>• Get feedback on wireframes before moving to high-fidelity mockups</li>
-                </ul>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+                <CardContent className="h-full flex flex-col items-center justify-center p-6 text-center">
+                  <Upload className="h-10 w-10 text-primary-400 mb-3" />
+                  <h4 className="font-heading font-medium text-primary-700 mb-1">Add New Wireframe</h4>
+                  <p className="text-dark-500 text-sm">
+                    Upload or create a new wireframe
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
       </div>
     </TooltipProvider>

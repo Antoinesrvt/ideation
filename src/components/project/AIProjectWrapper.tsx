@@ -53,20 +53,7 @@ export function AIProjectWrapper({ children }: AIProjectWrapperProps) {
         />
       )}
       
-      {/* Show AI instruction prompt when not in comparison mode */}
-      {!isComparing && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <AIInstructionPrompt
-            value={prompt}
-            onChange={setPrompt}
-            onSubmit={handleSubmitPrompt}
-            isLoading={isSubmitting}
-            disabled={isSubmitting}
-            placeholder="Ask AI to suggest improvements..."
-            className="w-96"
-          />
-        </div>
-      )}
+     
     </div>
   );
 } 

@@ -3,6 +3,8 @@ import { PlusCircle, HelpCircle, AlertCircle, Tag, PlayCircle, ChevronDown, Chev
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import {
   Collapsible,
   CollapsibleContent,
@@ -46,35 +48,38 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
   };
   
   const priorityColors = {
-    must: 'bg-red-500',
-    should: 'bg-yellow-500',
-    could: 'bg-green-500',
-    wont: 'bg-gray-500'
-  };
-
-  const priorityBadgeColors = {
-    must: 'bg-red-100 text-red-800 border-red-200',
-    should: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    could: 'bg-green-100 text-green-800 border-green-200',
-    wont: 'bg-gray-100 text-gray-800 border-gray-200'
-  };
-  
-  const statusLabels = {
-    planned: 'Planned',
-    'in-progress': 'In Progress',
-    completed: 'Completed'
-  };
-  
-  const statusColors = {
-    planned: 'bg-blue-100 text-blue-800',
-    'in-progress': 'bg-yellow-100 text-yellow-800',
-    completed: 'bg-green-100 text-green-800'
-  };
-
-  const statusIcons = {
-    planned: <AlertCircle className="h-3 w-3 mr-1" />,
-    'in-progress': <PlayCircle className="h-3 w-3 mr-1" />,
-    completed: <PlusCircle className="h-3 w-3 mr-1" />
+    must: {
+      bg: 'bg-red-500',
+      text: 'text-white',
+      border: 'border-red-600',
+      variant: 'destructive',
+      cardBg: 'bg-red-50/60',
+      cardBorder: 'border-red-200',
+    },
+    should: {
+      bg: 'bg-yellow-500',
+      text: 'text-white',
+      border: 'border-yellow-600',
+      variant: 'warning',
+      cardBg: 'bg-yellow-50/60',
+      cardBorder: 'border-yellow-200',
+    },
+    could: {
+      bg: 'bg-green-500',
+      text: 'text-white',
+      border: 'border-green-600',
+      variant: 'success',
+      cardBg: 'bg-green-50/60',
+      cardBorder: 'border-green-200',
+    },
+    wont: {
+      bg: 'bg-gray-500',
+      text: 'text-white',
+      border: 'border-gray-600',
+      variant: 'secondary',
+      cardBg: 'bg-gray-50/60',
+      cardBorder: 'border-gray-200',
+    }
   };
   
   const toggleHelp = (priority: string) => {
@@ -83,116 +88,151 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
       [priority]: !prev[priority]
     }));
   };
-  
+
   const renderFeatureGroup = (priority: 'must' | 'should' | 'could' | 'wont') => {
+    const features = featuresByPriority[priority];
+    
     return (
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-gray-800 flex items-center">
-            <span className={`w-2 h-2 ${priorityColors[priority]} rounded-full mr-2`}></span>
-            {priorityLabels[priority]}
-            
-          </h3>
-          
-          {/* <Collapsible 
-            open={showHelp[priority]} 
-            onOpenChange={() => toggleHelp(priority)}
-            className="w-auto"
-          >
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 flex gap-1 text-xs text-gray-500">
-                <Info className="h-3 w-3" />
-                {showHelp[priority] ? 'Hide Tips' : 'Show Tips'}
-                {showHelp[priority] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </Button>
-            </CollapsibleTrigger>
-          </Collapsible> */}
-        </div>
-        
-        <Collapsible open={showHelp[priority]}>
-          <CollapsibleContent>
-            <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-3">
-              <p className="text-xs text-gray-600">{priorityDescriptions[priority]}</p>
-              {priority === 'must' && (
-                <p className="text-xs text-gray-600 mt-1">Focus on these features for your MVP to validate core value proposition.</p>
-              )}
-              {priority === 'should' && (
-                <p className="text-xs text-gray-600 mt-1">Plan these features for your first full release after MVP validation.</p>
-              )}
-              {priority === 'could' && (
-                <p className="text-xs text-gray-600 mt-1">Consider these features for future releases if users need them.</p>
-              )}
-              {priority === 'wont' && (
-                <p className="text-xs text-gray-600 mt-1">Documenting these helps clarify what's out of scope for now.</p>
-              )}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-        
-        <div className="space-y-2">
-          {featuresByPriority[priority].map(feature => (
-            <div 
-              key={feature.id} 
-              className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-start cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => onEditFeature && onEditFeature(feature.id)}
+      <div className="mb-6 last:mb-0">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center">
+            <Badge 
+              variant={priorityColors[priority].variant as any}
+              className="mr-2"
             >
-              <div>
-                <h4 className="font-medium">{feature.name || 'Unnamed Feature'}</h4>
-                <p className="text-xs text-gray-500 mt-1">{feature.description || 'No description'}</p>
-                
-                <div className="flex flex-wrap gap-1 mt-2">
-                  <Badge variant="outline" className={priorityBadgeColors[priority]}>
-                    {priorityLabels[priority].split(' ')[0]}
-                  </Badge>
-                  <Badge variant="outline" className={statusColors[(feature.status || 'planned') as 'planned' | 'in-progress' | 'completed']}>
-                    {statusIcons[(feature.status || 'planned') as 'planned' | 'in-progress' | 'completed']}
-                    {statusLabels[(feature.status || 'planned') as 'planned' | 'in-progress' | 'completed']}
-                  </Badge>
-                </div>
-              </div>
-              <div className="flex flex-col items-end">
-                {feature.tags && feature.tags.length > 0 && (
-                  <div className="flex items-center mb-2">
-                    <Tag className="h-3 w-3 text-gray-500 mr-1" />
-                    <span className="text-xs text-gray-500">
-                      {feature.tags.length} tag{feature.tags.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                )}
-                <div className="flex gap-1 mt-1">
-                  {feature.tags && feature.tags.slice(0, 2).map((tag, index) => (
-                    <span key={index} className="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs rounded">
-                      {tag}
-                    </span>
-                  ))}
-                  {feature.tags && feature.tags.length > 2 && (
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-800 text-xs rounded">
-                      +{feature.tags.length - 2}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+              {priorityLabels[priority]}
+            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className={`h-4 w-4 text-primary-400 cursor-pointer`} />
+                </TooltipTrigger>
+                <TooltipContent 
+                  className="bg-white/90 backdrop-blur-sm shadow-lg border border-primary-100"
+                >
+                  <p>{priorityDescriptions[priority]}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           
-          <div 
-            className="border border-dashed border-gray-300 rounded-lg p-4 flex items-center justify-center text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors"
-            onClick={() => onAddFeature(priority)}
-          >
-            <PlusCircle className="h-5 w-5 mr-2" />
-            <p>Add {priority.charAt(0).toUpperCase() + priority.slice(1)} Have Feature</p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary-700 border-primary-200 hover:border-primary-300 hover:bg-primary-50"
+              onClick={() => onAddFeature(priority)}
+            >
+              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+              Add Feature
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-dark-500"
+              onClick={() => toggleHelp(priority)}
+            >
+              {showHelp[priority] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
+        
+        <Collapsible open={showHelp[priority]} className="mb-4">
+          <CollapsibleContent className="text-sm p-3 bg-white/70 border border-gray-200 rounded-md backdrop-blur-sm">
+            <p className="text-dark-600">
+              {priority === 'must' && (
+                <>
+                  <strong className="text-primary-800 font-medium">Must Have:</strong> Use this category for core features that define your product's value proposition and are essential for initial launch.
+                </>
+              )}
+              {priority === 'should' && (
+                <>
+                  <strong className="text-primary-800 font-medium">Should Have:</strong> These important but not critical features enhance your product and are planned for the first major release after MVP.
+                </>
+              )}
+              {priority === 'could' && (
+                <>
+                  <strong className="text-primary-800 font-medium">Could Have:</strong> Nice-to-have features that add significant value but can be delayed without impacting the core product experience.
+                </>
+              )}
+              {priority === 'wont' && (
+                <>
+                  <strong className="text-primary-800 font-medium">Won't Have:</strong> Features explicitly excluded from current plans - capture these to prevent scope creep and track for potential future releases.
+                </>
+              )}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {features.length === 0 ? (
+          <div className="border border-dashed border-gray-300 rounded-md p-4 bg-white/50 text-dark-500 text-center text-sm">
+            No {priority} have features added yet
+          </div>
+        ) : (
+          <div className={`grid gap-3 grid-cols-1`}>
+            {features.map(feature => (
+              <Card 
+                key={feature.id} 
+                variant="default" 
+                className={`${feature.status ? 'border-l-4' : ''} ${
+                  feature.status === 'new' ? `border-l-green-500 ${priorityColors[priority].cardBg}` :
+                  feature.status === 'modified' ? `border-l-yellow-500 ${priorityColors[priority].cardBg}` :
+                  feature.status === 'removed' ? `border-l-red-500 ${priorityColors[priority].cardBg}` :
+                  ''
+                }`}
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-heading font-medium text-primary-800 mb-1">
+                        {feature.name}
+                      </h3>
+                      <p className="text-sm text-dark-600 mb-2">
+                        {feature.description || <span className="text-dark-400 italic">No description provided</span>}
+                      </p>
+                      {feature.tags && feature.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {feature.tags.map((tag, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="subtle-primary" 
+                              size="sm"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {onEditFeature && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-primary-700 hover:bg-primary-50"
+                        onClick={() => onEditFeature(feature.id)}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
-  
+
   return (
     <div className="space-y-6">
-      {renderFeatureGroup("must")}
-      {renderFeatureGroup("should")}
-      {renderFeatureGroup("could")}
-      {renderFeatureGroup("wont")}
+      {renderFeatureGroup('must')}
+      <Separator variant="ghost" className="opacity-50" />
+      {renderFeatureGroup('should')}
+      <Separator variant="ghost" className="opacity-50" />
+      {renderFeatureGroup('could')}
+      <Separator variant="ghost" className="opacity-50" />
+      {renderFeatureGroup('wont')}
     </div>
   );
 };

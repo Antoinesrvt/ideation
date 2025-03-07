@@ -53,7 +53,7 @@ export default function Header() {
           </nav>
           
           <div className="header-actions">
-            <a href="#" onClick={() => router.push(user ? '/dashboard' : '/login')} className="header-action-link">{user ? 'Dashboard' : 'Login'}</a>
+           <button type="button" onClick={() => router.push(user ? '/dashboard' : '/login')} className="header-action-link">{user ? 'Dashboard' : 'Login'}</button>
             <a href="#cta" className="btn btn-primary">Start Free Trial</a>
           </div>
           
