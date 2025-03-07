@@ -11,8 +11,9 @@ interface ChatContentProps {
   messages: Message[];
   typing: boolean;
   onAddMessage: () => void;
-  onClose: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onClose: () => void;
   contentRef: RefObject<HTMLDivElement>;
+  layout?: 'floating' | 'sidepanel';
 }
 
 export const ChatContent: React.FC<ChatContentProps> = ({
@@ -20,7 +21,8 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   typing,
   onAddMessage,
   onClose,
-  contentRef
+  contentRef,
+  layout = 'floating'
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -109,11 +111,16 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     }
   };
 
+  // Determine which classes to use based on layout
+  const headerClass = layout === 'sidepanel' ? 'sidepanel-header' : 'assistant-header';
+  const messageContainerClass = layout === 'sidepanel' ? 'sidepanel-messages' : 'assistant-content';
+  const inputAreaClass = layout === 'sidepanel' ? 'sidepanel-input' : 'assistant-input';
+
   return (
     <>
       {/* Header */}
       <motion.div 
-        className="assistant-header"
+        className={headerClass}
         variants={headerVariants}
         initial="hidden"
         animate="visible"
@@ -126,7 +133,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       
       {/* Messages area */}
       <motion.div 
-        className="assistant-content"
+        className={messageContainerClass}
         ref={contentRef}
         variants={messagesContainerVariants}
         initial="hidden"
@@ -169,7 +176,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       
       {/* Input area */}
       <motion.div 
-        className="assistant-input"
+        className={inputAreaClass}
         variants={inputVariants}
         initial="hidden"
         animate="visible"

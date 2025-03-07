@@ -781,3 +781,148 @@
 .ai-animating.nucleus {
   animation: none !important;
 }
+
+/* Side panel specific styles */
+.sidepanel-header {
+  background: linear-gradient(to right, var(--primary-light), var(--primary-medium));
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sidepanel-header .assistant-logo {
+  margin-right: 12px;
+}
+
+.sidepanel-header .assistant-title {
+  flex: 1;
+}
+
+.sidepanel-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidepanel-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #f9f9fb;
+}
+
+.sidepanel-input {
+  padding: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: white;
+  display: flex;
+  align-items: center;
+}
+
+.sidepanel-input .input-field {
+  flex: 1;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.sidepanel-input .input-field:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 2px rgba(106, 71, 232, 0.1);
+}
+
+.sidepanel-input .send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-medium);
+  color: white;
+  border: none;
+  margin-left: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.sidepanel-input .send-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(71, 35, 196, 0.2);
+}
+
+/* Add a gradient border on the left of the side panel */
+.sidepanel-gradient-border {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    to bottom,
+    var(--primary-light),
+    var(--accent-cyan) 50%,
+    var(--accent-coral) 100%
+  );
+}
+
+/* Workspace integrated panel styles */
+.workspace-sidepanel {
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  border-left: 1px solid rgba(0, 0, 0, 0.05);
+  background: white;
+}
+
+/* Make panel work well with the header */
+.workspace-sidepanel .sidepanel-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(to right, var(--primary-medium), var(--primary-dark));
+  color: white;
+  padding: 0 20px;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+/* Make the panel contents have a nice layout within workspace */
+.workspace-sidepanel .sidepanel-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% - 64px);
+  overflow: hidden;
+}
+
+/* Messages container in workspace mode */
+.workspace-sidepanel .sidepanel-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  background-color: #f8f9fb;
+}
+
+/* Specific styling for the sidepanel in workspace mode */
+.sidepanel-in-workspace {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 380px;
+  z-index: 10;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: -2px 0 15px rgba(0, 0, 0, 0.1);
+}

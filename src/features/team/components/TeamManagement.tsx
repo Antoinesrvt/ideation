@@ -80,8 +80,9 @@ import {
 } from '@/components/ui/tooltip';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useTeam } from '@/hooks/useTeam';
+import { useTeam } from '@/hooks/features/useTeam';
 import { useProjectStore } from '@/store';
+import { TeamMember, TeamTask, TeamResponsibilityMatrix } from "@/store/types";
 import TabList from '@/features/common/components/TabList';
 import { SectionTab } from '@/components/ui/section-tab';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -90,19 +91,10 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 export interface TeamData {
   members: TeamMember[];
   roles: Role[];
-  tasks: Task[];
-  raci: RaciItem[];
+  tasks: TeamTask[];
+  raci: TeamResponsibilityMatrix[];
 }
 
-export interface TeamMember {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  avatarUrl?: string;
-  skills: string[];
-  tasksAssigned: string[];
-}
 
 interface Role {
   id: string;
@@ -112,27 +104,6 @@ interface Role {
   requiredSkills: string[];
 }
 
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  assignedTo: string[];
-  dueDate: string;
-  status: 'not_started' | 'in_progress' | 'blocked' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  progress: number;
-}
-
-interface RaciItem {
-  id: string;
-  activity: string;
-  assignments: RaciAssignment[];
-}
-
-interface RaciAssignment {
-  memberId: string;
-  type: 'responsible' | 'accountable' | 'consulted' | 'informed';
-}
 
 const tabs = [
   {
@@ -157,32 +128,6 @@ const tabs = [
   }
 ]
 
-// Helper function to map database team members to UI team members
-function mapDBTeamMembersToUI(dbMembers: any[]): TeamMember[] {
-  return dbMembers.map(member => ({
-    id: member.id,
-    name: member.name || '',
-    email: member.contact_info?.email || '',
-    role: member.role || '',
-    avatarUrl: member.avatar_url || undefined,
-    skills: member.expertise || [],
-    tasksAssigned: []
-  }));
-}
-
-// Helper function to map database tasks to UI tasks
-function mapDBTasksToUI(dbTasks: any[]): Task[] {
-  return dbTasks.map(task => ({
-    id: task.id,
-    title: task.title || '',
-    description: task.description || '',
-    assignedTo: task.team_member_id || [],
-    dueDate: task.due_date || new Date().toISOString(),
-    status: task.status || 'not_started',
-    progress: task.progress || 0,
-    priority: task.priority || 'medium'
-  }));
-}
 
 // Helper function to map database responsibilities to UI roles
 function mapDBResponsibilitiesToRoles(responsibilities: any[]): Role[] {
@@ -285,37 +230,15 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
   
   // Map database data to UI data
   const hookData: TeamData = {
-    members: mapDBTeamMembersToUI(teamData.data.members || []),
-    tasks: mapDBTasksToUI(teamData.data.tasks || []),
+    members: teamData.data.members,
+    tasks: teamData.data.tasks,
     roles: mapDBResponsibilitiesToRoles(teamData.data.responsibilities || []),
-    raci: [] // Initialize empty RACI data
+    raci: [], // Initialize empty RACI data
   };
   
   // Ensure we have default values if data is undefined
   const safeData: TeamData = data || hookData;
   
-  // Function to handle updates when onUpdate is not provided
-  const handleDataUpdate = useCallback((updatedData: Partial<TeamData>) => {
-    if (onUpdate) {
-      onUpdate(updatedData);
-    } else if (projectId) {
-      // Handle updates using the hook functions
-      // This is a simplified implementation
-      if (updatedData.members) {
-        // For simplicity, we're not handling complex diff updates here
-        console.log('Would update members:', updatedData.members);
-      }
-      if (updatedData.tasks) {
-        console.log('Would update tasks:', updatedData.tasks);
-      }
-      if (updatedData.roles) {
-        console.log('Would update roles:', updatedData.roles);
-      }
-      if (updatedData.raci) {
-        console.log('Would update raci:', updatedData.raci);
-      }
-    }
-  }, [onUpdate, projectId]);
 
   // Calculate team statistics
   const teamStats = useMemo(() => {
@@ -329,7 +252,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     oneWeekFromNow.setDate(now.getDate() + 7);
     
     const upcomingDeadlines = safeData.tasks.filter(task => {
-      const dueDate = new Date(task.dueDate);
+      const dueDate = new Date(task.due_date || '');
       return dueDate >= now && dueDate <= oneWeekFromNow && task.status !== 'completed';
     }).length;
     
@@ -344,10 +267,12 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
   
   // Calculate overall task progress
   const calculateTaskProgress = () => {
-    if (safeData.tasks.length === 0) return 0;
+    //TODO: Add task progress calculation
+    return 0;
+    // if (safeData.tasks.length === 0) return 0;
     
-    const totalProgress = safeData.tasks.reduce((sum, task) => sum + task.progress, 0);
-    return Math.round(totalProgress / safeData.tasks.length);
+    // const totalProgress = safeData.tasks.reduce((sum, task) => sum + task.progress, 0);
+    // return Math.round(totalProgress / safeData.tasks.length);
   };
 
   const taskStatusOptions = [
@@ -615,14 +540,14 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                             <Card className="overflow-hidden">
                               <div className="p-6 flex items-start">
                                 <Avatar className="h-12 w-12 mr-4">
-                                  <AvatarImage src={member.avatarUrl} />
+                                  {/* <AvatarImage src={member.avatarUrl} /> */ //TODO: Add avatarUrl
+                                  } 
                                   <AvatarFallback className="bg-blue-100 text-blue-700">{getInitials(member.name)}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
                                   <div className="flex justify-between items-start">
                                     <div>
                                       <h3 className="font-semibold text-lg">{member.name}</h3>
-                                      <p className="text-sm text-gray-500">{member.email}</p>
                                     </div>
                                     <TooltipProvider>
                                       <Tooltip>
@@ -643,12 +568,12 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                                   <div className="mt-3">
                                     <p className="text-xs font-medium text-gray-500 mb-1">SKILLS</p>
                                     <div className="flex flex-wrap gap-1">
-                                      {member.skills.map((skill, index) => (
+                                      {member.expertise?.map((skill, index) => (
                                         <Badge key={index} variant="secondary" className="text-xs">
                                           {skill}
                                         </Badge>
                                       ))}
-                                      {member.skills.length === 0 && (
+                                      {member.expertise?.length === 0 && (
                                         <span className="text-sm text-gray-400">No skills added</span>
                                       )}
                                     </div>

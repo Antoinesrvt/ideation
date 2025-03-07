@@ -18,7 +18,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { useProjectStore } from '@/store';
 import { useAIStore } from '@/hooks/useAIStore';
 import { generateId } from '@/lib/utils';
-import { useMarketAnalysis } from '@/hooks/useMarketAnalysis';
+import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
 import { useParams } from 'next/navigation';
 import TabList from "@/features/common/components/TabList";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';

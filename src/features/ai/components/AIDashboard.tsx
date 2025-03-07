@@ -249,12 +249,9 @@ export function AIDashboard() {
   const pendingChanges = changes.length - acceptedChanges - rejectedChanges;
 
   return (
-    <div className={`p-6 relative ${safeMode ? 'bg-blue-50 border-2 border-blue-200 rounded-lg transition-all duration-300' : ''}`}>
+    <div className={` relative ${safeMode ? 'bg-blue-50 border-2 border-blue-200 rounded-lg transition-all duration-300' : ''}`}>
       {/* Header with summary */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-700 to-indigo-500 bg-clip-text text-transparent">
-          AI Project Dashboard
-        </h1>
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
           <div className="flex items-center">
             <span className="mr-2">Suggested Changes:</span>

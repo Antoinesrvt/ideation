@@ -46,7 +46,8 @@ const sectionTitles: Record<ActiveSection, string> = {
   'financials': 'Financial Projections',
   'team': 'Team',
   'documents': 'Documents',
-  'external-tools': 'External Tools'
+  'external-tools': 'External Tools',
+  'ai': 'AI Dashboard'
 };
 
 export function Header({ 
@@ -64,7 +65,11 @@ export function Header({
 
   return (
     <header className="bg-white border-b border-slate-200 h-14 sticky top-0 z-50 shadow-sm flex items-center">
-      <div className={`flex-none ${sidebarCollapsed ? 'w-16' : 'w-64'} h-full transition-all duration-300 flex items-center justify-between px-4 border-r border-slate-200 bg-white`}>
+      <div
+        className={`flex-none ${
+          sidebarCollapsed ? "w-16" : "w-64"
+        } h-full transition-all duration-300 flex items-center justify-between px-4 border-r border-slate-200 bg-white`}
+      >
         <div className="flex items-center">
           <Link
             href="/dashboard"
@@ -83,7 +88,9 @@ export function Header({
             </div>
             {!sidebarCollapsed && (
               <div className="flex flex-col">
-                <span className="font-semibold text-[#1A1A2A] text-sm">Kickoff</span>
+                <span className="font-semibold text-[#1A1A2A] text-sm">
+                  Kickoff
+                </span>
                 <div className="flex items-center">
                   <span className="text-xs text-slate-500 truncate max-w-[120px]">{projectName}</span>
                   <ChevronRight className="h-3 w-3 text-slate-400 ml-0.5" />
@@ -92,7 +99,7 @@ export function Header({
             )}
           </Link>
         </div>
-        
+
         {toggleSidebar && (
           <Button
             variant="ghost"
@@ -104,9 +111,9 @@ export function Header({
           </Button>
         )}
       </div>
-      
+
       <div className="flex-1 flex items-center justify-between px-6">
-        <h1 className="text-lg font-bold text-[#1A1A2A]">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-700 to-indigo-500 bg-clip-text text-transparent">
           {sectionTitle}
         </h1>
 

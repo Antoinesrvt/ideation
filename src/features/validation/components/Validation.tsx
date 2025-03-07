@@ -55,7 +55,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { useValidation } from "@/hooks/useValidation";
+import { useValidation } from "@/hooks/features/useValidation";
 import { useProjectStore } from "@/store";
 import { Progress } from "@/components/ui/progress";
 import { SectionTab } from "@/components/ui/section-tab";

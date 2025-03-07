@@ -23,6 +23,7 @@ import { Validation } from '@/features/validation/components/Validation';
 import { AIProjectWrapper } from '@/components/project/AIProjectWrapper';
 import { ProjectState } from '@/store/types';
 import { AIDashboard } from '@/features/ai/components/AIDashboard';
+import AIWorkspacePanel from '../../features/ai/components/AIWorkspacePanel';
 // Import Database type for proper typing
 import { Database } from '@/types/database';
 import { FloatingAIChat } from "@/features/ai/components/FloatingAIChat";
@@ -213,8 +214,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           </div>
         </div>
 
-        {/* Floating AI Chat */}
-        <FloatingAIChat />
+        {/* Floating AI Chat - only shown when not in AI section */}
+        <FloatingAIChat
+          type={activeSection === "ai" ? "sidepanel" : "floating"}
+        />
       </div>
     </QueryClientProvider>
   );

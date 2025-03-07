@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import AIBubble from './AIBubble';
 import ChatContent from './ChatContent';
+import SidePanelChat from './SidePanelChat';
 
 interface Message {
   type: string;
@@ -12,7 +13,11 @@ interface Message {
 // Animation phase enum to simplify state management
 type AnimationPhase = 'idle' | 'expanding' | 'expanded' | 'collapsing';
 
-export const FloatingChatWrapper: React.FC = () => {
+interface FloatingChatWrapperProps {
+  type?: 'sidepanel' | 'floating';
+}
+
+export const FloatingChatWrapper: React.FC<FloatingChatWrapperProps> = ({type = 'floating'}) => {
   // Animation phase state
   const [animationPhase, setAnimationPhase] = useState<AnimationPhase>('idle');
   const [expanded, setExpanded] = useState(false);
@@ -39,58 +44,64 @@ export const FloatingChatWrapper: React.FC = () => {
     if (expanded) {
       setAnimationPhase('collapsing');
       
-      // Reset animations
-      borderControls.start({
-        opacity: 0,
-        scale: 0,
-        transition: { duration: 0.3 }
-      });
-      
-      shadowControls.start({
-        opacity: 0,
-        scale: 0.5,
-        transition: { duration: 0.3 }
-      });
+      // Reset animations - only for floating mode
+      if (type === 'floating') {
+        borderControls.start({
+          opacity: 0,
+          scale: 0,
+          transition: { duration: 0.3 }
+        });
+        
+        shadowControls.start({
+          opacity: 0,
+          scale: 0.5,
+          transition: { duration: 0.3 }
+        });
+      }
       
       setTimeout(() => {
         setExpanded(false);
         setAnimationPhase('idle');
-      }, 500);
+      }, type === 'floating' ? 500 : 100);
     } else {
       setAnimationPhase('expanding');
       
-      // Play ripple animation
-      rippleControls.start({
-        opacity: [0.7, 0.5, 0],
-        scale: [1, 1.1, 1.3],
-        transition: { duration: 0.5 }
-      });
+      // Play ripple animation - only for floating mode
+      if (type === 'floating') {
+        rippleControls.start({
+          opacity: [0.7, 0.5, 0],
+          scale: [1, 1.1, 1.3],
+          transition: { duration: 0.5 }
+        });
+      }
       
       setTimeout(() => {
         setExpanded(true);
         setAnimationPhase('expanded');
         
-        // Play landing shadow animation
-        shadowControls.start({
-          opacity: 0.25,
-          scale: 1,
-          transition: { 
-            duration: 0.4, 
-            delay: 0.1,
-            ease: [0.34, 1.56, 0.64, 1]
-          }
-        });
-        
-        // Start border animation
-        borderControls.start({
-          opacity: 1,
-          scale: 1,
-          transition: { 
-            duration: 0.3,
-            delay: 0.1
-          }
-        });
-      }, 400);
+        // Play landing shadow animation - only for floating mode
+        if (type === 'floating') {
+          shadowControls.start({
+            opacity: 0.25,
+            scale: 1,
+            transition: { 
+              duration: 0.4, 
+              delay: 0.1,
+              ease: [0.34, 1.56, 0.64, 1]
+            }
+          });
+          
+          // Start border animation
+          borderControls.start({
+            opacity: 1,
+            scale: 1,
+            transition: { 
+              duration: 0.3,
+              delay: 0.1
+            }
+          });
+        }
+      }, type === 'floating' ? 400 : 100);
     }
   };
 
@@ -136,8 +147,7 @@ export const FloatingChatWrapper: React.FC = () => {
   };
 
   // Handle close button click
-  const handleCloseClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const handleCloseClick = () => {
     toggleAssistant();
   };
 
@@ -149,6 +159,79 @@ export const FloatingChatWrapper: React.FC = () => {
     }
   };
 
+  // Shared chat content component
+  const chatContent = (
+    <ChatContent 
+      messages={messages}
+      typing={typing}
+      onAddMessage={addNewMessage}
+      onClose={handleCloseClick}
+      contentRef={contentRef}
+      layout={type}
+    />
+  );
+
+  // Cleanup panel state when switching modes
+  useEffect(() => {
+    // Reset to collapsed state when changing modes
+    if (expanded) {
+      setAnimationPhase('collapsing');
+      setExpanded(false);
+      setTimeout(() => {
+        setAnimationPhase('idle');
+      }, 300);
+    }
+  }, [type]);
+
+  // Render UI based on type
+  if (type === 'sidepanel') {
+    return (
+      <>
+        {/* Nucleus bubble for sidepanel mode */}
+        <div 
+          className="fixed bottom-6 right-6 z-40" 
+          onClick={handleNucleusClick}
+          style={{ cursor: !expanded ? 'pointer' : 'default' }}
+        >
+          <motion.div
+            className={`nucleus ${expanded ? 'ai-expanded' : ''} ${animationPhase !== 'idle' && animationPhase !== 'expanded' ? 'ai-animating' : ''}`}
+            animate={{
+              scale: animationPhase === 'expanding' ? 1.05 : 1,
+              opacity: expanded ? 0 : 1,
+            }}
+            transition={{
+              duration: 0.3,
+              ease: 'easeInOut'
+            }}
+            style={{ 
+              cursor: !expanded && animationPhase === 'idle' ? 'pointer' : 'default',
+              background: 'linear-gradient(135deg, var(--primary-light), var(--primary-medium) 60%, var(--primary-dark) 100%)'
+            }}
+          >
+            <AIBubble
+              expanded={expanded}
+              animationPhase={animationPhase}
+              onClick={toggleAssistant}
+            />
+          </motion.div>
+        </div>
+
+        {/* Side panel for expanded state */}
+        <AnimatePresence>
+          {expanded && (
+            <SidePanelChat 
+              expanded={expanded} 
+              onClose={handleCloseClick}
+            >
+              {chatContent}
+            </SidePanelChat>
+          )}
+        </AnimatePresence>
+      </>
+    );
+  }
+
+  // Default floating chat UI
   return (
     <div className="ai-container" style={{ background: 'transparent' }}>
       {/* Unified container that handles the transformation */}
@@ -227,15 +310,7 @@ export const FloatingChatWrapper: React.FC = () => {
               delay: expanded ? 0.3 : 0
             }}
           >
-            {expanded && (
-              <ChatContent 
-                messages={messages}
-                typing={typing}
-                onAddMessage={addNewMessage}
-                onClose={handleCloseClick}
-                contentRef={contentRef}
-              />
-            )}
+            {expanded && chatContent}
           </motion.div>
         </motion.div>
       </motion.div>

@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Activity, Target, ChevronRight, Download, Trash2, HelpCircle, BarChart, Clock, FileCheck, Info } from 'lucide-react';
-import { Document } from '@/types';
+import { Document } from '@/store/types';
 import { formatDate } from '@/lib/utils';
-import { useDocuments } from '@/hooks/useDocuments';
+import { useDocuments } from '@/hooks/features/useDocuments';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -65,7 +65,7 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
   // Calculate stats for the dashboard
   const documentStats = {
     totalDocuments: documents.length,
-    recentlyGenerated: documents.length > 0 ? formatDistanceToNow(documents[0].createdAt) : 'None',
+    recentlyGenerated: documents.length > 0 ? formatDistanceToNow(documents[0].created_at) : 'None',
     // Group documents by type
     byType: {
       'business-plan': documents.filter(d => d.type === 'business-plan').length,
@@ -311,7 +311,7 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
                       <div>
                         <h4 className="font-medium">{doc.name}</h4>
                         <div className="flex items-center">
-                          <p className="text-xs text-gray-500">Generated {formatDate(doc.createdAt)}</p>
+                          <p className="text-xs text-gray-500">Generated {formatDate(doc.created_at)}</p>
                           <Badge variant="outline" className="ml-2 text-xs bg-gray-100 text-gray-700">
                             {doc.type === 'business-plan' && 'Business Plan'}
                             {doc.type === 'pitch-deck' && 'Pitch Deck'}
@@ -322,7 +322,7 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
                     </div>
                     <div className="flex space-x-2">
                       <a 
-                        href={doc.url} 
+                        href={doc.storage_path} 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="text-blue-600 text-sm flex items-center hover:text-blue-800 transition-colors p-1"
@@ -333,7 +333,7 @@ export const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({
                       <Button 
                         variant="outline" 
                         className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md text-sm flex items-center hover:bg-gray-200 transition-colors"
-                        onClick={() => window.open(doc.url, '_blank')}
+                        onClick={() => window.open(doc.storage_path, '_blank')}
                       >
                         <Download className="h-4 w-4 mr-1" />
                         Download

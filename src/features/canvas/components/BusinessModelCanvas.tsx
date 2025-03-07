@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, Edit, HelpCircle, Lightbulb, PlusCircle, Trash2, Smartphone, Laptop } from 'lucide-react';
 import { useForm, FormProvider } from 'react-hook-form';
-import { useBusinessModel } from '@/hooks/useBusinessModel';
+import { useBusinessModel } from '@/hooks/features/useBusinessModel';
 import { useProjectStore } from '@/store';
 import { Database } from '@/types/database';
 import { useParams } from 'next/navigation';
