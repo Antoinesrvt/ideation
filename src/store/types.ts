@@ -55,6 +55,18 @@ export type RelatedItem = TablesRow<'related_items'>;
 export type ProjectTag = TablesRow<'project_tags'>;
 export type FeatureItemTag = TablesRow<'feature_item_tags'>;
 
+// RACI Matrix types
+export type RACIRole = 'R' | 'A' | 'C' | 'I' | '';
+
+export interface RACIMatrixData {
+  [memberId: string]: RACIRole;
+}
+
+// Enhanced version of TeamResponsibilityMatrix with typed raci_matrix
+export interface EnhancedTeamResponsibilityMatrix extends TeamResponsibilityMatrix {
+  raci_matrix: RACIMatrixData;
+}
+
 // Store state types
 export interface ProjectState {
   currentData: {

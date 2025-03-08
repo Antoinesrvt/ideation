@@ -52,6 +52,49 @@ export interface ProjectSettings {
   autoSave: boolean
 }
 
+// Project phase type
+export type ProjectPhase = 'concept' | 'development' | 'validation' | 'refinement' | 'launch-ready';
+
+// Project insight type
+export interface ProjectInsight {
+  id: string;
+  title: string;
+  value: number;
+  description: string;
+  icon: string;
+  color: string;
+  section?: string;
+}
+
+// Project risk type
+export interface ProjectRisk {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  action?: string;
+}
+
+// Recommended action type
+export interface RecommendedAction {
+  id: string;
+  title: string;
+  description: string;
+  priority: number;
+  section: string;
+}
+
+// Project metrics type
+export interface ProjectMetrics {
+  lastCalculated: string;
+  sectionCompletion: Record<string, number>;
+  healthScore: number;
+  phase: ProjectPhase;
+  insights: ProjectInsight[];
+  risks: ProjectRisk[];
+  recommendedActions: RecommendedAction[];
+}
+
 export interface ProjectMetadata {
   path: 'guided' | 'expert' | null
   currentStep: ModuleType | null
@@ -59,6 +102,8 @@ export interface ProjectMetadata {
   stage: 'idea' | 'mvp' | 'growth' | null
   industry: string | null
   settings: ProjectSettings
+  // New metrics field
+  metrics?: ProjectMetrics;
   customFields: Record<string, JsonValue>
 }
 

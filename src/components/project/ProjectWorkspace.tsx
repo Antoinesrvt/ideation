@@ -186,7 +186,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           <div className="flex-1 overflow-auto p-6">
             <ErrorBoundary>
               <AIProjectWrapper>
-                {activeSection === "overview" && <div>Overview</div>}
+                {activeSection === "overview" && <ProjectOverview project={projectDetails} />}
 
                 {activeSection === "ai" && <AIDashboard />}
 
@@ -201,13 +201,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 {activeSection === "validation" && <Validation />}
 
                 {activeSection === "financials" &&
-                // <FinancialProjections />
-                <div>Financials</div>
+                <FinancialProjections />
                 }
 
                 {activeSection === "team" && 
-                //<TeamManagement />
-                <div>Team</div>
+                <TeamManagement />
                 }
 
 

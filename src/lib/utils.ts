@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { RACIMatrixData, RACIRole } from "@/store/types"
 
 /**
  * Combines multiple class names using clsx and tailwind-merge
@@ -82,4 +83,56 @@ export function debounce<T extends (...args: any[]) => any>(
 export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
   return text.slice(0, length) + "...";
+}
+
+/**
+ * Parses a JSONB field safely
+ */
+export function parseJsonbField<T>(field: unknown, defaultValue: T): T {
+  if (!field) return defaultValue;
+  
+  try {
+    if (typeof field === 'string') {
+      return JSON.parse(field) as T;
+    }
+    return field as T;
+  } catch (error) {
+    console.error('Error parsing JSONB field:', error);
+    return defaultValue;
+  }
+}
+
+/**
+ * Converts data to JSON string for JSONB fields
+ */
+export function stringifyJsonbField<T>(data: T): string {
+  try {
+    return JSON.stringify(data);
+  } catch (error) {
+    console.error('Error stringifying data for JSONB field:', error);
+    return '{}';
+  }
+}
+
+/**
+ * Validates a RACI matrix to ensure it follows the proper structure
+ * - Each area should have exactly one Accountable (A)
+ * - Each member should have at most one role per area
+ */
+export function validateRACIMatrix(raciMatrix: RACIMatrixData): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const accountableCount = Object.values(raciMatrix).filter(role => role === 'A').length;
+  
+  if (accountableCount === 0) {
+    errors.push('There must be at least one person Accountable (A) for this area');
+  } else if (accountableCount > 1) {
+    errors.push('There can only be one person Accountable (A) for this area');
+  }
+  
+  // Add any other validation rules as needed
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
 }

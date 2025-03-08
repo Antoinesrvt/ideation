@@ -727,6 +727,7 @@ export type Database = {
           strategy_type: string | null
           target_price_range: Json | null
           updated_at: string | null
+          target_market: string | null
         }
         Insert: {
           considerations?: string | null
@@ -738,6 +739,7 @@ export type Database = {
           project_id?: string | null
           strategy_type?: string | null
           target_price_range?: Json | null
+          target_market?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -750,6 +752,7 @@ export type Database = {
           project_id?: string | null
           strategy_type?: string | null
           target_price_range?: Json | null
+          target_market?: string | null
           updated_at?: string | null
         }
         Relationships: [

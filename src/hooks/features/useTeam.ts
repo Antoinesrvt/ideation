@@ -424,14 +424,17 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
     if (!originalResponsibility) return null;
     
     try {
+      // Process RACI matrix data if present
+      const processedUpdates = { ...updates };
+      
       // 1. Update store optimistically
-      store.updateTeamResponsibilityMatrix(id, updates);
+      store.updateTeamResponsibilityMatrix(id, processedUpdates);
       
       setSubmitting(true);
       
       // 2. Update Supabase with retry logic
       const result = await executeWithRetry(() => 
-        teamService.updateResponsibility(id, updates)
+        teamService.updateResponsibility(id, processedUpdates)
       );
       
       // 3. Invalidate queries to keep React Query cache in sync

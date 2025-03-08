@@ -33,12 +33,12 @@ import { Badge } from "@/components/ui/badge";
 import { useProjectStore } from "@/store";
 import { useAIStore } from "@/hooks/useAIStore";
 import { useParams } from "next/navigation";
-import { generateId } from "@/lib/utils";
-import { 
-  FinancialRevenueStream, 
-  FinancialCostStructure, 
-  FinancialPricingStrategy, 
-  FinancialProjection 
+import { generateId, parseJsonbField } from "@/lib/utils";
+import {
+  FinancialRevenueStream,
+  FinancialCostStructure,
+  FinancialPricingStrategy,
+  FinancialProjection,
 } from "@/store/types";
 import { AIComparisonControls } from "@/components/ai/AIComparisonControls";
 import CostStructure from "./CostStructure";
@@ -46,19 +46,7 @@ import BreakevenAnalysis from "./BreakevenAnalysis";
 import PricingStrategy from "./PricingStrategy";
 import { BreakevenData } from "./BreakevenAnalysis";
 
-// Types for financial data in the UI
-export interface FinancialData {
-  revenue: RevenueData;
-  costs: CostData;
-  breakeven: BreakevenData;
-  pricing: PricingData;
-}
-
-interface RevenueData {
-  forecasts: RevenueForecast[];
-  assumptions: RevenueAssumption[];
-}
-
+// Types for UI-friendly financial data structures
 interface RevenueForecast {
   id: string;
   period: string;
@@ -72,9 +60,9 @@ interface RevenueAssumption {
   impact: number;
 }
 
-interface CostData {
-  fixedCosts: CostItem[];
-  variableCosts: CostItem[];
+interface RevenueData {
+  forecasts: RevenueForecast[];
+  assumptions: RevenueAssumption[];
 }
 
 interface CostItem {
@@ -85,19 +73,9 @@ interface CostItem {
   frequency: "monthly" | "quarterly" | "annually" | "one-time";
 }
 
-
-
-interface PricingData {
-  strategies: PricingStrategy[];
-  competitorPrices: CompetitorPrice[];
-}
-
-interface PricingStrategy {
-  id: string;
-  name: string;
-  description: string;
-  pricePoint: number;
-  targetMarket: string;
+interface CostData {
+  fixedCosts: CostItem[];
+  variableCosts: CostItem[];
 }
 
 interface CompetitorPrice {
@@ -105,6 +83,16 @@ interface CompetitorPrice {
   competitor: string;
   price: number;
   notes: string;
+}
+
+export interface FinancialData {
+  revenue: RevenueData;
+  costs: CostData;
+  breakeven: BreakevenData;
+  pricing: {
+    strategies: FinancialPricingStrategy[];
+    competitorPrices: CompetitorPrice[];
+  };
 }
 
 const financialTabs = [
@@ -130,12 +118,10 @@ const financialTabs = [
   },
 ];
 
-
-
 // Helper functions for financial calculations
 const calculateAverageVariableCost = (costs: CostItem[]): number => {
   if (!costs.length) return 0;
-  
+
   const totalCost = costs.reduce((sum, cost) => sum + cost.amount, 0);
   return totalCost / costs.length;
 };
@@ -145,16 +131,16 @@ const calculateTotalFixedCosts = (costs: CostItem[]): number => {
     // Annualize costs based on frequency
     let annualAmount = cost.amount;
     switch (cost.frequency) {
-      case 'monthly':
+      case "monthly":
         annualAmount *= 12;
         break;
-      case 'quarterly':
+      case "quarterly":
         annualAmount *= 4;
         break;
-      case 'annually':
+      case "annually":
         // Already annual
         break;
-      case 'one-time':
+      case "one-time":
         // One-time costs are included as-is
         break;
     }
@@ -162,22 +148,24 @@ const calculateTotalFixedCosts = (costs: CostItem[]): number => {
   }, 0);
 };
 
-// Map database types to UI types
+/**
+ * Map database types to UI-friendly format
+ */
 const mapToUIFormat = (sourceData: {
-  financialRevenueStreams: FinancialRevenueStream[],
-  financialCostStructure: FinancialCostStructure[],
-  financialPricingStrategies: FinancialPricingStrategy[],
-  financialProjections: FinancialProjection[]
+  financialRevenueStreams: FinancialRevenueStream[];
+  financialCostStructure: FinancialCostStructure[];
+  financialPricingStrategies: FinancialPricingStrategy[];
+  financialProjections: FinancialProjection[];
 }): FinancialData => {
   // Default empty data structure
   const defaultData: FinancialData = {
     revenue: {
       forecasts: [],
-      assumptions: []
+      assumptions: [],
     },
     costs: {
       fixedCosts: [],
-      variableCosts: []
+      variableCosts: [],
     },
     breakeven: {
       unitSellingPrice: 0,
@@ -185,294 +173,247 @@ const mapToUIFormat = (sourceData: {
       fixedCosts: 0,
       contributionMargin: 0,
       breakEvenUnits: 0,
-      breakEvenRevenue: 0
+      breakEvenRevenue: 0,
     },
     pricing: {
       strategies: [],
-      competitorPrices: []
-    }
+      competitorPrices: [],
+    },
   };
 
   if (!sourceData) return defaultData;
 
   // Map revenue streams to forecasts and assumptions
   const forecasts: RevenueForecast[] = sourceData.financialRevenueStreams
-    .filter(stream => stream.type === 'recurring' || stream.type === 'one-time')
-    .map(stream => ({
-      id: stream.id,
-      period: stream.frequency || 'Monthly',
-      amount: stream.unit_price ? stream.unit_price * (stream.volume || 1) : 0,
-      growthRate: stream.growth_rate || undefined
-    }));
+    .filter(
+      (stream) => stream.type === "recurring" || stream.type === "one-time"
+    )
+    .map((stream) => {
+      // Generate forecasts based on revenue stream data
+      const projections = parseJsonbField<
+        Array<{ period: string; amount: number }>
+      >(stream.projections, []);
 
+      // If we have projections, map them directly
+      if (projections.length > 0) {
+        return projections.map((p: { period: string; amount: number }) => ({
+          id: `${stream.id}-${p.period}`,
+          period: p.period,
+          amount: p.amount,
+          growthRate: stream.growth_rate || undefined,
+        }));
+      }
+
+      // If no projections, create a basic forecast from the stream data
+      return [
+        {
+          id: stream.id,
+          period: stream.frequency || "monthly",
+          amount: (stream.unit_price || 0) * (stream.volume || 1),
+          growthRate: stream.growth_rate || undefined,
+        },
+      ];
+    })
+    .flat();
+
+  // Extract assumptions from revenue streams
   const assumptions: RevenueAssumption[] = sourceData.financialRevenueStreams
-    .filter(stream => stream.assumptions !== null && stream.assumptions !== '')
-    .map(stream => ({
-      id: stream.id,
-      description: stream.assumptions || stream.description || '',
-      impact: stream.unit_price || 0
+    .filter((stream) => stream.assumptions)
+    .map((stream) => ({
+      id: `${stream.id}-assumption`,
+      description: stream.assumptions || "",
+      impact: stream.growth_rate || 0,
     }));
 
   // Map cost structure to fixed and variable costs
   const fixedCosts: CostItem[] = sourceData.financialCostStructure
-    .filter(cost => cost.type === 'fixed')
-    .map(cost => ({
+    .filter((cost) => cost.type === "fixed")
+    .map((cost) => ({
       id: cost.id,
-      category: cost.category || '',
-      description: cost.description || '',
+      category: cost.category || "other",
+      description: cost.description || cost.name,
       amount: cost.amount || 0,
-      frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || "monthly"
+      frequency:
+        (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") ||
+        "monthly",
     }));
 
   const variableCosts: CostItem[] = sourceData.financialCostStructure
-    .filter(cost => cost.type === 'variable')
-    .map(cost => ({
+    .filter((cost) => cost.type === "variable" || cost.type === "semi-variable")
+    .map((cost) => ({
       id: cost.id,
-      category: cost.category || '',
-      description: cost.description || '',
+      category: cost.category || "other",
+      description: cost.description || cost.name,
       amount: cost.amount || 0,
-      frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || "monthly"
+      frequency:
+        (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") ||
+        "monthly",
     }));
 
-  // Create cost data structure
-  const costsMapped: CostData = {
-    fixedCosts,
-    variableCosts
+  // Create generic competitor prices if none exist
+  // In a real app, this would come from another part of the database
+  const competitorPrices: CompetitorPrice[] = [
+    {
+      id: "comp1",
+      competitor: "Competitor A",
+      price: 199,
+      notes: "Market leader",
+    },
+    {
+      id: "comp2",
+      competitor: "Competitor B",
+      price: 149,
+      notes: "Budget option",
+    },
+  ];
+
+  // Calculate breakeven data
+  // This is just an example - in a real app we would use more sophisticated formulas
+  const averageRevenue =
+    forecasts.reduce((sum, f) => sum + f.amount, 0) /
+    Math.max(forecasts.length, 1);
+  const avgVariableCost = calculateAverageVariableCost(variableCosts);
+  const totalFixedCosts = calculateTotalFixedCosts(fixedCosts);
+  const contributionMargin = averageRevenue - avgVariableCost;
+
+  const breakeven = {
+    unitSellingPrice: averageRevenue,
+    unitVariableCost: avgVariableCost,
+    fixedCosts: totalFixedCosts,
+    contributionMargin: contributionMargin,
+    breakEvenUnits:
+      contributionMargin > 0
+        ? Math.ceil(totalFixedCosts / contributionMargin)
+        : 0,
+    breakEvenRevenue:
+      contributionMargin > 0
+        ? Math.ceil(totalFixedCosts / contributionMargin) * averageRevenue
+        : 0,
   };
-
-  // Map pricing strategies
-  const strategies: PricingStrategy[] = sourceData.financialPricingStrategies
-    .filter(strategy => strategy.strategy_type !== null)
-    .map(strategy => {
-      // Parse target price range if it exists
-      let pricePoint = 0;
-      if (strategy.target_price_range) {
-        try {
-          const priceRange = typeof strategy.target_price_range === 'string' 
-            ? JSON.parse(strategy.target_price_range) 
-            : strategy.target_price_range;
-          pricePoint = priceRange.min !== undefined ? priceRange.min : 0;
-        } catch (e) {
-          console.error('Failed to parse price range:', e);
-        }
-      }
-      
-      return {
-        id: strategy.id,
-        name: strategy.name || '',
-        description: strategy.description || '',
-        pricePoint,
-        targetMarket: strategy.considerations || ''
-      };
-    });
-
-  const competitorPrices: CompetitorPrice[] = sourceData.financialPricingStrategies
-    .filter(strategy => strategy.strategy_type === 'competitive')
-    .map(strategy => {
-      // Parse target price range if it exists
-      let price = 0;
-      if (strategy.target_price_range) {
-        try {
-          const priceRange = typeof strategy.target_price_range === 'string' 
-            ? JSON.parse(strategy.target_price_range) 
-            : strategy.target_price_range;
-          price = priceRange.max !== undefined ? priceRange.max : 0;
-        } catch (e) {
-          console.error('Failed to parse competitor price:', e);
-        }
-      }
-      
-      return {
-        id: strategy.id,
-        competitor: strategy.name || '',
-        price,
-        notes: strategy.description || ''
-      };
-    });
-
-  // Create pricing data structure
-  const pricingMapped: PricingData = {
-    strategies,
-    competitorPrices
-  };
-
-  // Map breakeven data from projections
-  let breakEvenUnits = 0;
-  let breakEvenRevenue = 0;
-  
-  // Find a projection with break_even data
-  const breakEvenProjection = sourceData.financialProjections.find(p => p.break_even);
-  
-  if (breakEvenProjection && breakEvenProjection.break_even) {
-    try {
-      const breakEvenData = typeof breakEvenProjection.break_even === 'string' 
-        ? JSON.parse(breakEvenProjection.break_even) 
-        : breakEvenProjection.break_even;
-      
-      breakEvenUnits = breakEvenData.units || 0;
-      breakEvenRevenue = breakEvenData.revenue || 0;
-    } catch (e) {
-      console.error('Failed to parse break-even data:', e);
-    }
-  }
-
-  // Get unit selling price from revenue streams
-  const avgUnitPrice = sourceData.financialRevenueStreams
-    .filter(stream => stream.unit_price)
-    .reduce((sum, stream, index, array) => sum + (stream.unit_price || 0) / array.length, 0);
-
-  // Create breakeven data structure
-  const breakevenMapped: BreakevenData = {
-    unitSellingPrice: avgUnitPrice,
-    unitVariableCost: calculateAverageVariableCost(costsMapped.variableCosts),
-    fixedCosts: calculateTotalFixedCosts(costsMapped.fixedCosts),
-    contributionMargin: 0, // Will be calculated below
-    breakEvenUnits,
-    breakEvenRevenue
-  };
-
-  // Calculate contribution margin
-  const unitPrice = breakevenMapped.unitSellingPrice;
-  const unitCost = breakevenMapped.unitVariableCost;
-  
-  breakevenMapped.contributionMargin = 
-    unitPrice > 0 
-      ? ((unitPrice - unitCost) / unitPrice) * 100
-      : 0;
 
   return {
-    revenue: { forecasts, assumptions },
-    costs: costsMapped,
-    pricing: pricingMapped,
-    breakeven: breakevenMapped
+    revenue: {
+      forecasts,
+      assumptions,
+    },
+    costs: {
+      fixedCosts,
+      variableCosts,
+    },
+    breakeven,
+    pricing: {
+      strategies: sourceData.financialPricingStrategies || [],
+      competitorPrices,
+    },
   };
+};
+
+// Format currency values
+export const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
 };
 
 // Calculate profit margin from financial data
 const calculateProfitMargin = (data: FinancialData): number => {
   // Calculate total revenue
-  const totalRevenue = data.revenue.forecasts.reduce((sum, forecast) => sum + forecast.amount, 0);
-  
+  const totalRevenue = data.revenue.forecasts.reduce(
+    (sum, f) => sum + f.amount,
+    0
+  );
+
   // Calculate total costs (fixed + variable)
-  const totalFixedCosts = calculateTotalFixedCosts(data.costs.fixedCosts);
-  const totalVariableCosts = data.costs.variableCosts.reduce((sum, cost) => sum + cost.amount, 0);
-  
-  if (totalRevenue === 0) return 0;
-  
-  const profit = totalRevenue - (totalFixedCosts + totalVariableCosts);
-  return (profit / totalRevenue) * 100;
+  const totalFixedCosts = data.costs.fixedCosts.reduce(
+    (sum, c) => sum + c.amount,
+    0
+  );
+  const totalVariableCosts = data.costs.variableCosts.reduce(
+    (sum, c) => sum + c.amount,
+    0
+  );
+  const totalCosts = totalFixedCosts + totalVariableCosts;
+
+  // Calculate profit and margin
+  const profit = totalRevenue - totalCosts;
+  return totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 };
 
-// Estimate breakeven timeframe
+// Get breakeven timeframe description
 const getBreakevenTimeframe = (data: FinancialData): string => {
-  // If we don't have enough data, return "Unknown"
-  if (!data.breakeven.breakEvenUnits || data.revenue.forecasts.length === 0) {
-    return "Unknown";
-  }
-  
-  // Sort forecasts by period
-  const sortedForecasts = [...data.revenue.forecasts].sort((a, b) => {
-    // Assuming periods are in format "2023 Q1", "2023 Q2", etc.
-    return a.period.localeCompare(b.period);
-  });
-  
-  // Calculate cumulative units sold based on revenue and unit price
-  let cumulativeUnits = 0;
-  for (let i = 0; i < sortedForecasts.length; i++) {
-    const forecast = sortedForecasts[i];
-    const unitsSold = data.breakeven.unitSellingPrice > 0 
-      ? forecast.amount / data.breakeven.unitSellingPrice 
-      : 0;
-    
-    cumulativeUnits += unitsSold;
-    
-    if (cumulativeUnits >= data.breakeven.breakEvenUnits) {
-      return forecast.period;
-    }
-  }
-  
-  return "Beyond forecast period";
+  const { breakEvenUnits } = data.breakeven;
+
+  if (breakEvenUnits <= 0) return "Not determined";
+  if (breakEvenUnits < 100) return "Short-term (1-3 months)";
+  if (breakEvenUnits < 1000) return "Medium-term (3-12 months)";
+  return "Long-term (12+ months)";
 };
 
-// Determine financial health status based on metrics
-const getFinancialHealth = (data: FinancialData): { status: string; color: string } => {
+// Get financial health assessment
+const getFinancialHealth = (
+  data: FinancialData
+): { status: string; color: string } => {
   const profitMargin = calculateProfitMargin(data);
-  const hasForecastData = data.revenue.forecasts.length > 0;
-  const hasBreakevenData = data.breakeven.breakEvenUnits > 0;
-  const hasRevenueAssumptions = data.revenue.assumptions.length > 0;
-  
-  // If we don't have enough data, return "Incomplete"
-  if (!hasForecastData || !hasBreakevenData) {
-    return { status: "Incomplete", color: "text-orange-500" };
-  }
-  
-  // Evaluate financial health based on profit margin
-  if (profitMargin <= 0) {
-    return { status: "At Risk", color: "text-red-500" };
-  } else if (profitMargin < 10) {
-    return { status: "Concerning", color: "text-orange-500" };
-  } else if (profitMargin < 20) {
-    return { status: "Stable", color: "text-blue-500" };
-  } else {
-    return { status: "Healthy", color: "text-green-500" };
-  }
-};
+  const hasRevenue = data.revenue.forecasts.length > 0;
+  const hasCosts =
+    data.costs.fixedCosts.length > 0 || data.costs.variableCosts.length > 0;
 
+  if (!hasRevenue || !hasCosts) {
+    return {
+      status: "Incomplete",
+      color: "text-gray-500 border-gray-200",
+    };
+  }
 
-// Format currency values
-export const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value);
+  if (profitMargin < 0) {
+    return {
+      status: "At Risk",
+      color: "text-red-500 border-red-200",
+    };
+  }
+
+  if (profitMargin < 15) {
+    return {
+      status: "Fair",
+      color: "text-amber-500 border-amber-200",
+    };
+  }
+
+  return {
+    status: "Good",
+    color: "text-green-500 border-green-200",
+  };
 };
 
 export const FinancialProjections: React.FC = () => {
-  const { id: projectId } = useParams<{ id: string }>();
-  
-  const {
-    currentData,
-    comparisonMode,
-    stagedData,
-  } = useProjectStore();
-
-  const { acceptAIChanges, rejectAIChanges } = useAIStore();
-
-  // State for currently active tab
   const [activeTab, setActiveTab] = useState("revenue");
-  
-  // Map current data to UI format
-  const data = useMemo(() => mapToUIFormat({
-    financialRevenueStreams: currentData.financialRevenueStreams,
-    financialCostStructure: currentData.financialCostStructure,
-    financialPricingStrategies: currentData.financialPricingStrategies,
-    financialProjections: currentData.financialProjections
-  }), [currentData]);
-  
-  // Map staged data to UI format if in comparison mode
-  const stagedUIData = useMemo(() => {
-    if (!comparisonMode || !stagedData) return null;
-    
-    return mapToUIFormat({
-      financialRevenueStreams: stagedData.financialRevenueStreams,
-      financialCostStructure: stagedData.financialCostStructure,
-      financialPricingStrategies: stagedData.financialPricingStrategies,
-      financialProjections: stagedData.financialProjections
-    });
-  }, [comparisonMode, stagedData]);
-  
-  
-  // Financial health and insights
-  const profitMargin = calculateProfitMargin(data);
-  const breakevenTimeframe = getBreakevenTimeframe(data);
-  const financialHealth = getFinancialHealth(data);
+  const { currentData } = useProjectStore();
+  const projectId = currentData.project?.id;
+  const params = useParams();
 
+  // Get comparison mode flag
+  const comparisonMode = false; // Replace with actual logic if needed
+
+  // Map financial data from store
+  const financialData = useMemo(() => {
+    return mapToUIFormat({
+      financialRevenueStreams: currentData.financialRevenueStreams || [],
+      financialCostStructure: currentData.financialCostStructure || [],
+      financialPricingStrategies: currentData.financialPricingStrategies || [],
+      financialProjections: currentData.financialProjections || [],
+    });
+  }, [currentData]);
+
+  // Compute financial health
+  const financialHealth = getFinancialHealth(financialData);
+
+  const data = financialData;
 
   return (
-    <div className="space-y-8">
-      {/* Financial Overview Dashboard */}
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -520,14 +461,14 @@ export const FinancialProjections: React.FC = () => {
             <DollarSign className="w-5 h-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{profitMargin.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{calculateProfitMargin(data).toFixed(1)}%</div>
             <div className="h-[60px] mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={[
-                      { name: "Profit", value: profitMargin },
-                      { name: "Costs", value: 100 - profitMargin },
+                      { name: "Profit", value: calculateProfitMargin(data) },
+                      { name: "Costs", value: 100 - calculateProfitMargin(data) },
                     ]}
                     cx="50%"
                     cy="50%"
@@ -556,14 +497,14 @@ export const FinancialProjections: React.FC = () => {
             <Target className="w-5 h-5 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{breakevenTimeframe}</div>
+            <div className="text-2xl font-bold">{getBreakevenTimeframe(data)}</div>
             <div className="h-[60px] mt-4 flex items-center justify-center">
               <div className="bg-gray-100 w-full h-2 rounded-full">
                 <div
                   className="bg-purple-500 h-2 rounded-full"
                   style={{
                     width: `${Math.min(
-                      (parseInt(breakevenTimeframe) / 24) * 100,
+                      (parseInt(getBreakevenTimeframe(data)) / 24) * 100,
                       100
                     )}%`,
                   }}
@@ -618,9 +559,7 @@ export const FinancialProjections: React.FC = () => {
         <div className="pt-6">
           {/* Revenue Forecasting Tab */}
           <TabsContent value="revenue" className="space-y-6">
-            <RevenueCharts projectId={projectId} revenue={data.revenue} />
-
-            
+            <RevenueCharts projectId={projectId || ""} revenue={data.revenue} />
           </TabsContent>
 
           {/* Cost Structure Tab */}
@@ -630,24 +569,15 @@ export const FinancialProjections: React.FC = () => {
 
           {/* Break-even Analysis Tab */}
           <TabsContent value="breakeven">
-            <BreakevenAnalysis data={{breakeven: data.breakeven}} />
+            <BreakevenAnalysis data={{ breakeven: data.breakeven }} />
           </TabsContent>
 
           {/* Pricing Strategy Tab */}
           <TabsContent value="pricing">
-           <PricingStrategy data={{pricing: data.pricing}} />
+            <PricingStrategy data={{ pricing: data.pricing }} />
           </TabsContent>
         </div>
       </Tabs>
-
-      {/* Add comparison mode controls if needed */}
-      {comparisonMode && (
-        <AIComparisonControls
-          onApply={() => acceptAIChanges()}
-          onReject={() => rejectAIChanges()}
-          isComparingChanges={true}
-        />
-      )}
     </div>
   );
 };

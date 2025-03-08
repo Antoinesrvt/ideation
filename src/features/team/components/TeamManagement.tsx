@@ -14,14 +14,6 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -40,16 +32,11 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   UserPlus, 
   Users, 
   CheckSquare, 
   Grid, 
-
   Trash2, 
   Edit, 
   Info,
@@ -68,6 +55,8 @@ import RoleCard, { Role } from './RoleCard';
 import RACIMatrix from './RACIMatrix';
 import Members from './Members';
 import TasksTable from './TasksTable';
+import { toast } from '@/components/ui/use-toast';
+
 // Types for team data
 export interface TeamData {
   members: TeamMember[];
@@ -215,11 +204,11 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     members: teamData.data.members,
     tasks: teamData.data.tasks,
     roles: mapDBResponsibilitiesToRoles(teamData.data.responsibilities || []),
-    raci: [], // Initialize empty RACI data
+    raci: teamData.data.responsibilities || [], // Use responsibilities data as RACI
   };
   
-  // Ensure we have default values if data is undefined
-  const safeData: TeamData = data || hookData;
+  // Use either provided data or hook data
+  const safeData = data || hookData;
   
 
   // Calculate team statistics
@@ -284,10 +273,99 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
 
 
 
-  const handleAddTeamMember = (e: React.FormEvent) => {
+  // CRUD operations for team members
+  const handleAddTeamMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    setNewMemberDialogOpen(false);
-    // Implementation for adding team member
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    
+    const name = formData.get('name') as string;
+    const role = formData.get('role') as string;
+    const email = formData.get('email') as string;
+    
+    if (!name || !role) return;
+    
+    // Create new member
+    try {
+      await teamData.addMember({
+        name,
+        role,
+        expertise: [],
+        responsibilities: [],
+        availability: 'full-time',
+        contact_info: { email },
+        status: 'active',
+        project_id: projectId || '',
+        user_id: null,
+        created_by: null
+      });
+      
+      setNewMemberDialogOpen(false);
+      form.reset();
+      
+      toast({
+        title: "Team member added",
+        description: `${name} has been added to the team.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to add team member",
+        description: "There was an error adding the team member.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle RACI matrix operations
+  const handleUpdateRaci = async (id: string, updates: Partial<TeamResponsibilityMatrix>) => {
+    try {
+      await teamData.updateResponsibility({ id, data: updates });
+      
+      toast({
+        title: "RACI matrix updated",
+        description: "The responsibility matrix has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to update RACI matrix",
+        description: "There was an error updating the RACI matrix.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAddRaci = async (data: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      await teamData.addResponsibility(data);
+      
+      toast({
+        title: "Area added",
+        description: "A new area has been added to the RACI matrix.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to add area",
+        description: "There was an error adding the new area.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteRaci = async (id: string) => {
+    try {
+      await teamData.deleteResponsibility(id);
+      
+      toast({
+        title: "Area removed",
+        description: "The area has been removed from the RACI matrix.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to remove area",
+        description: "There was an error removing the area.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleAddTask = (e: React.FormEvent) => {
@@ -296,29 +374,6 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     // Implementation for adding task
   };
 
-
-
-  const getRaciTypeColor = (type: string) => {
-    switch (type) {
-      case 'responsible':
-        return 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-0';
-      case 'accountable':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 border-0';
-      case 'consulted':
-        return 'bg-amber-100 text-amber-800 hover:bg-amber-200 border-0';
-      case 'informed':
-        return 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-0';
-      default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-0';
-    }
-  };
-
-  const toggleHelp = (section: keyof typeof expandedHelp) => {
-    setExpandedHelp(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
 
   return (
     <div className="space-y-8">
@@ -624,7 +679,13 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                         description: "Create a RACI matrix to clarify roles and responsibilities for key activities."
                       }}
                     >
-                      <RACIMatrix members={safeData.members} raci={safeData.raci} />
+                      <RACIMatrix 
+                        members={safeData.members} 
+                        raci={safeData.raci} 
+                        onUpdate={handleUpdateRaci}
+                        onAdd={handleAddRaci}
+                        onDelete={handleDeleteRaci}
+                      />
                     </SectionTab>
                   </TabsContent>
                 </motion.div>

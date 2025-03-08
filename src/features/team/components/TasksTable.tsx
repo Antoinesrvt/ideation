@@ -13,57 +13,63 @@ interface TasksTableProps {
     members: TeamMember[];
 }
 
-  const getTaskStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">
-            Completed
-          </Badge>
-        );
-      case "in_progress":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">
-            In Progress
-          </Badge>
-        );
-      case "blocked":
-        return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
-            Blocked
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-0">
-            Not Started
-          </Badge>
-        );
-    }
-  };
+const getTaskStatusBadge = (status: string) => {
+  switch (status) {
+    case "completed":
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">
+          Completed
+        </Badge>
+      );
+    case "in-progress":
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">
+          In Progress
+        </Badge>
+      );
+    case "on-hold":
+      return (
+        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-0">
+          On Hold
+        </Badge>
+      );
+    case "not-started":
+      return (
+        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-0">
+          Not Started
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-0">
+          {status || "Unknown"}
+        </Badge>
+      );
+  }
+};
 
-  const getTaskPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
-            High
-          </Badge>
-        );
-      case "medium":
-        return (
-          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-0">
-            Medium
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">
-            Low
-          </Badge>
-        );
-    }
-  };
+const getTaskPriorityBadge = (priority: string) => {
+  switch (priority) {
+    case "high":
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
+          High
+        </Badge>
+      );
+    case "medium":
+      return (
+        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-0">
+          Medium
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-0">
+          Low
+        </Badge>
+      );
+  }
+};
 
 const TasksTable = ({ tasks, members }: TasksTableProps) => {
   const getMemberById = (id: string) => {

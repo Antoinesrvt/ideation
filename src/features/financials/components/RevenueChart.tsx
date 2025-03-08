@@ -2,28 +2,45 @@ import React from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
-import {  PlusCircle, Table } from 'lucide-react'
+import { PlusCircle, Table } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts'
-import { FinancialRevenueStream } from '@/store/types'
 import { formatCurrency } from './FinancialProjections'
 import { TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 
+// Use the same interfaces as in FinancialProjections
+interface RevenueForecast {
+  id: string;
+  period: string;
+  amount: number;
+  growthRate?: number;
+}
+
+interface RevenueAssumption {
+  id: string;
+  description: string;
+  impact: number;
+}
+
+interface RevenueData {
+  forecasts: RevenueForecast[];
+  assumptions: RevenueAssumption[];
+}
 
 type RevenueChartProps = {
   projectId: string;
-  revenue: FinancialRevenueStream;
+  revenue: RevenueData;
 }
 
 export const RevenueCharts = ({ projectId, revenue }: RevenueChartProps) => {
-
+  
   // Handle adding a revenue forecast
   const handleAddRevenueForecast = () => {
     if (!projectId) return;
-
-   // todo: handle form 
+    
+    // todo: handle form 
   };
-
+  
   return (
     <div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -39,16 +56,15 @@ export const RevenueCharts = ({ projectId, revenue }: RevenueChartProps) => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    size="icon"
+                    variant="ghost"
                     onClick={handleAddRevenueForecast}
                   >
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Forecast Period
+                    <PlusCircle className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Add a new time period to your revenue forecast
+                  <p> Add a new time period to your revenue forecast</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -62,31 +78,34 @@ export const RevenueCharts = ({ projectId, revenue }: RevenueChartProps) => {
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="period" />
-                  <YAxis
-                    tickFormatter={(value) =>
-                      formatCurrency(value).replace("$", "")
-                    }
-                  />
+                  <YAxis />
                   <RechartsTooltip
                     formatter={(value) => formatCurrency(Number(value))}
                   />
                   <Legend />
-                  <Bar
-                    dataKey="amount"
-                    name="Revenue"
-                    fill="#22c55e"
-                    radius={[4, 4, 0, 0]}
-                  />
+                  <Bar dataKey="amount" fill="#8884d8" name="Revenue" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
+          <CardFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onClick={() => {}}
+            >
+              <Table className="h-4 w-4 mr-2" />
+              View Details
+            </Button>
+          </CardFooter>
         </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Monthly Projections</CardTitle>
+            <CardTitle>Revenue Projections</CardTitle>
             <CardDescription>
-              Detailed monthly revenue projections
+              Monthly revenue forecasts and growth rates
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -99,26 +118,28 @@ export const RevenueCharts = ({ projectId, revenue }: RevenueChartProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {revenue.forecasts.map((forecast: any) => (
+                {revenue.forecasts.map((forecast) => (
                   <TableRow key={forecast.id}>
                     <TableCell>{forecast.period}</TableCell>
                     <TableCell>{formatCurrency(forecast.amount)}</TableCell>
                     <TableCell>
-                      <span
-                        className={
-                          forecast.growthRate
-                            ? forecast.growthRate >= 0
-                              ? "text-green-600"
-                              : "text-red-600"
-                            : "text-gray-600"
-                        }
-                      >
-                        {forecast.growthRate
-                          ? (forecast.growthRate >= 0 ? "+" : "") +
-                            forecast.growthRate +
-                            "%"
-                          : "N/A"}
-                      </span>
+                      {forecast.growthRate ? (
+                        <Badge
+                          variant="outline"
+                          className={
+                            forecast.growthRate > 0
+                              ? "bg-green-50 text-green-700 hover:bg-green-100"
+                              : forecast.growthRate < 0
+                              ? "bg-red-50 text-red-700 hover:bg-red-100"
+                              : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                          }
+                        >
+                          {forecast.growthRate > 0 && "+"}
+                          {forecast.growthRate}%
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -127,50 +148,50 @@ export const RevenueCharts = ({ projectId, revenue }: RevenueChartProps) => {
           </CardContent>
         </Card>
       </div>
-      {/* Revenue Assumptions */}
-      <Card>
+
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle>Revenue Assumptions</CardTitle>
           <CardDescription>
-            Factors affecting your revenue projections
+            Key assumptions informing your revenue projections
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {revenue.assumptions.map((assumption: any) => (
-              <div
-                key={assumption.id}
-                className="flex items-center justify-between border-b pb-3"
-              >
-                <div>
-                  <h4 className="font-medium">{assumption.description}</h4>
-                </div>
-                <Badge
-                  variant="outline"
-                  className={
-                    assumption.impact > 0
-                      ? "bg-green-100 text-green-800"
-                      : assumption.impact < 0
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100"
-                  }
+            {revenue.assumptions && revenue.assumptions.length > 0 ? (
+              revenue.assumptions.map((assumption) => (
+                <div
+                  key={assumption.id}
+                  className="flex items-center justify-between border-b pb-3"
                 >
-                  {assumption.impact > 0 ? "+" : ""}
-                  {assumption.impact}% Impact
-                </Badge>
+                  <div>
+                    <p className="font-medium">{assumption.description}</p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={
+                      assumption.impact > 0
+                        ? "bg-green-50 text-green-700"
+                        : assumption.impact < 0
+                        ? "bg-red-50 text-red-700"
+                        : "bg-gray-50 text-gray-700"
+                    }
+                  >
+                    Impact: {assumption.impact > 0 && "+"}
+                    {assumption.impact}%
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <div className="text-muted-foreground text-center py-4">
+                No assumptions defined yet
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
-        <CardFooter className="bg-gray-50">
-          <div className="text-sm">
-            <span className="font-medium">Pro Tip:</span> Regularly update your
-            assumptions based on real market data to improve forecast accuracy.
-          </div>
-        </CardFooter>
       </Card>
     </div>
   );
-}
+};
 
 export default RevenueCharts

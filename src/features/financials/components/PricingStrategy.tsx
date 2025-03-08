@@ -5,17 +5,50 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table'
 import { BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Bar, Tooltip as RechartsTooltip } from 'recharts'
 import { formatCurrency } from './FinancialProjections'
+import { FinancialPricingStrategy } from '@/store/types'
+import { parseJsonbField } from '@/lib/utils'
+
+// Interface for competitor price data
+interface CompetitorPrice {
+  id: string;
+  competitor: string;
+  price: number;
+  notes: string;
+}
 
 interface PricingStrategyProps {
   data: {
     pricing: {
-      strategies: any[];
-      competitorPrices: any[];
+      strategies: FinancialPricingStrategy[];
+      competitorPrices: CompetitorPrice[];
     };
   };
 }
 
+// Helper to get price from target_price_range
+function getAveragePrice(strategy: FinancialPricingStrategy): number {
+  const priceRange = parseJsonbField<{min: number, max: number}>(
+    strategy.target_price_range, 
+    {min: 0, max: 0}
+  );
+  return (priceRange.min + priceRange.max) / 2;
+}
+
 const PricingStrategy = ({ data }: PricingStrategyProps) => {
+  // Transform data for the chart
+  const chartData = [
+    ...data.pricing.strategies.map((s) => ({
+      name: s.name,
+      price: getAveragePrice(s),
+      type: "Your Strategies",
+    })),
+    ...data.pricing.competitorPrices.map((c) => ({
+      name: c.competitor,
+      price: c.price,
+      type: "Competitors",
+    })),
+  ];
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <Alert
@@ -49,30 +82,17 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
         </AlertDescription>
       </Alert>
 
-      {/* Pricing Chart */}
-      <Card className="col-span-1">
+      {/* Price Comparison */}
+      <Card>
         <CardHeader>
-          <CardTitle>Pricing Strategy Comparison</CardTitle>
-          <CardDescription>
-            Your pricing strategies vs competitor prices
-          </CardDescription>
+          <CardTitle>Price Comparison</CardTitle>
+          <CardDescription>Your pricing vs. competitor pricing</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={[
-                  ...data.pricing.strategies.map((s) => ({
-                    name: s.name,
-                    price: s.pricePoint,
-                    type: "Your Strategies",
-                  })),
-                  ...data.pricing.competitorPrices.map((c) => ({
-                    name: c.competitor,
-                    price: c.price,
-                    type: "Competitors",
-                  })),
-                ]}
+                data={chartData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -117,8 +137,8 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{formatCurrency(strategy.pricePoint)}</TableCell>
-                  <TableCell>{strategy.targetMarket}</TableCell>
+                  <TableCell>{formatCurrency(getAveragePrice(strategy))}</TableCell>
+                  <TableCell>{strategy.target_market || strategy.considerations || 'General'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -146,11 +166,11 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
             <TableBody>
               {data.pricing.competitorPrices.map((competitor) => (
                 <TableRow key={competitor.id}>
-                  <TableCell>{competitor.competitor}</TableCell>
-                  <TableCell>{formatCurrency(competitor.price)}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">{competitor.notes}</div>
+                  <TableCell className="font-medium">
+                    {competitor.competitor}
                   </TableCell>
+                  <TableCell>{formatCurrency(competitor.price)}</TableCell>
+                  <TableCell>{competitor.notes}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -159,6 +179,6 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
       </Card>
     </div>
   );
-}
+};
 
-export default PricingStrategy
+export default PricingStrategy;
