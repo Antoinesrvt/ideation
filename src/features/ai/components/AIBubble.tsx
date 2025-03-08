@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import { motion, useAnimation, AnimatePresence } from 'framer-motion';
 
 // Animation phase enum to match parent component
@@ -11,11 +11,12 @@ interface AIBubbleProps {
 }
 
 // Create a Particle component for better organization and performance
-const Particle: React.FC<{ delay: number, color: string, size: number, position: { x: number, y: number } }> = ({ 
-  delay, 
-  color, 
-  size, 
-  position 
+// Memoize it to prevent unnecessary renders
+const Particle = memo(({ delay, color, size, position }: { 
+  delay: number, 
+  color: string, 
+  size: number, 
+  position: { x: number, y: number } 
 }) => {
   const hoverX = (Math.random() * 10 - 5).toFixed(1);
   const hoverY = (Math.random() * 10 - 5).toFixed(1);
@@ -33,6 +34,7 @@ const Particle: React.FC<{ delay: number, color: string, size: number, position:
         top: `${position.y}%`,
         opacity: 0.7,
         filter: 'blur(0.5px)',
+        willChange: 'transform, opacity, box-shadow' // Add will-change for better performance
       }}
       animate={{
         x: [0, Number(hoverX), 0, -Number(hoverX), 0],
@@ -53,9 +55,12 @@ const Particle: React.FC<{ delay: number, color: string, size: number, position:
       }}
     />
   );
-};
+});
 
-export const AIBubble: React.FC<AIBubbleProps> = ({
+Particle.displayName = 'Particle';
+
+// Memoize the AIBubble component to prevent unnecessary renders
+export const AIBubble = memo<AIBubbleProps>(({
   expanded,
   animationPhase,
   onClick
@@ -101,11 +106,16 @@ export const AIBubble: React.FC<AIBubbleProps> = ({
         initial={{ opacity: 1 }}
         animate={{ 
           opacity: expanded || animationPhase === 'expanding' ? 0 : 1,
-          pointerEvents: expanded ? 'none' : 'auto'
+          pointerEvents: expanded ? 'none' : 'auto',
+          // Add transform style to improve rendering performance
+          translateZ: 0
         }}
         transition={{ 
           duration: 0.4,
           delay: animationPhase === 'collapsing' ? 0.2 : 0
+        }}
+        style={{
+          willChange: 'opacity' // Add will-change for better performance
         }}
       >
         <div className="nucleus-glass" />
@@ -129,7 +139,7 @@ export const AIBubble: React.FC<AIBubbleProps> = ({
         </div>
       </motion.div>
       
-      {/* Transformation ripple effect */}
+      {/* Transformation ripple effect - optimize animation */}
       <motion.div 
         className="transformation-ripple"
         initial={{ opacity: 0, scale: 0 }}
@@ -141,16 +151,24 @@ export const AIBubble: React.FC<AIBubbleProps> = ({
           duration: 0.5,
           ease: "easeOut"
         }}
+        style={{
+          willChange: 'transform, opacity' // Add will-change for better performance
+        }}
       />
       
       {/* Pulse effect appears on click */}
       <motion.div 
         className="nucleus-pulse"
         initial={{ scale: 0.9, opacity: 0 }}
-        whileTap={{ scale: 1.4, opacity: 0.7, transition: { duration: 0.4 } }}
+        whileTap={{ scale: 1.4, opacity: 0.7, transition: { duration: 0.2 } }} // Make pulse faster
+        style={{
+          willChange: 'transform, opacity' // Add will-change for better performance
+        }}
       />
     </>
   );
-};
+});
+
+AIBubble.displayName = 'AIBubble';
 
 export default AIBubble; 

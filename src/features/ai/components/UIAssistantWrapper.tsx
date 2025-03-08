@@ -42,10 +42,12 @@ export const FloatingChatWrapper: React.FC<FloatingChatWrapperProps> = ({type = 
   // Toggle assistant state
   const toggleAssistant = () => {
     if (expanded) {
+      // Start animation immediately
       setAnimationPhase('collapsing');
       
       // Reset animations - only for floating mode
       if (type === 'floating') {
+        // Execute animations immediately
         borderControls.start({
           opacity: 0,
           scale: 0,
@@ -59,14 +61,18 @@ export const FloatingChatWrapper: React.FC<FloatingChatWrapperProps> = ({type = 
         });
       }
       
-      setTimeout(() => {
-        setExpanded(false);
-        setAnimationPhase('idle');
-      }, type === 'floating' ? 500 : 100);
+      // Use requestAnimationFrame to make state updates after animation frame
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          setExpanded(false);
+          setAnimationPhase('idle');
+        }, type === 'floating' ? 500 : 100);
+      });
     } else {
+      // Immediate feedback for user click
       setAnimationPhase('expanding');
       
-      // Play ripple animation - only for floating mode
+      // For floating mode, play ripple animation immediately
       if (type === 'floating') {
         rippleControls.start({
           opacity: [0.7, 0.5, 0],
@@ -75,33 +81,36 @@ export const FloatingChatWrapper: React.FC<FloatingChatWrapperProps> = ({type = 
         });
       }
       
-      setTimeout(() => {
-        setExpanded(true);
-        setAnimationPhase('expanded');
-        
-        // Play landing shadow animation - only for floating mode
-        if (type === 'floating') {
-          shadowControls.start({
-            opacity: 0.25,
-            scale: 1,
-            transition: { 
-              duration: 0.4, 
-              delay: 0.1,
-              ease: [0.34, 1.56, 0.64, 1]
-            }
-          });
+      // Use requestAnimationFrame for smoother transition
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          setExpanded(true);
+          setAnimationPhase('expanded');
           
-          // Start border animation
-          borderControls.start({
-            opacity: 1,
-            scale: 1,
-            transition: { 
-              duration: 0.3,
-              delay: 0.1
-            }
-          });
-        }
-      }, type === 'floating' ? 400 : 100);
+          // Play landing shadow animation - only for floating mode
+          if (type === 'floating') {
+            shadowControls.start({
+              opacity: 0.25,
+              scale: 1,
+              transition: { 
+                duration: 0.4, 
+                delay: 0.1,
+                ease: [0.34, 1.56, 0.64, 1]
+              }
+            });
+            
+            // Start border animation
+            borderControls.start({
+              opacity: 1,
+              scale: 1,
+              transition: { 
+                duration: 0.3,
+                delay: 0.1
+              }
+            });
+          }
+        }, type === 'floating' ? 100 : 50); // Reduce timeout for faster response
+      });
     }
   };
 
@@ -155,6 +164,16 @@ export const FloatingChatWrapper: React.FC<FloatingChatWrapperProps> = ({type = 
   const handleNucleusClick = () => {
     // Only toggle when in idle state and not expanded
     if (!expanded && animationPhase === 'idle') {
+      // Add immediate visual feedback
+      if (type === 'floating') {
+        // Trigger immediate visual feedback
+        rippleControls.start({
+          opacity: 0.5,
+          scale: 1.05,
+          transition: { duration: 0.1 }
+        });
+      }
+      // Call toggle with a slight delay to ensure visual feedback
       toggleAssistant();
     }
   };

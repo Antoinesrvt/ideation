@@ -78,6 +78,14 @@
   );
   z-index: 1;
   cursor: pointer;
+  will-change: width, height, border-radius, transform, box-shadow;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  /* Add GPU acceleration */
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
 }
 
 /* Enhance hover effect for a more magical feeling */
@@ -113,6 +121,11 @@
   left: 0;
   cursor: pointer;
   z-index: 3;
+  will-change: opacity, transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Add GPU acceleration */
+  transform: translateZ(0);
 }
 
 /* Glass layer */
@@ -249,6 +262,11 @@
   pointer-events: none;
   transform-origin: center;
   z-index: 2;
+  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Add GPU acceleration */
+  transform: translateZ(0);
 }
 
 /* Particles */
@@ -350,6 +368,10 @@
   );
   border: none;
   outline: none;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Add GPU acceleration */
+  transform: translateZ(0);
 }
 
 /* Header */
