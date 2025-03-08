@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { TeamService, TeamData } from '@/lib/services/features/team-service';
 import { useProjectStore } from '@/store';
@@ -9,9 +9,7 @@ import type {
   TeamResponsibilityMatrix,
   ChangeType
 } from '@/store/types';
-
-// Create service instance
-const teamService = new TeamService(createClient());
+import { teamService } from '@/lib/services';
 
 export interface UseTeamReturn {
   data: TeamData;
@@ -69,15 +67,68 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Query keys for different data types
-  const queryKeys = {
+  // Create stable, memoized query keys
+  const queryKeys = useMemo(() => ({
     all: ['team', projectId] as const,
     members: ['team', projectId, 'members'] as const,
     tasks: ['team', projectId, 'tasks'] as const,
-    responsibilities: ['team', projectId, 'responsibilities'] as const,
-  };
+    matrix: ['team', projectId, 'matrix'] as const,
+  }), [projectId]);
 
-  // Get data from the store based on comparison mode
+  // Use React Query to fetch data
+  const { 
+    data: membersData, 
+    isLoading: membersLoading, 
+    error: membersError 
+  } = useQuery({
+    queryKey: queryKeys.members,
+    queryFn: () => teamService.getMembers(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: tasksData, 
+    isLoading: tasksLoading, 
+    error: tasksError 
+  } = useQuery({
+    queryKey: queryKeys.tasks,
+    queryFn: () => teamService.getTasks(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: matrixData, 
+    isLoading: matrixLoading, 
+    error: matrixError 
+  } = useQuery({
+    queryKey: queryKeys.matrix,
+    queryFn: () => teamService.getResponsibilities(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Update store when data changes
+  useEffect(() => {
+    if (membersData) {
+      store.setTeamMembers(membersData);
+    }
+  }, [membersData, store]);
+
+  useEffect(() => {
+    if (tasksData) {
+      store.setTeamTasks(tasksData);
+    }
+  }, [tasksData, store]);
+
+  useEffect(() => {
+    if (matrixData) {
+      store.setTeamResponsibilityMatrix(matrixData);
+    }
+  }, [matrixData, store]);
+
+  // Get data from the store for comparison mode
   const storeData = useMemo(() => {
     const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
     return {
@@ -87,12 +138,32 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
     };
   }, [store.currentData, store.stagedData, store.comparisonMode]);
 
-  // Transform store data to the expected format
-  const data: TeamData = useMemo(() => ({
-    members: storeData.teamMembers,
-    tasks: storeData.teamTasks,
-    responsibilities: storeData.teamResponsibilityMatrix
-  }), [storeData]);
+  // Use either store data or query data based on comparison mode
+  const data: TeamData = useMemo(() => {
+    if (store.comparisonMode) {
+      return {
+        members: storeData.teamMembers,
+        tasks: storeData.teamTasks,
+        responsibilities: storeData.teamResponsibilityMatrix
+      };
+    } else {
+      return {
+        members: membersData || [],
+        tasks: tasksData || [],
+        responsibilities: matrixData || []
+      };
+    }
+  }, [
+    store.comparisonMode, 
+    storeData,
+    membersData,
+    tasksData,
+    matrixData
+  ]);
+
+  // Compute loading and error states
+  const isLoading = membersLoading || tasksLoading || matrixLoading;
+  const queryError = membersError || tasksError || matrixError;
 
   // === Team Members Operations ===
   const addMember = useCallback(async (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>): Promise<TeamMember | null> => {
@@ -398,7 +469,7 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.responsibilities });
+      queryClient.invalidateQueries({ queryKey: queryKeys.matrix });
       queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
@@ -438,7 +509,7 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.responsibilities });
+      queryClient.invalidateQueries({ queryKey: queryKeys.matrix });
       queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
@@ -478,7 +549,7 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.responsibilities });
+      queryClient.invalidateQueries({ queryKey: queryKeys.matrix });
       queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
@@ -508,8 +579,8 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
 
   return {
     data,
-    isLoading: store.isLoading || submitting,
-    error,
+    isLoading,
+    error: queryError,
 
     // Team Members
     addMember,

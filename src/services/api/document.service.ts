@@ -1,4 +1,4 @@
-import { Document } from '@/types';
+import { Document } from '@/store/types';
 import { apiClient } from './client';
 
 /**

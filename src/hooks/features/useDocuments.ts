@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { documentService } from '@/services/api/document.service';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { apiDocumentService } from '@/lib/services';
 import { useProjectStore } from '@/store';
 import type { Document, ChangeType } from '@/store/types';
 
+// Constants for retry logic
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
@@ -35,12 +36,48 @@ export function useDocuments(projectId?: string) {
   const store = useProjectStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  
-  // Query keys
-  const queryKeys = {
+
+  // Query keys for data fetching
+  const queryKeys = useMemo(() => ({
     all: ['documents', projectId] as const,
-  };
-  
+    documents: ['documents', projectId, 'list'] as const
+  }), [projectId]);
+
+  // Use React Query to fetch documents
+  const { 
+    data: documentsData, 
+    isLoading: documentsLoading, 
+    error: documentsError 
+  } = useQuery({
+    queryKey: queryKeys.documents,
+    queryFn: () => apiDocumentService.getDocuments(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Helper function to check array equality
+  function arraysEqual(a: any[], b: any[]): boolean {
+    if (a.length !== b.length) return false;
+    
+    // Check if arrays have same items (not concerned with order for this use case)
+    const sortedA = [...a].sort((x, y) => 
+      (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+    );
+    const sortedB = [...b].sort((x, y) => 
+      (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+    );
+    
+    // Simple comparison of stringified arrays (works for our case of objects with IDs)
+    return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+  }
+
+  // Update store when query data changes, but only if data has actually changed
+  useEffect(() => {
+    if (documentsData && !arraysEqual(documentsData, store.currentData.documents)) {
+      store.setDocuments(documentsData);
+    }
+  }, [documentsData, store]);
+
   // Get data from the store based on comparison mode
   const storeData = useMemo(() => {
     const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
@@ -48,62 +85,85 @@ export function useDocuments(projectId?: string) {
       documents: source.documents || []
     };
   }, [store.currentData, store.stagedData, store.comparisonMode]);
-  
+
+  // If in comparison mode, use store data, otherwise use React Query data
+  const documents = useMemo(() => {
+    return store.comparisonMode ? storeData.documents : (documentsData || []);
+  }, [store.comparisonMode, storeData.documents, documentsData]);
+
+  // Loading and error states
+  const isLoading = documentsLoading;
+  const queryError = documentsError;
+
   // Generate a document
-  const generateDocument = useCallback(async ({ 
-    projectId, 
-    type 
-  }: { 
-    projectId: string; 
-    type: 'business-plan' | 'pitch-deck' | 'financial-projections' 
-  }) => {
-    if (!projectId) {
-      setError(new Error('Project ID is required'));
-      return null;
-    }
+  const generateDocument = useCallback(async (type: 'business-plan' | 'pitch-deck' | 'financial-projections'): Promise<Document | null> => {
+    if (!projectId) return null;
+    
+    const tempId = `temp-${Date.now()}`;
+    const tempDocument: Document = {
+      id: tempId,
+      project_id: projectId,
+      name: `${type} (generating...)`,
+      type: 'pdf',
+      storage_path: '',
+      status: 'pending',
+      module_id: '',
+      created_by: '',
+      metadata: {},
+      template_version: 1,
+      version: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      content_preview: null,
+      document_data: null,
+      last_viewed_at: null,
+      owner_id: null,
+      related_features: null,
+      tags: null,
+      visibility: null
+    };
+    
+    const originalDocuments = [...storeData.documents];
     
     try {
+      // 1. Update store optimistically
+      store.addDocument(tempDocument);
+      
       setSubmitting(true);
       
       // Generate document with retry logic
       const result = await executeWithRetry(() => 
-        documentService.generateDocument(projectId, type)
+        apiDocumentService.generateDocument(projectId, type)
       );
       
-      // Update store with the new document
-      if (result) {
-        store.addDocument(result);
-      }
+      // 2. Update store with real data
+      store.updateDocument(tempId, result);
       
-      // Invalidate queries to keep React Query cache in sync
+      // 3. Invalidate queries to keep React Query cache in sync
       queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
     } catch (err) {
       console.error('Error generating document:', err);
+      
+      // 4. Revert optimistic update on error
+      store.setDocuments(originalDocuments);
+      
       setError(err as Error);
       return null;
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, queryClient, store, queryKeys]);
-  
-  // Delete a document
-  const deleteDocument = useCallback(async (id: string) => {
-    if (!id) {
-      setError(new Error('Document ID is required'));
-      return false;
-    }
+  }, [projectId, store, storeData.documents, queryClient, queryKeys.all]);
+
+  // Delete document
+  const deleteDocument = useCallback(async (id: string): Promise<boolean> => {
+    if (!projectId) return false;
     
-    // Store original documents for rollback
-    const originalDocuments = [...store.currentData.documents];
+    const originalDocuments = [...storeData.documents];
     const documentToDelete = originalDocuments.find(d => d.id === id);
-    
-    if (!documentToDelete) {
-      setError(new Error('Document not found'));
-      return false;
-    }
+    if (!documentToDelete) return false;
     
     try {
       // 1. Update store optimistically
@@ -113,7 +173,7 @@ export function useDocuments(projectId?: string) {
       
       // 2. Delete from server with retry logic
       await executeWithRetry(() => 
-        documentService.deleteDocument(id)
+        apiDocumentService.deleteDocument(id)
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
@@ -132,21 +192,21 @@ export function useDocuments(projectId?: string) {
     } finally {
       setSubmitting(false);
     }
-  }, [queryClient, store, queryKeys]);
-  
-  // Diff helper
+  }, [projectId, store, storeData.documents, queryClient, queryKeys.all]);
+
+  // Get change type
   const getDocumentChangeType = useCallback((id: string): ChangeType => 
     store.getItemChangeType('documents', id), [store]);
-  
+
+  // Return document-related data and operations
   return {
     documents: {
-      data: storeData.documents || [],
-      isLoading: submitting || store.isLoading,
-      error: error,
+      data: documents,
+      isLoading: isLoading,
+      error: queryError || error,
     },
     generateDocument,
     deleteDocument,
-    // Diff helper
     getDocumentChangeType,
     isDiffMode: store.comparisonMode
   };

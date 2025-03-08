@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { ProductDesignService, ProductDesignData } from '@/lib/services/features/product-design-service';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { ProductDesignData } from '@/lib/services/features/product-design-service';
+import { productDesignService } from '@/lib/services';
 import { useProjectStore } from '@/store';
 import type { 
   ProductWireframe,
@@ -12,9 +12,25 @@ import type {
   ChangeType
 } from '@/store/types';
 
-// Create service instance
-const productDesignService = new ProductDesignService(createClient());
-const supabase = createClient();
+// Constants for retry logic
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+// Helper function to check array equality
+function arraysEqual(a: any[], b: any[]): boolean {
+  if (a.length !== b.length) return false;
+  
+  // Check if arrays have same items (not concerned with order for this use case)
+  const sortedA = [...a].sort((x, y) => 
+    (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+  );
+  const sortedB = [...b].sort((x, y) => 
+    (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+  );
+  
+  // Simple comparison of stringified arrays (works for our case of objects with IDs)
+  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+}
 
 export interface UseProductDesignReturn {
   data: ProductDesignData;
@@ -55,9 +71,6 @@ export interface UseProductDesignReturn {
   isDiffMode: boolean;
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000;
-
 /**
  * Executes a function with retry logic
  */
@@ -84,17 +97,104 @@ export function useProductDesign(projectId: string | undefined): UseProductDesig
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   
-  // Query keys for different data types
-  const queryKeys = {
+  // Create stable, memoized query keys to prevent unnecessary refetching
+  const queryKeys = useMemo(() => ({
     all: ['productDesign', projectId] as const,
     wireframes: ['productDesign', projectId, 'wireframes'] as const,
     features: ['productDesign', projectId, 'features'] as const,
     journeyStages: ['productDesign', projectId, 'journeyStages'] as const,
     journeyActions: ['productDesign', projectId, 'journeyActions'] as const,
     journeyPainPoints: ['productDesign', projectId, 'journeyPainPoints'] as const,
-  };
+  }), [projectId]);
 
-  // Get data from the store based on comparison mode
+  // Use React Query to fetch data
+  const { 
+    data: wireframesData, 
+    isLoading: wireframesLoading, 
+    error: wireframesError 
+  } = useQuery({
+    queryKey: queryKeys.wireframes,
+    queryFn: () => productDesignService.getWireframes(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: featuresData, 
+    isLoading: featuresLoading, 
+    error: featuresError 
+  } = useQuery({
+    queryKey: queryKeys.features,
+    queryFn: () => productDesignService.getFeatures(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: journeyStagesData, 
+    isLoading: journeyStagesLoading, 
+    error: journeyStagesError 
+  } = useQuery({
+    queryKey: queryKeys.journeyStages,
+    queryFn: () => productDesignService.getJourneyStages(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: journeyActionsData, 
+    isLoading: journeyActionsLoading, 
+    error: journeyActionsError 
+  } = useQuery({
+    queryKey: queryKeys.journeyActions,
+    queryFn: () => productDesignService.getJourneyActions(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: journeyPainPointsData, 
+    isLoading: journeyPainPointsLoading, 
+    error: journeyPainPointsError 
+  } = useQuery({
+    queryKey: queryKeys.journeyPainPoints,
+    queryFn: () => productDesignService.getJourneyPainPoints(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Update store when query data changes, but only if the data is different
+  useEffect(() => {
+    if (wireframesData && !arraysEqual(wireframesData, store.currentData.productWireframes)) {
+      store.setProductWireframes(wireframesData);
+    }
+  }, [wireframesData, store]);
+
+  useEffect(() => {
+    if (featuresData && !arraysEqual(featuresData, store.currentData.productFeatures)) {
+      store.setProductFeatures(featuresData);
+    }
+  }, [featuresData, store]);
+
+  useEffect(() => {
+    if (journeyStagesData && !arraysEqual(journeyStagesData, store.currentData.productJourneyStages)) {
+      store.setProductJourneyStages(journeyStagesData);
+    }
+  }, [journeyStagesData, store]);
+
+  useEffect(() => {
+    if (journeyActionsData && !arraysEqual(journeyActionsData, store.currentData.productJourneyActions)) {
+      store.setProductJourneyActions(journeyActionsData);
+    }
+  }, [journeyActionsData, store]);
+
+  useEffect(() => {
+    if (journeyPainPointsData && !arraysEqual(journeyPainPointsData, store.currentData.productJourneyPainPoints)) {
+      store.setProductJourneyPainPoints(journeyPainPointsData);
+    }
+  }, [journeyPainPointsData, store]);
+
+  // For comparison mode, we still want to use store data
   const storeData = useMemo(() => {
     const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
     return {
@@ -106,16 +206,53 @@ export function useProductDesign(projectId: string | undefined): UseProductDesig
     };
   }, [store.currentData, store.stagedData, store.comparisonMode]);
 
-  // Transform store data to the expected format
-  const data: ProductDesignData = useMemo(() => ({
-    wireframes: storeData.productWireframes,
-    features: storeData.productFeatures,
-    journey: {
-      stages: storeData.productJourneyStages,
-      actions: storeData.productJourneyActions,
-      painPoints: storeData.productJourneyPainPoints
+  // If in comparison mode, use store data, otherwise use React Query data
+  const data: ProductDesignData = useMemo(() => {
+    if (store.comparisonMode) {
+      // In comparison mode, use store data
+      return {
+        wireframes: storeData.productWireframes,
+        features: storeData.productFeatures,
+        journey: {
+          stages: storeData.productJourneyStages,
+          actions: storeData.productJourneyActions,
+          painPoints: storeData.productJourneyPainPoints
+        }
+      };
+    } else {
+      // In normal mode, use React Query data
+      return {
+        wireframes: wireframesData || [],
+        features: featuresData || [],
+        journey: {
+          stages: journeyStagesData || [],
+          actions: journeyActionsData || [],
+          painPoints: journeyPainPointsData || []
+        }
+      };
     }
-  }), [storeData]);
+  }, [
+    store.comparisonMode, 
+    storeData, 
+    wireframesData, 
+    featuresData, 
+    journeyStagesData, 
+    journeyActionsData, 
+    journeyPainPointsData
+  ]);
+
+  // Compute loading and error states for React Query
+  const isLoading = wireframesLoading || 
+                   featuresLoading || 
+                   journeyStagesLoading || 
+                   journeyActionsLoading || 
+                   journeyPainPointsLoading;
+  
+  const queryError = wireframesError || 
+                    featuresError || 
+                    journeyStagesError || 
+                    journeyActionsError || 
+                    journeyPainPointsError;
 
   // === Wireframes Operations ===
   const addWireframe = useCallback(async (wireframe: Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>): Promise<ProductWireframe | null> => {
@@ -800,8 +937,8 @@ export function useProductDesign(projectId: string | undefined): UseProductDesig
 
   return {
     data,
-    isLoading: store.isLoading || submitting,
-    error,
+    isLoading,
+    error: queryError,
 
     // Wireframes
     addWireframe,

@@ -1,7 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { FinancialsService, FinancialsData } from '@/lib/services/features/financials-service';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { FinancialsData } from '@/lib/services/features/financials-service';
 import { useProjectStore } from '@/store';
 import type { 
   FinancialRevenueStream,
@@ -10,9 +9,7 @@ import type {
   FinancialProjection,
   ChangeType
 } from '@/store/types';
-
-// Create service instance
-const financialsService = new FinancialsService(createClient());
+import { financialsService } from '@/lib/services';
 
 export interface UseFinancialsReturn {
   data: FinancialsData;
@@ -76,16 +73,86 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Query keys for different data types
-  const queryKeys = {
+  // Create stable, memoized query keys
+  const queryKeys = useMemo(() => ({
     all: ['financials', projectId] as const,
     revenueStreams: ['financials', projectId, 'revenueStreams'] as const,
     costStructure: ['financials', projectId, 'costStructure'] as const,
     pricingStrategies: ['financials', projectId, 'pricingStrategies'] as const,
     projections: ['financials', projectId, 'projections'] as const,
-  };
+  }), [projectId]);
 
-  // Get data from the store based on comparison mode
+  // Use React Query to fetch data
+  const { 
+    data: revenueStreamsData, 
+    isLoading: revenueStreamsLoading, 
+    error: revenueStreamsError 
+  } = useQuery({
+    queryKey: queryKeys.revenueStreams,
+    queryFn: () => financialsService.getRevenueStreams(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: costStructureData, 
+    isLoading: costStructureLoading, 
+    error: costStructureError 
+  } = useQuery({
+    queryKey: queryKeys.costStructure,
+    queryFn: () => financialsService.getCostStructure(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: pricingStrategiesData, 
+    isLoading: pricingStrategiesLoading, 
+    error: pricingStrategiesError 
+  } = useQuery({
+    queryKey: queryKeys.pricingStrategies,
+    queryFn: () => financialsService.getPricingStrategies(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: projectionsData, 
+    isLoading: projectionsLoading, 
+    error: projectionsError 
+  } = useQuery({
+    queryKey: queryKeys.projections,
+    queryFn: () => financialsService.getProjections(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Update store when data changes
+  useEffect(() => {
+    if (revenueStreamsData) {
+      store.setFinancialRevenueStreams(revenueStreamsData);
+    }
+  }, [revenueStreamsData, store]);
+
+  useEffect(() => {
+    if (costStructureData) {
+      store.setFinancialCostStructure(costStructureData);
+    }
+  }, [costStructureData, store]);
+
+  useEffect(() => {
+    if (pricingStrategiesData) {
+      store.setFinancialPricingStrategies(pricingStrategiesData);
+    }
+  }, [pricingStrategiesData, store]);
+
+  useEffect(() => {
+    if (projectionsData) {
+      store.setFinancialProjections(projectionsData);
+    }
+  }, [projectionsData, store]);
+
+  // Get data from the store for comparison mode
   const storeData = useMemo(() => {
     const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
     return {
@@ -96,13 +163,35 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
     };
   }, [store.currentData, store.stagedData, store.comparisonMode]);
 
-  // Transform store data to the expected format
-  const data: FinancialsData = useMemo(() => ({
-    revenueStreams: storeData.financialRevenueStreams,
-    costStructure: storeData.financialCostStructure,
-    pricingStrategies: storeData.financialPricingStrategies,
-    projections: storeData.financialProjections
-  }), [storeData]);
+  // Use either store data or query data based on comparison mode
+  const data = useMemo((): FinancialsData => {
+    if (store.comparisonMode) {
+      return {
+        revenueStreams: storeData.financialRevenueStreams,
+        costStructure: storeData.financialCostStructure,
+        pricingStrategies: storeData.financialPricingStrategies,
+        projections: storeData.financialProjections
+      };
+    } else {
+      return {
+        revenueStreams: revenueStreamsData || [],
+        costStructure: costStructureData || [],
+        pricingStrategies: pricingStrategiesData || [],
+        projections: projectionsData || []
+      };
+    }
+  }, [
+    store.comparisonMode, 
+    storeData,
+    revenueStreamsData,
+    costStructureData,
+    pricingStrategiesData,
+    projectionsData
+  ]);
+
+  // Compute loading and error states
+  const isLoading = revenueStreamsLoading || costStructureLoading || pricingStrategiesLoading || projectionsLoading;
+  const queryError = revenueStreamsError || costStructureError || pricingStrategiesError || projectionsError;
 
   // === Revenue Streams Operations ===
   const addRevenueStream = useCallback(async (stream: Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialRevenueStream | null> => {
@@ -652,7 +741,7 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
 
   return {
     data,
-    isLoading: store.isLoading || submitting,
+    isLoading,
     error,
 
     // Revenue Streams

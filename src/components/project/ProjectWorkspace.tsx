@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useProjectStore } from '@/store';
 import { useAIStore } from '@/hooks/useAIStore';
 import { useProject } from '@/hooks/useProject';
@@ -23,21 +22,7 @@ import { Validation } from '@/features/validation/components/Validation';
 import { AIProjectWrapper } from '@/components/project/AIProjectWrapper';
 import { ProjectState } from '@/store/types';
 import { AIDashboard } from '@/features/ai/components/AIDashboard';
-import AIWorkspacePanel from '../../features/ai/components/AIWorkspacePanel';
-// Import Database type for proper typing
-import { Database } from '@/types/database';
 import { FloatingAIChat } from "@/features/ai/components/FloatingAIChat";
-
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
 
 interface ProjectWorkspaceProps {
   projectId: string;
@@ -160,7 +145,6 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const projectDetails = currentData.project;
   
   return (
-    <QueryClientProvider client={queryClient}>
       <div className="flex flex-col w-full h-full min-h-screen bg-gray-50">
         {/* Header */}
         <Header
@@ -224,6 +208,5 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           type={activeSection === "ai" ? "sidepanel" : "floating"}
         />
       </div>
-    </QueryClientProvider>
   );
 } 

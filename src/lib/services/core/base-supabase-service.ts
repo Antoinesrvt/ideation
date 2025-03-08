@@ -1,9 +1,15 @@
 import { SupabaseClient, PostgrestError } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 import { BaseError, ServiceError } from '@/lib/errors/base-error'
+import { createClient } from '@/lib/supabase/client'
 
 export class BaseSupabaseService {
-  constructor(protected supabase: SupabaseClient<Database>) {}
+  protected supabase: SupabaseClient<Database>;
+  
+  constructor(supabaseClient?: SupabaseClient<Database>) {
+    // Use provided client or create a new one
+    this.supabase = supabaseClient || createClient();
+  }
 
   protected handleError(error: PostgrestError | Error, context: string = ''): never {
     console.error('Supabase operation error:', {

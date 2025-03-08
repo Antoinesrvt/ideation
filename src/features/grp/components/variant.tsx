@@ -143,17 +143,18 @@ export const GRPModel: React.FC = () => {
     setSubmitting(itemId);
 
     try {
-      const result = await addItem(
-        categoryType, // Pass the GRPCategory string directly (generation, remuneration, partage)
-        sectionName,
-        {
-          title,
-          description: "",
-          percentage: 0,
-          order_index: 0,
-          created_by: null,
-        }
-      );
+      const result = "test"
+      //await addItem(
+        // categoryType, // Pass the GRPCategory string directly (generation, remuneration, partage)
+      //   sectionName,
+      //   {
+      //     title,
+      //     description: "",
+      //     percentage: 0,
+      //     order_index: 0,
+      //     created_by: null,
+      //   }
+      // );
 
       if (result) {
         toast({
@@ -176,101 +177,8 @@ export const GRPModel: React.FC = () => {
     }
   };
 
-  // Handle updating an item
-  const handleUpdateItem = async (
-    categoryType: GRPCategoryType,
-    sectionName: string,
-    itemId: string,
-    updates: Partial<{
-      title: string;
-      description: string;
-      percentage: number;
-    }>
-  ) => {
-    if (!projectId) {
-      toast({
-        title: "Error",
-        description: "No active project found",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    setSubmitting(itemId);
 
-    try {
-      const result = await updateItem(
-        categoryType, // Pass the GRPCategory string directly
-        sectionName,
-        itemId,
-        updates
-      );
-
-      if (result) {
-        toast({
-          title: "Success",
-          description: "Item updated successfully",
-          variant: "default",
-        });
-      } else {
-        throw new Error("Failed to update item");
-      }
-    } catch (err) {
-      toast({
-        title: "Error updating item",
-        description:
-          err instanceof Error ? err.message : "An unknown error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(null);
-    }
-  };
-
-  // Handle deleting an item
-  const handleDeleteItem = async (
-    categoryType: GRPCategoryType,
-    sectionName: string,
-    itemId: string
-  ) => {
-    if (!projectId) {
-      toast({
-        title: "Error",
-        description: "No active project found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSubmitting(itemId);
-
-    try {
-      const result = await deleteItem(
-        categoryType, // Pass the GRPCategory string directly
-        sectionName,
-        itemId
-      );
-
-      if (result) {
-        toast({
-          title: "Success",
-          description: "Item deleted successfully",
-          variant: "default",
-        });
-      } else {
-        throw new Error("Failed to delete item");
-      }
-    } catch (err) {
-      toast({
-        title: "Error deleting item",
-        description:
-          err instanceof Error ? err.message : "An unknown error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(null);
-    }
-  };
 
   // Toggle help section visibility
   const toggleHelp = (section: keyof typeof expandedHelp) => {

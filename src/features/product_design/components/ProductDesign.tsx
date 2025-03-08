@@ -91,24 +91,8 @@ const tabContentVariants = {
   },
 };
 
-// Animation variants for child elements within each tab
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.2 },
-  },
-  exit: {
-    opacity: 0,
-    y: -10,
-    transition: { duration: 0.1 },
-  },
-};
-
 export const ProductDesign: React.FC = () => {
   const { currentData, comparisonMode, stagedData } = useProjectStore();
-  const { acceptAIChanges, rejectAIChanges } = useAIStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("wireframes");
@@ -200,14 +184,6 @@ export const ProductDesign: React.FC = () => {
     return "unchanged";
   };
 
-  // Convert status to component expected format
-  const convertStatus = (
-    status: "new" | "modified" | "unchanged" | "removed"
-  ): "new" | "modified" | "removed" | undefined => {
-    return status === "unchanged"
-      ? undefined
-      : (status as "new" | "modified" | "removed");
-  };
 
   // Handle adding a new wireframe
   const handleAddWireframe = async () => {
@@ -304,21 +280,7 @@ export const ProductDesign: React.FC = () => {
     }
   };
 
-  // Toggle help section visibility
-  const toggleHelp = (section: keyof typeof expandedHelp) => {
-    setExpandedHelp((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
-
-  // Toggle info section visibility
-  const toggleInfo = (section: string) => {
-    setShowInfo((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
+  console.log("Wireframes data:", data.wireframes);
 
   // Render tabs and content
   return (

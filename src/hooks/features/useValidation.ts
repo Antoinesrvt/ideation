@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { ValidationService, ValidationData } from '@/lib/services/features/validation-service';
 import { useProjectStore } from '@/store';
@@ -10,9 +10,7 @@ import type {
   ValidationHypothesis,
   ChangeType
 } from '@/store/types';
-
-// Create service instance
-const validationService = new ValidationService(createClient());
+import { validationService } from '@/lib/services';
 
 export interface UseValidationReturn {
   data: ValidationData;
@@ -70,25 +68,92 @@ async function executeWithRetry<T>(fn: () => Promise<T>, maxRetries = MAX_RETRIE
   throw new Error('Max retries exceeded');
 }
 
-/**
- * Hook for managing validation data in a project
- */
 export function useValidation(projectId: string | undefined): UseValidationReturn {
   const queryClient = useQueryClient();
   const store = useProjectStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Query key factory
-  const keys = {
+  // Create stable, memoized query keys
+  const queryKeys = useMemo(() => ({
     all: ['validation', projectId] as const,
     experiments: ['validation', projectId, 'experiments'] as const,
     abTests: ['validation', projectId, 'abTests'] as const,
     userFeedback: ['validation', projectId, 'userFeedback'] as const,
     hypotheses: ['validation', projectId, 'hypotheses'] as const,
-  };
+  }), [projectId]);
 
-  // Get data from the store based on comparison mode
+  // Use React Query to fetch data
+  const { 
+    data: experimentsData, 
+    isLoading: experimentsLoading, 
+    error: experimentsError 
+  } = useQuery({
+    queryKey: queryKeys.experiments,
+    queryFn: () => validationService.getExperiments(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: abTestsData, 
+    isLoading: abTestsLoading, 
+    error: abTestsError 
+  } = useQuery({
+    queryKey: queryKeys.abTests,
+    queryFn: () => validationService.getABTests(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: userFeedbackData, 
+    isLoading: userFeedbackLoading, 
+    error: userFeedbackError 
+  } = useQuery({
+    queryKey: queryKeys.userFeedback,
+    queryFn: () => validationService.getUserFeedback(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: hypothesesData, 
+    isLoading: hypothesesLoading, 
+    error: hypothesesError 
+  } = useQuery({
+    queryKey: queryKeys.hypotheses,
+    queryFn: () => validationService.getHypotheses(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Update store when data changes
+  useEffect(() => {
+    if (experimentsData) {
+      store.setValidationExperiments(experimentsData);
+    }
+  }, [experimentsData, store]);
+
+  useEffect(() => {
+    if (abTestsData) {
+      store.setValidationABTests(abTestsData);
+    }
+  }, [abTestsData, store]);
+
+  useEffect(() => {
+    if (userFeedbackData) {
+      store.setValidationUserFeedback(userFeedbackData);
+    }
+  }, [userFeedbackData, store]);
+
+  useEffect(() => {
+    if (hypothesesData) {
+      store.setValidationHypotheses(hypothesesData);
+    }
+  }, [hypothesesData, store]);
+
+  // Get data from the store for comparison mode
   const storeData = useMemo(() => {
     const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
     return {
@@ -99,13 +164,35 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     };
   }, [store.currentData, store.stagedData, store.comparisonMode]);
 
-  // Transform store data to the expected format
-  const data: ValidationData = useMemo(() => ({
-    experiments: storeData.validationExperiments,
-    abTests: storeData.validationABTests,
-    userFeedback: storeData.validationUserFeedback,
-    hypotheses: storeData.validationHypotheses
-  }), [storeData]);
+  // Use either store data or query data based on comparison mode
+  const data: ValidationData = useMemo(() => {
+    if (store.comparisonMode) {
+      return {
+        experiments: storeData.validationExperiments,
+        abTests: storeData.validationABTests,
+        userFeedback: storeData.validationUserFeedback,
+        hypotheses: storeData.validationHypotheses
+      };
+    } else {
+      return {
+        experiments: experimentsData || [],
+        abTests: abTestsData || [],
+        userFeedback: userFeedbackData || [],
+        hypotheses: hypothesesData || []
+      };
+    }
+  }, [
+    store.comparisonMode, 
+    storeData,
+    experimentsData,
+    abTestsData,
+    userFeedbackData,
+    hypothesesData
+  ]);
+
+  // Compute loading and error states
+  const isLoading = experimentsLoading || abTestsLoading || userFeedbackLoading || hypothesesLoading;
+  const queryError = experimentsError || abTestsError || userFeedbackError || hypothesesError;
 
   // === Experiments Operations ===
   const addExperiment = useCallback(async (experiment: Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationExperiment | null> => {
@@ -145,8 +232,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.experiments });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.experiments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -161,7 +248,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const updateExperiment = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationExperiment | null> => {
     if (!projectId) return null;
@@ -182,8 +269,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.experiments });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.experiments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -200,7 +287,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const deleteExperiment = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -222,8 +309,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.experiments });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.experiments });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return true;
@@ -238,7 +325,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   // === AB Tests Operations ===
   const addABTest = useCallback(async (test: Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationABTest | null> => {
@@ -278,8 +365,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.abTests });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.abTests });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -294,7 +381,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const updateABTest = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationABTest | null> => {
     if (!projectId) return null;
@@ -315,8 +402,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.abTests });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.abTests });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -333,7 +420,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const deleteABTest = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -355,8 +442,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.abTests });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.abTests });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return true;
@@ -371,7 +458,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   // === User Feedback Operations ===
   const addUserFeedback = useCallback(async (feedback: Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationUserFeedback | null> => {
@@ -411,8 +498,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.userFeedback });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.userFeedback });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -427,7 +514,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const updateUserFeedback = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationUserFeedback | null> => {
     if (!projectId) return null;
@@ -448,8 +535,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.userFeedback });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.userFeedback });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -466,7 +553,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const deleteUserFeedback = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -488,8 +575,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.userFeedback });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.userFeedback });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return true;
@@ -504,7 +591,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   // === Hypotheses Operations ===
   const addHypothesis = useCallback(async (hypothesis: Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationHypothesis | null> => {
@@ -544,8 +631,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.hypotheses });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.hypotheses });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -560,7 +647,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const updateHypothesis = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationHypothesis | null> => {
     if (!projectId) return null;
@@ -581,8 +668,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.hypotheses });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.hypotheses });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return result;
@@ -599,7 +686,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   const deleteHypothesis = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -621,8 +708,8 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.hypotheses });
-      queryClient.invalidateQueries({ queryKey: keys.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.hypotheses });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
       return true;
@@ -637,7 +724,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys]);
+  }, [projectId, store, queryClient, queryKeys]);
 
   // Diff helpers
   const getExperimentChangeType = useCallback((id: string): ChangeType => 
@@ -655,7 +742,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
   return {
     // Data queries
     data,
-    isLoading: submitting || store.isLoading,
+    isLoading,
     error,
 
     // Experiments

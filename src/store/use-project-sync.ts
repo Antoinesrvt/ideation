@@ -41,6 +41,27 @@ export function useProjectSync(projectId: string) {
       if (grpSectionsError) throw grpSectionsError;
       if (grpItemsError) throw grpItemsError;
 
+      // Fetch product design data
+      const [
+        { data: productWireframes, error: productWireframesError },
+        { data: productFeatures, error: productFeaturesError },
+        { data: productJourneyStages, error: productJourneyStagesError },
+        { data: productJourneyActions, error: productJourneyActionsError },
+        { data: productJourneyPainPoints, error: productJourneyPainPointsError },
+      ] = await Promise.all([
+        supabase.from('product_wireframes').select('*').eq('project_id', projectId),
+        supabase.from('product_features').select('*').eq('project_id', projectId),
+        supabase.from('product_journey_stages').select('*').eq('project_id', projectId),
+        supabase.from('product_journey_actions').select('*').eq('project_id', projectId),
+        supabase.from('product_journey_pain_points').select('*').eq('project_id', projectId),
+      ]);
+
+      if (productWireframesError) throw productWireframesError;
+      if (productFeaturesError) throw productFeaturesError;
+      if (productJourneyStagesError) throw productJourneyStagesError;
+      if (productJourneyActionsError) throw productJourneyActionsError;
+      if (productJourneyPainPointsError) throw productJourneyPainPointsError;
+
       // Fetch documents
       const { data: documents, error: documentsError } = await supabase
         .from('documents')
@@ -96,11 +117,11 @@ export function useProjectSync(projectId: string) {
           marketCompetitors: prev.currentData.marketCompetitors,
           marketTrends: prev.currentData.marketTrends,
           // Product Design
-          productWireframes: prev.currentData.productWireframes,
-          productFeatures: prev.currentData.productFeatures,
-          productJourneyStages: prev.currentData.productJourneyStages,
-          productJourneyActions: prev.currentData.productJourneyActions,
-          productJourneyPainPoints: prev.currentData.productJourneyPainPoints,
+          productWireframes: productWireframes || [],
+          productFeatures: productFeatures || [],
+          productJourneyStages: productJourneyStages || [],
+          productJourneyActions: productJourneyActions || [],
+          productJourneyPainPoints: productJourneyPainPoints || [],
           // Financial
           financialRevenueStreams: prev.currentData.financialRevenueStreams,
           financialCostStructure: prev.currentData.financialCostStructure,
@@ -376,6 +397,117 @@ export function useProjectSync(projectId: string) {
             currentData: {
               ...prev.currentData,
               relatedItems: data || [],
+            },
+          }));
+        }
+      )
+      // Product Design real-time subscriptions
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_wireframes',
+          filter: `project_id=eq.${projectId}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .from('product_wireframes')
+            .select('*')
+            .eq('project_id', projectId);
+          setState((prev) => ({
+            ...prev,
+            currentData: {
+              ...prev.currentData,
+              productWireframes: data || [],
+            },
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_features',
+          filter: `project_id=eq.${projectId}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .from('product_features')
+            .select('*')
+            .eq('project_id', projectId);
+          setState((prev) => ({
+            ...prev,
+            currentData: {
+              ...prev.currentData,
+              productFeatures: data || [],
+            },
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_journey_stages',
+          filter: `project_id=eq.${projectId}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .from('product_journey_stages')
+            .select('*')
+            .eq('project_id', projectId);
+          setState((prev) => ({
+            ...prev,
+            currentData: {
+              ...prev.currentData,
+              productJourneyStages: data || [],
+            },
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_journey_actions',
+          filter: `project_id=eq.${projectId}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .from('product_journey_actions')
+            .select('*')
+            .eq('project_id', projectId);
+          setState((prev) => ({
+            ...prev,
+            currentData: {
+              ...prev.currentData,
+              productJourneyActions: data || [],
+            },
+          }));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'product_journey_pain_points',
+          filter: `project_id=eq.${projectId}`,
+        },
+        async () => {
+          const { data } = await supabase
+            .from('product_journey_pain_points')
+            .select('*')
+            .eq('project_id', projectId);
+          setState((prev) => ({
+            ...prev,
+            currentData: {
+              ...prev.currentData,
+              productJourneyPainPoints: data || [],
             },
           }));
         }

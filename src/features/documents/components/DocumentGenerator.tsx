@@ -51,7 +51,7 @@ export const DocumentGenerator: React.FC = () => {
     try {
       setGenerating(type);
       
-      const result = await generateDocument({ projectId, type });
+      const result = await generateDocument( type );
       
       if (result) {
         toast({

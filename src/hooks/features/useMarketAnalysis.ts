@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { MarketAnalysisService, MarketAnalysisData } from '@/lib/services/features/market-analysis-service';
 import { useProjectStore } from '@/store';
@@ -10,9 +10,8 @@ import type {
   MarketTrend,
   ChangeType
 } from '@/store/types';
+import { marketAnalysisService } from '@/lib/services';
 
-// Create service instance
-const marketAnalysisService = new MarketAnalysisService(createClient());
 
 export interface UseMarketAnalysisReturn {
   data: MarketAnalysisData;
@@ -70,34 +69,147 @@ async function executeWithRetry<T>(fn: () => Promise<T>, maxRetries = MAX_RETRIE
   throw new Error('Max retries exceeded');
 }
 
-/**
- * Hook for managing market analysis data in a project using hybrid approach
- */
+// Helper function to check array equality
+function arraysEqual(a: any[], b: any[]): boolean {
+  if (a.length !== b.length) return false;
+  
+  // Check if arrays have same items (not concerned with order for this use case)
+  const sortedA = [...a].sort((x, y) => 
+    (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+  );
+  const sortedB = [...b].sort((x, y) => 
+    (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+  );
+  
+  // Simple comparison of stringified arrays (works for our case of objects with IDs)
+  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+}
+
 export function useMarketAnalysis(projectId: string | undefined): UseMarketAnalysisReturn {
   const queryClient = useQueryClient();
   const store = useProjectStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Get data from the store based on comparison mode
-  const data = useMemo(() => {
-    const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
-    return {
-      personas: source.marketPersonas || [],
-      interviews: source.marketInterviews || [],
-      competitors: source.marketCompetitors || [],
-      trends: source.marketTrends || []
-    };
-  }, [store.currentData, store.stagedData, store.comparisonMode]);
-
-  // Query key factory for React Query
-  const keys = {
+  // Create stable, memoized query keys
+  const queryKeys = useMemo(() => ({
     all: ['marketAnalysis', projectId] as const,
     personas: ['marketAnalysis', projectId, 'personas'] as const,
     interviews: ['marketAnalysis', projectId, 'interviews'] as const,
     competitors: ['marketAnalysis', projectId, 'competitors'] as const,
     trends: ['marketAnalysis', projectId, 'trends'] as const,
-  };
+  }), [projectId]);
+
+  // Use React Query to fetch data
+  const { 
+    data: personasData, 
+    isLoading: personasLoading, 
+    error: personasError 
+  } = useQuery({
+    queryKey: queryKeys.personas,
+    queryFn: () => marketAnalysisService.getPersonas(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: interviewsData, 
+    isLoading: interviewsLoading, 
+    error: interviewsError 
+  } = useQuery({
+    queryKey: queryKeys.interviews,
+    queryFn: () => marketAnalysisService.getInterviews(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: competitorsData, 
+    isLoading: competitorsLoading, 
+    error: competitorsError 
+  } = useQuery({
+    queryKey: queryKeys.competitors,
+    queryFn: () => marketAnalysisService.getCompetitors(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { 
+    data: trendsData, 
+    isLoading: trendsLoading, 
+    error: trendsError 
+  } = useQuery({
+    queryKey: queryKeys.trends,
+    queryFn: () => marketAnalysisService.getTrends(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Update store when data changes, but only if data has actually changed
+  useEffect(() => {
+    if (personasData && !arraysEqual(personasData, store.currentData.marketPersonas)) {
+      store.setMarketPersonas(personasData);
+    }
+  }, [personasData, store]);
+
+  useEffect(() => {
+    if (interviewsData && !arraysEqual(interviewsData, store.currentData.marketInterviews)) {
+      store.setMarketInterviews(interviewsData);
+    }
+  }, [interviewsData, store]);
+
+  useEffect(() => {
+    if (competitorsData && !arraysEqual(competitorsData, store.currentData.marketCompetitors)) {
+      store.setMarketCompetitors(competitorsData);
+    }
+  }, [competitorsData, store]);
+
+  useEffect(() => {
+    if (trendsData && !arraysEqual(trendsData, store.currentData.marketTrends)) {
+      store.setMarketTrends(trendsData);
+    }
+  }, [trendsData, store]);
+
+  // Get data from the store for comparison mode
+  const storeData = useMemo(() => {
+    const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
+    return {
+      marketPersonas: source.marketPersonas || [],
+      marketInterviews: source.marketInterviews || [],
+      marketCompetitors: source.marketCompetitors || [],
+      marketTrends: source.marketTrends || []
+    };
+  }, [store.currentData, store.stagedData, store.comparisonMode]);
+
+  // Use either store data or query data based on comparison mode
+  const data = useMemo((): MarketAnalysisData => {
+    if (store.comparisonMode) {
+      return {
+        personas: storeData.marketPersonas,
+        interviews: storeData.marketInterviews,
+        competitors: storeData.marketCompetitors,
+        trends: storeData.marketTrends
+      };
+    } else {
+      return {
+        personas: personasData || [],
+        interviews: interviewsData || [],
+        competitors: competitorsData || [],
+        trends: trendsData || []
+      };
+    }
+  }, [
+    store.comparisonMode, 
+    storeData,
+    personasData,
+    interviewsData,
+    competitorsData,
+    trendsData
+  ]);
+
+  // Compute loading and error states
+  const isLoading = personasLoading || interviewsLoading || competitorsLoading || trendsLoading;
+  const queryError = personasError || interviewsError || competitorsError || trendsError;
 
   // Personas operations with optimistic updates
   const addPersona = useCallback(async (persona: Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>): Promise<MarketPersona | null> => {
@@ -137,7 +249,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.personas });
+      queryClient.invalidateQueries({ queryKey: queryKeys.personas });
       
       setError(null);
       return result;
@@ -152,7 +264,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.personas]);
+  }, [projectId, store, queryClient, queryKeys.personas]);
 
   const updatePersona = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketPersona | null> => {
     if (!projectId) return null;
@@ -180,7 +292,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.personas });
+      queryClient.invalidateQueries({ queryKey: queryKeys.personas });
       
       setError(null);
       return result;
@@ -197,7 +309,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.personas]);
+  }, [projectId, store, queryClient, queryKeys.personas]);
 
   const deletePersona = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -219,7 +331,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.personas });
+      queryClient.invalidateQueries({ queryKey: queryKeys.personas });
       
       setError(null);
       return true;
@@ -234,7 +346,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.personas]);
+  }, [projectId, store, queryClient, queryKeys.personas]);
 
   // Interviews operations with optimistic updates
   const addInterview = useCallback(async (interview: Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>): Promise<MarketInterview | null> => {
@@ -274,7 +386,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.interviews });
+      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
       
       setError(null);
       return result;
@@ -289,7 +401,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.interviews]);
+  }, [projectId, store, queryClient, queryKeys.interviews]);
 
   const updateInterview = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketInterview | null> => {
     if (!projectId) return null;
@@ -310,7 +422,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.interviews });
+      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
       
       setError(null);
       return result;
@@ -327,7 +439,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.interviews]);
+  }, [projectId, store, queryClient, queryKeys.interviews]);
 
   const deleteInterview = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -349,7 +461,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.interviews });
+      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
       
       setError(null);
       return true;
@@ -364,7 +476,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.interviews]);
+  }, [projectId, store, queryClient, queryKeys.interviews]);
 
   // Competitors operations with optimistic updates
   const addCompetitor = useCallback(async (competitor: Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>): Promise<MarketCompetitor | null> => {
@@ -404,7 +516,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.competitors });
+      queryClient.invalidateQueries({ queryKey: queryKeys.competitors });
       
       setError(null);
       return result;
@@ -419,7 +531,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.competitors]);
+  }, [projectId, store, queryClient, queryKeys.competitors]);
 
   const updateCompetitor = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketCompetitor | null> => {
     if (!projectId) return null;
@@ -440,7 +552,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.competitors });
+      queryClient.invalidateQueries({ queryKey: queryKeys.competitors });
       
       setError(null);
       return result;
@@ -457,7 +569,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.competitors]);
+  }, [projectId, store, queryClient, queryKeys.competitors]);
 
   const deleteCompetitor = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -479,7 +591,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.competitors });
+      queryClient.invalidateQueries({ queryKey: queryKeys.competitors });
       
       setError(null);
       return true;
@@ -494,7 +606,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.competitors]);
+  }, [projectId, store, queryClient, queryKeys.competitors]);
 
   // Trends operations with optimistic updates
   const addTrend = useCallback(async (trend: Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>): Promise<MarketTrend | null> => {
@@ -534,7 +646,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.trends });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trends });
       
       setError(null);
       return result;
@@ -549,7 +661,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.trends]);
+  }, [projectId, store, queryClient, queryKeys.trends]);
 
   const updateTrend = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketTrend | null> => {
     if (!projectId) return null;
@@ -570,7 +682,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.trends });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trends });
       
       setError(null);
       return result;
@@ -587,7 +699,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.trends]);
+  }, [projectId, store, queryClient, queryKeys.trends]);
 
   const deleteTrend = useCallback(async (id: string): Promise<boolean> => {
     if (!projectId) return false;
@@ -609,7 +721,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
       );
       
       // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: keys.trends });
+      queryClient.invalidateQueries({ queryKey: queryKeys.trends });
       
       setError(null);
       return true;
@@ -624,7 +736,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, keys.trends]);
+  }, [projectId, store, queryClient, queryKeys.trends]);
 
   // Diff helpers
   const getPersonaChangeType = useCallback((id: string): ChangeType => 
@@ -641,8 +753,8 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
 
   return {
     data,
-    isLoading: store.isLoading || submitting,
-    error,
+    isLoading,
+    error: queryError,
 
     // Personas
     addPersona,

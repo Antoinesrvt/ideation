@@ -1,12 +1,18 @@
-import { useState, useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { GRPService, GRPModel, GRPCategory } from '@/lib/services/features/grp-service';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { GRPService, GRPModel } from '@/lib/services/features/grp-service';
+import { grpService } from '@/lib/services';
 import { useProjectStore } from '@/store';
-import type { GrpItem, GrpCategory as StoreGrpCategory, GrpSection, ChangeType } from '@/store/types';
+import type { 
+  GrpCategory, 
+  GrpSection, 
+  GrpItem,
+  ChangeType
+} from '@/store/types';
 
-// Create service instance
-const grpService = new GRPService(createClient());
+// Constants for retry logic
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
 // Type for new GRP items before they are added to the database
 type NewGRPItem = {
@@ -29,9 +35,9 @@ export interface UseGRPReturn {
   error: Error | null;
 
   // Core operations
-  addItem: (category: GRPCategory, section: string, item: NewGRPItem) => Promise<GrpItem | null>;
-  updateItem: (category: GRPCategory, section: string, id: string, data: Partial<NewGRPItem>) => Promise<GrpItem | null>;
-  deleteItem: (category: GRPCategory, section: string, id: string) => Promise<boolean>;
+  addItem: (category: string | GrpCategory, section: string, item: NewGRPItem) => Promise<GrpItem | null>;
+  updateItem: (category: string | GrpCategory, section: string, id: string, data: Partial<NewGRPItem>) => Promise<GrpItem | null>;
+  deleteItem: (category: string | GrpCategory, section: string, id: string) => Promise<boolean>;
 
   // Diff helpers
   getItemChangeType: (id: string) => ChangeType;
@@ -51,9 +57,6 @@ export interface UseGRPReturn {
     completionPercentage: number;
   } | null;
 }
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000;
 
 /**
  * Executes a function with retry logic
@@ -81,13 +84,108 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Query keys
-  const queryKeys = {
+  // Create stable, memoized query keys to prevent unnecessary refetching
+  const queryKeys = useMemo(() => ({
     all: ['grp', projectId] as const,
     categories: ['grp', projectId, 'categories'] as const,
-    sections: (categoryId: string) => ['grp', projectId, 'sections', categoryId] as const,
-    items: (sectionId: string) => ['grp', projectId, 'items', sectionId] as const,
-  };
+    sections: ['grp', projectId, 'sections'] as const,
+    model: ['grp', projectId, 'model'] as const,
+  }), [projectId]);
+
+  // Use React Query to fetch GRP data
+  const { 
+    data: grpModelData, 
+    isLoading: grpModelLoading, 
+    error: grpModelError 
+  } = useQuery({
+    queryKey: queryKeys.model,
+    queryFn: () => grpService.getAllGRPData(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Use React Query to fetch categories
+  const { 
+    data: categoriesData, 
+    isLoading: categoriesLoading, 
+    error: categoriesError 
+  } = useQuery({
+    queryKey: queryKeys.categories,
+    queryFn: () => grpService.getCategories(projectId!),
+    enabled: !!projectId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Use React Query to fetch sections
+  const { 
+    data: sectionsData, 
+    isLoading: sectionsLoading, 
+    error: sectionsError 
+  } = useQuery({
+    queryKey: queryKeys.sections,
+    queryFn: async () => {
+      if (!projectId || !categoriesData) return [];
+      
+      // Collect sections from all categories
+      const allSections: GrpSection[] = [];
+      for (const category of categoriesData) {
+        const sections = await grpService.getSections(projectId, category.id);
+        allSections.push(...sections);
+      }
+      return allSections;
+    },
+    enabled: !!projectId && !!categoriesData,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Helper function to check array equality
+  function arraysEqual(a: any[], b: any[]): boolean {
+    if (a.length !== b.length) return false;
+    
+    // Check if arrays have same items (not concerned with order for this use case)
+    const sortedA = [...a].sort((x, y) => 
+      (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+    );
+    const sortedB = [...b].sort((x, y) => 
+      (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+    );
+    
+    // Simple comparison of stringified arrays (works for our case of objects with IDs)
+    return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+  }
+
+  // Update store when query data changes, but only if data has actually changed
+  useEffect(() => {
+    if (categoriesData && !arraysEqual(categoriesData, store.currentData.grpCategories)) {
+      store.setGrpCategories(categoriesData);
+    }
+  }, [categoriesData, store]);
+
+  useEffect(() => {
+    if (sectionsData && !arraysEqual(sectionsData, store.currentData.grpSections)) {
+      store.setGrpSections(sectionsData);
+    }
+  }, [sectionsData, store]);
+
+  useEffect(() => {
+    if (grpModelData) {
+      // Extract all items from all categories and sections
+      const allItems: GrpItem[] = [];
+      Object.values(grpModelData).forEach(category => {
+        Object.values(category).forEach(sectionItems => {
+          // Add type assertion to handle the unknown type
+          if (Array.isArray(sectionItems)) {
+            allItems.push(...sectionItems);
+          }
+        });
+      });
+      
+      // Update only if different
+      if (!arraysEqual(allItems, store.currentData.grpItems)) {
+        store.setGrpItems(allItems);
+      }
+    }
+  }, [grpModelData, store]);
 
   // Get data from the store based on comparison mode
   const storeData = useMemo(() => {
@@ -99,8 +197,41 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
     };
   }, [store.currentData, store.stagedData, store.comparisonMode]);
 
-  // Transform store data into the expected GRPModel format
-  const transformStoreDataToGRPModel = useCallback((): GRPModel => {
+  // If in comparison mode, use store data, otherwise use React Query data
+  const model = useMemo(() => {
+    if (store.comparisonMode) {
+      // In comparison mode, return model built from store data
+      // This requires transforming the store data into the GRP model structure
+      return buildGRPModelFromStoreData(storeData);
+    } else {
+      // In normal mode, use React Query data
+      return grpModelData || {
+        generation: {
+          porteurs: [],
+          propositionValeur: [],
+          fabricationValeur: []
+        },
+        remuneration: {
+          sourcesRevenus: [],
+          volumeRevenus: [],
+          performance: []
+        },
+        partage: {
+          partiesPrenantes: [],
+          conventions: [],
+          ecosysteme: []
+        }
+      };
+    }
+  }, [store.comparisonMode, storeData, grpModelData]);
+
+  // Helper function to transform the store data into a GRP model
+  function buildGRPModelFromStoreData(data: {
+    grpCategories: GrpCategory[];
+    grpSections: GrpSection[];
+    grpItems: ExtendedGrpItem[];
+  }): GRPModel {
+    // Create empty model structure
     const model: GRPModel = {
       generation: {
         porteurs: [],
@@ -119,60 +250,62 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
       }
     };
     
-    // Create mapping of category types to their sections
-    const categoryMap: Record<string, string[]> = {
-      generation: ['porteurs', 'propositionValeur', 'fabricationValeur'],
-      remuneration: ['sourcesRevenus', 'volumeRevenus', 'performance'],
-      partage: ['partiesPrenantes', 'conventions', 'ecosysteme']
-    };
+    // Map sections to their respective categories
+    const sectionToCategory = new Map<string, string>();
+    data.grpSections.forEach(section => {
+      const category = data.grpCategories.find(c => c.id === section.category_id);
+      if (category && category.category_type) {
+        sectionToCategory.set(section.id, category.category_type);
+      }
+    });
     
-    // Organize items by category and section
-    storeData.grpItems.forEach(item => {
-      const { categoryType, sectionName } = item;
+    // Organize items into their respective categories and sections
+    data.grpItems.forEach(item => {
+      const sectionId = item.section_id;
+      if (!sectionId) return;
       
-      if (categoryType in model && sectionName in model[categoryType as keyof GRPModel]) {
-        (model[categoryType as keyof GRPModel][sectionName as keyof typeof model[keyof GRPModel]] as GrpItem[]).push(item);
+      const categoryType = sectionToCategory.get(sectionId);
+      if (!categoryType) return;
+      
+      const section = data.grpSections.find(s => s.id === sectionId);
+      if (!section || !section.name) return;
+      
+      // Map section names to the appropriate model key
+      // Convert section name (e.g., "Proposition Valeur") to camelCase (e.g., "propositionValeur")
+      const sectionKey = section.name.replace(/\s+(.)/g, (_, c) => c.toLowerCase());
+      
+      // Place the item in the appropriate section of the model
+      if (categoryType in model && sectionKey in model[categoryType as keyof GRPModel]) {
+        (model[categoryType as keyof GRPModel] as any)[sectionKey].push(item);
       }
     });
     
     return model;
-  }, [storeData.grpItems]);
+  }
 
-  // Core operations
+  // Compute loading and error states
+  const isLoading = grpModelLoading || categoriesLoading || sectionsLoading;
+  const queryError = grpModelError || categoriesError || sectionsError;
+
+  // === Core Operations ===
   const addItem = useCallback(async (
-    category: GRPCategory, 
+    category: string | GrpCategory, 
     section: string, 
     item: NewGRPItem
   ): Promise<GrpItem | null> => {
     if (!projectId) return null;
-      
-      // Find section id from our store
-      const sectionId = storeData.grpSections.find(s => 
-      s.name === section && s.category_id === category
-      )?.id;
-      
-      if (!sectionId) {
-      setError(new Error(`Section ${section} not found in category ${category}`));
-      return null;
-      }
-      
+    
     // Generate temp ID for optimistic update
     const tempId = `temp-${Date.now()}`;
     
     // Create complete item with temp ID
-      const tempItem: ExtendedGrpItem = {
+    const completeItem: GrpItem = {
+      ...item,
       id: tempId,
-        section_id: sectionId,
-        project_id: projectId,
-      title: item.title,
-      description: item.description,
-      percentage: item.percentage,
-      order_index: item.order_index || 0,
-      created_by: item.created_by,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      categoryType: category,
-      sectionName: section
+      project_id: projectId,
+      section_id: '', // Will be set by the service
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     
     // Track original store state for possible rollback
@@ -180,33 +313,48 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
     
     try {
       // 1. Update store optimistically
-      store.addGrpItem(tempItem as unknown as GrpItem);
+      store.addGrpItem(completeItem);
       
       setSubmitting(true);
       
       // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        grpService.addItem(projectId, category, section, item)
-      );
+      const result = await executeWithRetry(() => {
+        // Need to convert from GrpCategory (database row) to GRPCategory (string enum)
+        // GRPCategory is one of: 'generation', 'remuneration', 'partage'
+        let categoryKey: string;
+        
+        if (typeof category === 'string') {
+          // If it's already a string, use it directly
+          categoryKey = category;
+        } else if (typeof category === 'object' && category !== null) {
+          // If it's a GrpCategory object from the database, extract the category_type
+          categoryKey = category.category_type || 'generation';
+        } else {
+          // Default fallback
+          categoryKey = 'generation';
+        }
+        
+        // Make sure it's one of the valid GRPCategory values
+        const validCategoryKey = ['generation', 'remuneration', 'partage'].includes(categoryKey)
+          ? categoryKey as 'generation' | 'remuneration' | 'partage'
+          : 'generation';
+          
+        return grpService.addItem(projectId, validCategoryKey, section, item);
+      });
       
-      // 3. Remove temp item and add the real one
-      store.deleteGrpItem(tempId);
-        
-        // Add the item with the real ID
-        const realItem: ExtendedGrpItem = {
-          ...(result),
-        categoryType: category,
-        sectionName: section
-        };
-        
-        store.addGrpItem(realItem as unknown as GrpItem);
+      // 3. Update store with real ID
+      store.updateGrpItem(tempId, { 
+        id: result.id,
+        section_id: result.section_id,
+        created_at: result.created_at,
+        updated_at: result.updated_at
+      });
       
       // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.items(sectionId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.all });
       
       setError(null);
-      return realItem as unknown as GrpItem;
+      return result;
     } catch (err) {
       console.error('Error adding GRP item:', err);
       
@@ -218,10 +366,10 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, storeData.grpSections, queryClient, queryKeys]);
+  }, [projectId, store, queryClient, queryKeys.all]);
 
   const updateItem = useCallback(async (
-    category: GRPCategory, 
+    category: string | GrpCategory, 
     section: string, 
     id: string, 
     data: Partial<NewGRPItem>
@@ -261,19 +409,18 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  }, [projectId, store, queryClient, queryKeys.all]);
 
   const deleteItem = useCallback(async (
-    category: GRPCategory, 
+    category: string | GrpCategory, 
     section: string, 
     id: string
   ): Promise<boolean> => {
     if (!projectId) return false;
     
-    // Get the item before deleting for potential rollback
+    // Store original items for rollback
     const originalItems = [...store.currentData.grpItems];
-    const itemToDelete = originalItems.find(item => item.id === id);
-    
+    const itemToDelete = originalItems.find(i => i.id === id);
     if (!itemToDelete) return false;
     
     try {
@@ -303,7 +450,7 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
     } finally {
       setSubmitting(false);
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  }, [projectId, store, queryClient, queryKeys.all]);
 
   // === Helper Functions ===
   const getAllItems = useCallback((): ExtendedGrpItem[] => {
@@ -357,13 +504,10 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
   const getSectionChangeType = useCallback((id: string): ChangeType => 
     store.getItemChangeType('grpSections', id), [store]);
 
-  // Prepare data for return
-  const transformedData = transformStoreDataToGRPModel();
-  
   return {
-    data: transformedData,
-    isLoading: submitting || store.isLoading,
-    error,
+    data: model,
+    isLoading,
+    error: queryError,
 
     // Core operations
     addItem,

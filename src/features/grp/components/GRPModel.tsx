@@ -30,16 +30,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
   Card,
   CardContent,
   CardHeader,
@@ -113,16 +103,100 @@ export const GRPModel: React.FC = () => {
     setExpandedCell(expandedCell === cell ? null : cell);
   };
 
-  // Track which help sections are expanded
-  const [expandedHelp, setExpandedHelp] = useState<{
-    generation: boolean;
-    remuneration: boolean;
-    partage: boolean;
-  }>({
-    generation: false,
-    remuneration: false,
-    partage: false,
-  });
+  // Convert data to UI structure
+  const dataStructure = useMemo(() => {
+    // Default empty data structure
+    const result: GRPUIData = { categories: {} };
+
+    // Get categories from currentData
+    const categories = currentData.grpCategories || [];
+    const sections = currentData.grpSections || [];
+    const items = currentData.grpItems || [];
+
+    // First build the category structure
+    categories.forEach((category) => {
+      result.categories[category.id] = {
+        ...category,
+        sections: {},
+      };
+    });
+
+    // Then add sections to their categories
+    sections.forEach((section) => {
+      const categoryId = section.category_id;
+      if (categoryId && result.categories[categoryId]) {
+        result.categories[categoryId].sections[section.id] = {
+          ...section,
+          items: [],
+        };
+      }
+    });
+
+    // Then add items to their sections
+    items.forEach((item) => {
+      const sectionId = item.section_id;
+      if (sectionId) {
+        // Find the category that contains this section
+        const categoryId = Object.keys(result.categories).find(
+          (catId) => result.categories[catId].sections[sectionId] !== undefined
+        );
+
+        if (categoryId) {
+          result.categories[categoryId].sections[sectionId].items.push(item);
+        }
+      }
+    });
+
+    return result;
+  }, [currentData]);
+
+  // Get staged data using data from GRP hook
+  const stagedUIData = useMemo(() => {
+    if (!isDiffMode || !data) return null;
+
+    // Default empty data structure
+    const result: GRPUIData = { categories: {} };
+
+    // Convert the GRPModel structure to our UI data structure
+    Object.entries(data).forEach(([categoryType, categorySections]) => {
+      // Find category in currentData
+      const category = currentData.grpCategories.find(
+        (c) => c.category_type === categoryType
+      );
+      if (category) {
+        result.categories[category.id] = {
+          ...category,
+          sections: {},
+        };
+
+        // For each section in this category
+        Object.entries(categorySections as Record<string, GrpItem[]>).forEach(
+          ([sectionName, sectionItems]) => {
+            // Find section in currentData
+            const section = currentData.grpSections.find(
+              (s) =>
+                s.category_id === category.id &&
+                s.name?.toLowerCase() === sectionName.toLowerCase()
+            );
+
+            if (section) {
+              result.categories[category.id].sections[section.id] = {
+                ...section,
+                items: sectionItems.map((item: GrpItem) => ({
+                  ...item,
+                  section_id: section.id,
+                })),
+              };
+            }
+          }
+        );
+      }
+    });
+
+    return result;
+  }, [isDiffMode, data, currentData]);
+
+
 
   // Handle adding a new item
   const handleAddItem = async (
@@ -272,38 +346,6 @@ export const GRPModel: React.FC = () => {
     }
   };
 
-  // Toggle help section visibility
-  const toggleHelp = (section: keyof typeof expandedHelp) => {
-    setExpandedHelp((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
-
-  // Helper to get icon for category type
-  const getCategoryIcon = (type: string) => {
-    switch (type) {
-      case "generation":
-        return <Lightbulb className="h-5 w-5 text-blue-500" />;
-      case "remuneration":
-        return <Banknote className="h-5 w-5 text-green-500" />;
-      case "partage":
-        return <Share2 className="h-5 w-5 text-purple-500" />;
-      default:
-        return <Info className="h-5 w-5 text-gray-500" />;
-    }
-  };
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <LoadingState message="Loading GRP model data..." />
-        </CardContent>
-      </Card>
-    );
-  }
 
   // Show error state
   if (error) {
@@ -316,255 +358,9 @@ export const GRPModel: React.FC = () => {
     );
   }
 
-  // Convert data to UI structure
-  const dataStructure = useMemo(() => {
-    // Default empty data structure
-    const result: GRPUIData = { categories: {} };
 
-    // Get categories from currentData
-    const categories = currentData.grpCategories || [];
-    const sections = currentData.grpSections || [];
-    const items = currentData.grpItems || [];
+ 
 
-    // First build the category structure
-    categories.forEach((category) => {
-      result.categories[category.id] = {
-        ...category,
-        sections: {},
-      };
-    });
-
-    // Then add sections to their categories
-    sections.forEach((section) => {
-      const categoryId = section.category_id;
-      if (categoryId && result.categories[categoryId]) {
-        result.categories[categoryId].sections[section.id] = {
-          ...section,
-          items: [],
-        };
-      }
-    });
-
-    // Then add items to their sections
-    items.forEach((item) => {
-      const sectionId = item.section_id;
-      if (sectionId) {
-        // Find the category that contains this section
-        const categoryId = Object.keys(result.categories).find(
-          (catId) => result.categories[catId].sections[sectionId] !== undefined
-        );
-
-        if (categoryId) {
-          result.categories[categoryId].sections[sectionId].items.push(item);
-        }
-      }
-    });
-
-    return result;
-  }, [currentData]);
-
-  // Get staged data using data from GRP hook
-  const stagedUIData = useMemo(() => {
-    if (!isDiffMode || !data) return null;
-
-    // Default empty data structure
-    const result: GRPUIData = { categories: {} };
-
-    // Convert the GRPModel structure to our UI data structure
-    Object.entries(data).forEach(([categoryType, categorySections]) => {
-      // Find category in currentData
-      const category = currentData.grpCategories.find(
-        (c) => c.category_type === categoryType
-      );
-      if (category) {
-        result.categories[category.id] = {
-          ...category,
-          sections: {},
-        };
-
-        // For each section in this category
-        Object.entries(categorySections as Record<string, GrpItem[]>).forEach(
-          ([sectionName, sectionItems]) => {
-            // Find section in currentData
-            const section = currentData.grpSections.find(
-              (s) =>
-                s.category_id === category.id &&
-                s.name?.toLowerCase() === sectionName.toLowerCase()
-            );
-
-            if (section) {
-              result.categories[category.id].sections[section.id] = {
-                ...section,
-                items: sectionItems.map((item: GrpItem) => ({
-                  ...item,
-                  section_id: section.id,
-                })),
-              };
-            }
-          }
-        );
-      }
-    });
-
-    return result;
-  }, [isDiffMode, data, currentData]);
-
-  // Helper function to determine if an item is new/modified in comparison mode
-  const getItemStatus = (
-    itemType: "category" | "section" | "item",
-    itemId: string
-  ): "new" | "modified" | "unchanged" | "removed" => {
-    if (!isDiffMode || !stagedUIData) return "unchanged";
-
-    if (itemType === "category") {
-      const currentItem = Object.values(dataStructure.categories).find(
-        (item) => item.id === itemId
-      );
-      const stagedItem = stagedUIData
-        ? Object.values(stagedUIData.categories).find(
-            (item) => item.id === itemId
-          )
-        : null;
-
-      if (!currentItem && stagedItem) return "new";
-      if (currentItem && !stagedItem) return "removed";
-      if (currentItem && stagedItem) {
-        // Compare only the category properties, not the nested sections
-        const currentCopy = { ...currentItem };
-        const stagedCopy = { ...stagedItem };
-        const { sections: currentSections, ...currentProps } = currentCopy;
-        const { sections: stagedSections, ...stagedProps } = stagedCopy;
-
-        return JSON.stringify(currentProps) !== JSON.stringify(stagedProps)
-          ? "modified"
-          : "unchanged";
-      }
-    } else if (itemType === "section") {
-      // Find the section in the current data
-      let currentItem = null;
-      let stagedItem = null;
-
-      // Search through all categories for the section
-      for (const catId in dataStructure.categories) {
-        const section = dataStructure.categories[catId].sections[itemId];
-        if (section) {
-          currentItem = section;
-          break;
-        }
-      }
-
-      // Search through all categories in staged data for the section
-      if (stagedUIData) {
-        for (const catId in stagedUIData.categories) {
-          const section = stagedUIData.categories[catId].sections[itemId];
-          if (section) {
-            stagedItem = section;
-            break;
-          }
-        }
-      }
-
-      if (!currentItem && stagedItem) return "new";
-      if (currentItem && !stagedItem) return "removed";
-      if (currentItem && stagedItem) {
-        // Compare only the section properties, not the nested items
-        const currentCopy = { ...currentItem };
-        const stagedCopy = { ...stagedItem };
-        const { items: currentItems, ...currentProps } = currentCopy;
-        const { items: stagedItems, ...stagedProps } = stagedCopy;
-
-        return JSON.stringify(currentProps) !== JSON.stringify(stagedProps)
-          ? "modified"
-          : "unchanged";
-      }
-    } else if (itemType === "item") {
-      return getItemChangeType(itemId) as
-        | "new"
-        | "modified"
-        | "unchanged"
-        | "removed";
-    }
-
-    return "unchanged";
-  };
-
-  // Calculate analytics stats
-  const stats = useMemo(() => {
-    let totalCategories = 0;
-    let totalSections = 0;
-    let totalItems = 0;
-
-    // Count all categories, sections, and items
-    Object.values(dataStructure.categories).forEach((category) => {
-      totalCategories++;
-
-      Object.values(category.sections).forEach((section) => {
-        totalSections++;
-        totalItems += section.items.length;
-      });
-    });
-
-    const completionPercentage = Math.min(
-      Math.round((totalItems / (9 * 5)) * 100),
-      100
-    );
-
-    return {
-      totalCategories,
-      totalSections,
-      totalItems,
-      completionPercentage,
-    };
-  }, [dataStructure]);
-
-  // Handle adding a new category
-  const handleAddCategory = async (categoryType: string) => {
-    if (!projectId) {
-      toast({
-        title: "Error",
-        description: "No active project found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // We don't have direct category creation in the hook, so we'll use store actions here
-    // This should be replaced with proper API once available
-
-    toast({
-      title: "Success",
-      description: "Category type " + categoryType + " already exists",
-      variant: "default",
-    });
-  };
-
-  // Handle adding a new section
-  const handleAddSection = async (categoryId: string) => {
-    if (!projectId) {
-      toast({
-        title: "Error",
-        description: "No active project found",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // We don't have direct section creation in the hook, so we'll use store actions here
-    // This should be replaced with proper API once available
-
-    toast({
-      title: "Success",
-      description: "Sections are predefined in the GRP model",
-      variant: "default",
-    });
-  };
-
-  // Helper to filter categories by type
-  const getCategoriesByType = (type: string) => {
-    return Object.values(dataStructure.categories).filter(
-      (cat) => cat.category_type === type
-    );
-  };
 
   const renderGRPCell = (
     section: GRPCategoryType,
