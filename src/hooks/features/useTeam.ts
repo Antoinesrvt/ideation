@@ -7,9 +7,12 @@ import type {
   TeamMember,
   TeamTask,
   TeamResponsibilityMatrix,
-  ChangeType
+  ChangeType, 
+  Insert,
+  Update
 } from '@/store/types';
 import { teamService } from '@/lib/services';
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
 
 export interface UseTeamReturn {
   data: TeamData;
@@ -17,18 +20,18 @@ export interface UseTeamReturn {
   error: Error | null;
 
   // Team Members
-  addMember: (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => Promise<TeamMember | null>;
-  updateMember: (params: { id: string; data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>> }) => Promise<TeamMember | null>;
+  addMember: (member: Insert<'team_members'>) => Promise<TeamMember | null>;
+  updateMember: (params: { id: string; data: Update<'team_members'> }) => Promise<TeamMember | null>;
   deleteMember: (id: string) => Promise<boolean>;
 
   // Team Tasks
-  addTask: (task: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>) => Promise<TeamTask | null>;
-  updateTask: (params: { id: string; data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>> }) => Promise<TeamTask | null>;
+  addTask: (task: Insert<'team_tasks'>) => Promise<TeamTask | null>;
+  updateTask: (params: { id: string; data: Update<'team_tasks'> }) => Promise<TeamTask | null>;
   deleteTask: (id: string) => Promise<boolean>;
 
   // Team Responsibility Matrix
-  addResponsibility: (responsibility: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>) => Promise<TeamResponsibilityMatrix | null>;
-  updateResponsibility: (params: { id: string; data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>> }) => Promise<TeamResponsibilityMatrix | null>;
+  addResponsibility: (responsibility: Insert<'team_responsibility_matrix'>) => Promise<TeamResponsibilityMatrix | null>;
+  updateResponsibility: (params: { id: string; data: Update<'team_responsibility_matrix'> }) => Promise<TeamResponsibilityMatrix | null>;
   deleteResponsibility: (id: string) => Promise<boolean>;
   
   // Diff helpers
@@ -59,6 +62,18 @@ async function executeWithRetry<T>(fn: () => Promise<T>, maxRetries = MAX_RETRIE
   }
   
   throw new Error('Max retries exceeded');
+}
+
+// Helper function outside of React component (no hooks)
+function compareArrays<T extends { id: string }>(arr1: T[], arr2: T[]): boolean {
+  if (arr1.length !== arr2.length) return true;
+  
+  // Sort both arrays by ID for consistent comparison
+  const sorted1 = [...arr1].sort((a, b) => a.id.localeCompare(b.id));
+  const sorted2 = [...arr2].sort((a, b) => a.id.localeCompare(b.id));
+  
+  // Compare the stringified versions
+  return JSON.stringify(sorted1) !== JSON.stringify(sorted2);
 }
 
 export function useTeam(projectId: string | undefined): UseTeamReturn {
@@ -112,19 +127,31 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
   // Update store when data changes
   useEffect(() => {
     if (membersData) {
-      store.setTeamMembers(membersData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentMembers = store.currentData.teamMembers || [];
+      if (compareArrays(currentMembers, membersData)) {
+        store.setTeamMembers(membersData);
+      }
     }
   }, [membersData, store]);
 
   useEffect(() => {
     if (tasksData) {
-      store.setTeamTasks(tasksData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentTasks = store.currentData.teamTasks || [];
+      if (compareArrays(currentTasks, tasksData)) {
+        store.setTeamTasks(tasksData);
+      }
     }
   }, [tasksData, store]);
 
   useEffect(() => {
     if (matrixData) {
-      store.setTeamResponsibilityMatrix(matrixData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentMatrix = store.currentData.teamResponsibilityMatrix || [];
+      if (compareArrays(currentMatrix, matrixData)) {
+        store.setTeamResponsibilityMatrix(matrixData);
+      }
     }
   }, [matrixData, store]);
 
@@ -140,13 +167,17 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
 
   // Use either store data or query data based on comparison mode
   const data: TeamData = useMemo(() => {
+    // When in comparison mode, use store data
     if (store.comparisonMode) {
       return {
         members: storeData.teamMembers,
         tasks: storeData.teamTasks,
         responsibilities: storeData.teamResponsibilityMatrix
       };
-    } else {
+    } 
+    // Otherwise use the data directly from queries, not from the store
+    // This breaks the circular dependency
+    else {
       return {
         members: membersData || [],
         tasks: tasksData || [],
@@ -155,7 +186,9 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
     }
   }, [
     store.comparisonMode, 
-    storeData,
+    // Only include storeData when in comparison mode
+    ...(store.comparisonMode ? [storeData] : []),
+    // Always include the query results
     membersData,
     tasksData,
     matrixData
@@ -166,406 +199,160 @@ export function useTeam(projectId: string | undefined): UseTeamReturn {
   const queryError = membersError || tasksError || matrixError;
 
   // === Team Members Operations ===
-  const addMember = useCallback(async (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>): Promise<TeamMember | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeMember: TeamMember = {
-      ...member,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalMembers = [...store.currentData.teamMembers];
-    
-    try {
-      // 1. Update store optimistically
-      store.addTeamMember(completeMember);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        teamService.addMember(projectId, member)
-      );
-      
-      // 3. Update store with real ID
-      store.updateTeamMember(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.members });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding team member:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setTeamMembers(originalMembers);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addMemberOptimistic = useOptimisticCreate<'team_members'>({
+    projectId,
+    tableName: 'team_members',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.members],
+    setSubmitting,
+    methods: {
+      add: 'addMember'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateMember = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>> }): Promise<TeamMember | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalMember = store.currentData.teamMembers.find(m => m.id === id);
-    if (!originalMember) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateTeamMember(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        teamService.updateMember(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.members });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating team member:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalMember) {
-        store.updateTeamMember(id, originalMember);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateMemberOptimistic = useOptimisticUpdate<'team_members'>({
+    tableName: 'team_members',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.members],
+    setSubmitting,
+    methods: {
+      update: 'updateMember'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteMemberOptimistic = useOptimisticDelete({
+    tableName: 'team_members',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.members],
+    setSubmitting,
+    methods: {
+      delete: 'deleteMember'
+    }
+  });
+
+  // Exposed member operations with proper typing
+  const addMember = useCallback(async (member: Insert<'team_members'>): Promise<TeamMember | null> => {
+    return addMemberOptimistic(member);
+  }, [addMemberOptimistic]);
+
+  const updateMember = useCallback(async (params: { id: string; data: Update<'team_members'> }): Promise<TeamMember | null> => {
+    return updateMemberOptimistic(params.id, params.data);
+  }, [updateMemberOptimistic]);
 
   const deleteMember = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalMembers = [...store.currentData.teamMembers];
-    const memberToDelete = originalMembers.find(m => m.id === id);
-    if (!memberToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteTeamMember(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        teamService.deleteMember(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.members });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting team member:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setTeamMembers(originalMembers);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteMemberOptimistic(id);
+  }, [deleteMemberOptimistic]);
 
   // === Team Tasks Operations ===
-  const addTask = useCallback(async (task: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>): Promise<TeamTask | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeTask: TeamTask = {
-      ...task,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalTasks = [...store.currentData.teamTasks];
-    
-    try {
-      // 1. Update store optimistically
-      store.addTeamTask(completeTask);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        teamService.addTask(projectId, task)
-      );
-      
-      // 3. Update store with real ID
-      store.updateTeamTask(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding team task:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setTeamTasks(originalTasks);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addTaskOptimistic = useOptimisticCreate<'team_tasks'>({
+    projectId,
+    tableName: 'team_tasks',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.tasks],
+    setSubmitting,
+    methods: {
+      add: 'addTask'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateTask = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>> }): Promise<TeamTask | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalTask = store.currentData.teamTasks.find(t => t.id === id);
-    if (!originalTask) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateTeamTask(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        teamService.updateTask(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating team task:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalTask) {
-        store.updateTeamTask(id, originalTask);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateTaskOptimistic = useOptimisticUpdate<'team_tasks'>({
+    tableName: 'team_tasks',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.tasks],
+    setSubmitting,
+    methods: {
+      update: 'updateTask'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteTaskOptimistic = useOptimisticDelete({
+    tableName: 'team_tasks',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.tasks],
+    setSubmitting,
+    methods: {
+      delete: 'deleteTask'
+    }
+  });
+
+  // Exposed task operations with proper typing
+  const addTask = useCallback(async (task: Insert<'team_tasks'>): Promise<TeamTask | null> => {
+    return addTaskOptimistic(task);
+  }, [addTaskOptimistic]);
+
+  const updateTask = useCallback(async (params: { id: string; data: Update<'team_tasks'> }): Promise<TeamTask | null> => {
+    return updateTaskOptimistic(params.id, params.data);
+  }, [updateTaskOptimistic]);
 
   const deleteTask = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalTasks = [...store.currentData.teamTasks];
-    const taskToDelete = originalTasks.find(t => t.id === id);
-    if (!taskToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteTeamTask(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        teamService.deleteTask(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting team task:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setTeamTasks(originalTasks);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteTaskOptimistic(id);
+  }, [deleteTaskOptimistic]);
 
   // === Team Responsibility Matrix Operations ===
-  const addResponsibility = useCallback(async (responsibility: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>): Promise<TeamResponsibilityMatrix | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeResponsibility: TeamResponsibilityMatrix = {
-      ...responsibility,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalResponsibilities = [...store.currentData.teamResponsibilityMatrix];
-    
-    try {
-      // 1. Update store optimistically
-      store.addTeamResponsibilityMatrix(completeResponsibility);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        teamService.addResponsibility(projectId, responsibility)
-      );
-      
-      // 3. Update store with real ID
-      store.updateTeamResponsibilityMatrix(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.matrix });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding team responsibility:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setTeamResponsibilityMatrix(originalResponsibilities);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addResponsibilityOptimistic = useOptimisticCreate<'team_responsibility_matrix'>({
+    projectId,
+    tableName: 'team_responsibility_matrix',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.matrix],
+    setSubmitting,
+    methods: {
+      add: 'addResponsibility'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateResponsibility = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>> }): Promise<TeamResponsibilityMatrix | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalResponsibility = store.currentData.teamResponsibilityMatrix.find(r => r.id === id);
-    if (!originalResponsibility) return null;
-    
-    try {
-      // Process RACI matrix data if present
-      const processedUpdates = { ...updates };
-      
-      // 1. Update store optimistically
-      store.updateTeamResponsibilityMatrix(id, processedUpdates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        teamService.updateResponsibility(id, processedUpdates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.matrix });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating team responsibility:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalResponsibility) {
-        store.updateTeamResponsibilityMatrix(id, originalResponsibility);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateResponsibilityOptimistic = useOptimisticUpdate<'team_responsibility_matrix'>({
+    tableName: 'team_responsibility_matrix',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.matrix],
+    setSubmitting,
+    methods: {
+      update: 'updateResponsibility'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteResponsibilityOptimistic = useOptimisticDelete({
+    tableName: 'team_responsibility_matrix',
+    store,
+    service: teamService,
+    queryClient,
+    queryKey: [...queryKeys.matrix],
+    setSubmitting,
+    methods: {
+      delete: 'deleteResponsibility'
+    }
+  });
+
+  // Exposed responsibility operations with proper typing
+  const addResponsibility = useCallback(async (responsibility: Insert<'team_responsibility_matrix'>): Promise<TeamResponsibilityMatrix | null> => {
+    return addResponsibilityOptimistic(responsibility);
+  }, [addResponsibilityOptimistic]);
+
+  const updateResponsibility = useCallback(async (params: { id: string; data: Update<'team_responsibility_matrix'> }): Promise<TeamResponsibilityMatrix | null> => {
+    return updateResponsibilityOptimistic(params.id, params.data);
+  }, [updateResponsibilityOptimistic]);
 
   const deleteResponsibility = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalResponsibilities = [...store.currentData.teamResponsibilityMatrix];
-    const responsibilityToDelete = originalResponsibilities.find(r => r.id === id);
-    if (!responsibilityToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteTeamResponsibilityMatrix(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        teamService.deleteResponsibility(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.matrix });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting team responsibility:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setTeamResponsibilityMatrix(originalResponsibilities);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteResponsibilityOptimistic(id);
+  }, [deleteResponsibilityOptimistic]);
 
   // Diff helpers
   const getMemberChangeType = useCallback((id: string): ChangeType => 

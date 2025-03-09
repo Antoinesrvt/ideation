@@ -8,10 +8,12 @@ import type {
   MarketInterview,
   MarketCompetitor,
   MarketTrend,
-  ChangeType
+  ChangeType,
+  Insert,
+  Update
 } from '@/store/types';
 import { marketAnalysisService } from '@/lib/services';
-
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
 
 export interface UseMarketAnalysisReturn {
   data: MarketAnalysisData;
@@ -19,23 +21,23 @@ export interface UseMarketAnalysisReturn {
   error: Error | null;
 
   // Personas
-  addPersona: (persona: Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>) => Promise<MarketPersona | null>;
-  updatePersona: (params: { id: string; data: Partial<Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>> }) => Promise<MarketPersona | null>;
+  addPersona: (persona: Insert<'market_personas'>) => Promise<MarketPersona | null>;
+  updatePersona: (params: { id: string; data: Update<'market_personas'> }) => Promise<MarketPersona | null>;
   deletePersona: (id: string) => Promise<boolean>;
 
   // Interviews
-  addInterview: (interview: Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>) => Promise<MarketInterview | null>;
-  updateInterview: (params: { id: string; data: Partial<Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>> }) => Promise<MarketInterview | null>;
+  addInterview: (interview: Insert<'market_interviews'>) => Promise<MarketInterview | null>;
+  updateInterview: (params: { id: string; data: Update<'market_interviews'> }) => Promise<MarketInterview | null>;
   deleteInterview: (id: string) => Promise<boolean>;
 
   // Competitors
-  addCompetitor: (competitor: Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>) => Promise<MarketCompetitor | null>;
-  updateCompetitor: (params: { id: string; data: Partial<Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>> }) => Promise<MarketCompetitor | null>;
+  addCompetitor: (competitor: Insert<'market_competitors'>) => Promise<MarketCompetitor | null>;
+  updateCompetitor: (params: { id: string; data: Update<'market_competitors'> }) => Promise<MarketCompetitor | null>;
   deleteCompetitor: (id: string) => Promise<boolean>;
 
   // Trends
-  addTrend: (trend: Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>) => Promise<MarketTrend | null>;
-  updateTrend: (params: { id: string; data: Partial<Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>> }) => Promise<MarketTrend | null>;
+  addTrend: (trend: Insert<'market_trends'>) => Promise<MarketTrend | null>;
+  updateTrend: (params: { id: string; data: Update<'market_trends'> }) => Promise<MarketTrend | null>;
   deleteTrend: (id: string) => Promise<boolean>;
 
   // Diff helpers
@@ -211,532 +213,213 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   const isLoading = personasLoading || interviewsLoading || competitorsLoading || trendsLoading;
   const queryError = personasError || interviewsError || competitorsError || trendsError;
 
-  // Personas operations with optimistic updates
-  const addPersona = useCallback(async (persona: Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>): Promise<MarketPersona | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completePersona: MarketPersona = {
-      ...persona,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalPersonas = [...store.currentData.marketPersonas];
-    
-    try {
-      // 1. Update store optimistically
-      store.addMarketPersona(completePersona);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.addPersona(projectId, persona)
-      );
-      
-      // 3. Update store with real ID
-      store.updateMarketPersona(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.personas });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding persona:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setMarketPersonas(originalPersonas);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // === Persona Operations ===
+  // Use our optimistic helper hooks
+  const addPersonaOptimistic = useOptimisticCreate<'market_personas'>({
+    projectId,
+    tableName: 'market_personas',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.personas],
+    setSubmitting,
+    methods: {
+      add: 'addPersona'
     }
-  }, [projectId, store, queryClient, queryKeys.personas]);
+  });
 
-  const updatePersona = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketPersona | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalPersona = store.currentData.marketPersonas.find(p => p.id === id);
-    if (!originalPersona) return null;
-    
-    // Create updated item
-    const updatedPersona = {
-      ...originalPersona,
-      ...updates,
-      updated_at: new Date().toISOString()
-    };
-    
-    try {
-      // 1. Update store optimistically
-      store.updateMarketPersona(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.updatePersona(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.personas });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating persona:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalPersona) {
-        store.updateMarketPersona(id, originalPersona);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updatePersonaOptimistic = useOptimisticUpdate<'market_personas'>({
+    tableName: 'market_personas',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.personas],
+    setSubmitting,
+    methods: {
+      update: 'updatePersona'
     }
-  }, [projectId, store, queryClient, queryKeys.personas]);
+  });
+
+  const deletePersonaOptimistic = useOptimisticDelete({
+    tableName: 'market_personas',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.personas],
+    setSubmitting,
+    methods: {
+      delete: 'deletePersona'
+    }
+  });
+
+  // Exposed persona operations with proper typing
+  const addPersona = useCallback(async (persona: Insert<'market_personas'>): Promise<MarketPersona | null> => {
+    return addPersonaOptimistic(persona);
+  }, [addPersonaOptimistic]);
+
+  const updatePersona = useCallback(async (params: { id: string; data: Update<'market_personas'> }): Promise<MarketPersona | null> => {
+    return updatePersonaOptimistic(params.id, params.data);
+  }, [updatePersonaOptimistic]);
 
   const deletePersona = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalPersonas = [...store.currentData.marketPersonas];
-    const personaToDelete = originalPersonas.find(p => p.id === id);
-    if (!personaToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteMarketPersona(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        marketAnalysisService.deletePersona(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.personas });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting persona:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setMarketPersonas(originalPersonas);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys.personas]);
+    return deletePersonaOptimistic(id);
+  }, [deletePersonaOptimistic]);
 
-  // Interviews operations with optimistic updates
-  const addInterview = useCallback(async (interview: Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>): Promise<MarketInterview | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeInterview: MarketInterview = {
-      ...interview,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalInterviews = [...store.currentData.marketInterviews];
-    
-    try {
-      // 1. Update store optimistically
-      store.addMarketInterview(completeInterview);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.addInterview(projectId, interview)
-      );
-      
-      // 3. Update store with real ID
-      store.updateMarketInterview(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding interview:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setMarketInterviews(originalInterviews);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // === Interview Operations ===
+  // Use our optimistic helper hooks
+  const addInterviewOptimistic = useOptimisticCreate<'market_interviews'>({
+    projectId,
+    tableName: 'market_interviews',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.interviews],
+    setSubmitting,
+    methods: {
+      add: 'addInterview'
     }
-  }, [projectId, store, queryClient, queryKeys.interviews]);
+  });
 
-  const updateInterview = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketInterview | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalInterview = store.currentData.marketInterviews.find(i => i.id === id);
-    if (!originalInterview) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateMarketInterview(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.updateInterview(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating interview:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalInterview) {
-        store.updateMarketInterview(id, originalInterview);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateInterviewOptimistic = useOptimisticUpdate<'market_interviews'>({
+    tableName: 'market_interviews',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.interviews],
+    setSubmitting,
+    methods: {
+      update: 'updateInterview'
     }
-  }, [projectId, store, queryClient, queryKeys.interviews]);
+  });
+
+  const deleteInterviewOptimistic = useOptimisticDelete({
+    tableName: 'market_interviews',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.interviews],
+    setSubmitting,
+    methods: {
+      delete: 'deleteInterview'
+    }
+  });
+
+  // Exposed interview operations with proper typing
+  const addInterview = useCallback(async (interview: Insert<'market_interviews'>): Promise<MarketInterview | null> => {
+    return addInterviewOptimistic(interview);
+  }, [addInterviewOptimistic]);
+
+  const updateInterview = useCallback(async (params: { id: string; data: Update<'market_interviews'> }): Promise<MarketInterview | null> => {
+    return updateInterviewOptimistic(params.id, params.data);
+  }, [updateInterviewOptimistic]);
 
   const deleteInterview = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalInterviews = [...store.currentData.marketInterviews];
-    const interviewToDelete = originalInterviews.find(i => i.id === id);
-    if (!interviewToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteMarketInterview(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        marketAnalysisService.deleteInterview(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.interviews });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting interview:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setMarketInterviews(originalInterviews);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys.interviews]);
+    return deleteInterviewOptimistic(id);
+  }, [deleteInterviewOptimistic]);
 
-  // Competitors operations with optimistic updates
-  const addCompetitor = useCallback(async (competitor: Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>): Promise<MarketCompetitor | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeCompetitor: MarketCompetitor = {
-      ...competitor,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalCompetitors = [...store.currentData.marketCompetitors];
-    
-    try {
-      // 1. Update store optimistically
-      store.addMarketCompetitor(completeCompetitor);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.addCompetitor(projectId, competitor)
-      );
-      
-      // 3. Update store with real ID
-      store.updateMarketCompetitor(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.competitors });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding competitor:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setMarketCompetitors(originalCompetitors);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // === Competitor Operations ===
+  // Use our optimistic helper hooks
+  const addCompetitorOptimistic = useOptimisticCreate<'market_competitors'>({
+    projectId,
+    tableName: 'market_competitors',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.competitors],
+    setSubmitting,
+    methods: {
+      add: 'addCompetitor'
     }
-  }, [projectId, store, queryClient, queryKeys.competitors]);
+  });
 
-  const updateCompetitor = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketCompetitor | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalCompetitor = store.currentData.marketCompetitors.find(c => c.id === id);
-    if (!originalCompetitor) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateMarketCompetitor(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.updateCompetitor(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.competitors });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating competitor:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalCompetitor) {
-        store.updateMarketCompetitor(id, originalCompetitor);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateCompetitorOptimistic = useOptimisticUpdate<'market_competitors'>({
+    tableName: 'market_competitors',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.competitors],
+    setSubmitting,
+    methods: {
+      update: 'updateCompetitor'
     }
-  }, [projectId, store, queryClient, queryKeys.competitors]);
+  });
+
+  const deleteCompetitorOptimistic = useOptimisticDelete({
+    tableName: 'market_competitors',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.competitors],
+    setSubmitting,
+    methods: {
+      delete: 'deleteCompetitor'
+    }
+  });
+
+  // Exposed competitor operations with proper typing
+  const addCompetitor = useCallback(async (competitor: Insert<'market_competitors'>): Promise<MarketCompetitor | null> => {
+    return addCompetitorOptimistic(competitor);
+  }, [addCompetitorOptimistic]);
+
+  const updateCompetitor = useCallback(async (params: { id: string; data: Update<'market_competitors'> }): Promise<MarketCompetitor | null> => {
+    return updateCompetitorOptimistic(params.id, params.data);
+  }, [updateCompetitorOptimistic]);
 
   const deleteCompetitor = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalCompetitors = [...store.currentData.marketCompetitors];
-    const competitorToDelete = originalCompetitors.find(c => c.id === id);
-    if (!competitorToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteMarketCompetitor(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        marketAnalysisService.deleteCompetitor(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.competitors });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting competitor:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setMarketCompetitors(originalCompetitors);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys.competitors]);
+    return deleteCompetitorOptimistic(id);
+  }, [deleteCompetitorOptimistic]);
 
-  // Trends operations with optimistic updates
-  const addTrend = useCallback(async (trend: Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>): Promise<MarketTrend | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeTrend: MarketTrend = {
-      ...trend,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalTrends = [...store.currentData.marketTrends];
-    
-    try {
-      // 1. Update store optimistically
-      store.addMarketTrend(completeTrend);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.addTrend(projectId, trend)
-      );
-      
-      // 3. Update store with real ID
-      store.updateMarketTrend(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.trends });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding trend:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setMarketTrends(originalTrends);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // === Trend Operations ===
+  // Use our optimistic helper hooks
+  const addTrendOptimistic = useOptimisticCreate<'market_trends'>({
+    projectId,
+    tableName: 'market_trends',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.trends],
+    setSubmitting,
+    methods: {
+      add: 'addTrend'
     }
-  }, [projectId, store, queryClient, queryKeys.trends]);
+  });
 
-  const updateTrend = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>> }): Promise<MarketTrend | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalTrend = store.currentData.marketTrends.find(t => t.id === id);
-    if (!originalTrend) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateMarketTrend(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        marketAnalysisService.updateTrend(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.trends });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating trend:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalTrend) {
-        store.updateMarketTrend(id, originalTrend);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateTrendOptimistic = useOptimisticUpdate<'market_trends'>({
+    tableName: 'market_trends',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.trends],
+    setSubmitting,
+    methods: {
+      update: 'updateTrend'
     }
-  }, [projectId, store, queryClient, queryKeys.trends]);
+  });
+
+  const deleteTrendOptimistic = useOptimisticDelete({
+    tableName: 'market_trends',
+    store,
+    service: marketAnalysisService,
+    queryClient,
+    queryKey: [...queryKeys.trends],
+    setSubmitting,
+    methods: {
+      delete: 'deleteTrend'
+    }
+  });
+
+  // Exposed trend operations with proper typing
+  const addTrend = useCallback(async (trend: Insert<'market_trends'>): Promise<MarketTrend | null> => {
+    return addTrendOptimistic(trend);
+  }, [addTrendOptimistic]);
+
+  const updateTrend = useCallback(async (params: { id: string; data: Update<'market_trends'> }): Promise<MarketTrend | null> => {
+    return updateTrendOptimistic(params.id, params.data);
+  }, [updateTrendOptimistic]);
 
   const deleteTrend = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalTrends = [...store.currentData.marketTrends];
-    const trendToDelete = originalTrends.find(t => t.id === id);
-    if (!trendToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteMarketTrend(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        marketAnalysisService.deleteTrend(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.trends });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting trend:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setMarketTrends(originalTrends);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys.trends]);
+    return deleteTrendOptimistic(id);
+  }, [deleteTrendOptimistic]);
 
   // Diff helpers
   const getPersonaChangeType = useCallback((id: string): ChangeType => 

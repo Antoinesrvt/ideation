@@ -4,7 +4,9 @@ import type {
   ProductFeature,
   ProductJourneyStage,
   ProductJourneyAction,
-  ProductJourneyPainPoint
+  ProductJourneyPainPoint,
+  Insert,
+  Update
 } from '@/store/types';
 
 export interface ProductDesignData {
@@ -40,7 +42,7 @@ export class ProductDesignService {
     return data || [];
   }
 
-  async addWireframe(projectId: string, data: Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>): Promise<ProductWireframe> {
+  async addWireframe(projectId: string, data: Insert<'product_wireframes'>): Promise<ProductWireframe> {
     const { data: wireframe, error } = await this.supabase
       .from('product_wireframes')
       .insert({ ...data, project_id: projectId })
@@ -51,7 +53,7 @@ export class ProductDesignService {
     return wireframe;
   }
 
-  async updateWireframe(id: string, data: Partial<Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>>): Promise<ProductWireframe> {
+  async updateWireframe(id: string, data: Update<'product_wireframes'>): Promise<ProductWireframe> {
     const { data: wireframe, error } = await this.supabase
       .from('product_wireframes')
       .update(data)
@@ -83,7 +85,7 @@ export class ProductDesignService {
     return data || [];
   }
 
-  async addFeature(projectId: string, data: Omit<ProductFeature, 'id' | 'created_at' | 'updated_at'>): Promise<ProductFeature> {
+  async addFeature(projectId: string, data: Insert<'product_features'>): Promise<ProductFeature> {
     const { data: feature, error } = await this.supabase
       .from('product_features')
       .insert({ ...data, project_id: projectId })
@@ -94,7 +96,7 @@ export class ProductDesignService {
     return feature;
   }
 
-  async updateFeature(id: string, data: Partial<Omit<ProductFeature, 'id' | 'created_at' | 'updated_at'>>): Promise<ProductFeature> {
+  async updateFeature(id: string, data: Update<'product_features'>): Promise<ProductFeature> {
     const { data: feature, error } = await this.supabase
       .from('product_features')
       .update(data)
@@ -126,7 +128,7 @@ export class ProductDesignService {
     return data || [];
   }
 
-  async addJourneyStage(projectId: string, data: Omit<ProductJourneyStage, 'id' | 'created_at' | 'updated_at'>): Promise<ProductJourneyStage> {
+  async addJourneyStage(projectId: string, data: Insert<'product_journey_stages'>): Promise<ProductJourneyStage> {
     const { data: stage, error } = await this.supabase
       .from('product_journey_stages')
       .insert({ ...data, project_id: projectId })
@@ -137,7 +139,7 @@ export class ProductDesignService {
     return stage;
   }
 
-  async updateJourneyStage(id: string, data: Partial<Omit<ProductJourneyStage, 'id' | 'created_at' | 'updated_at'>>): Promise<ProductJourneyStage> {
+  async updateJourneyStage(id: string, data: Update<'product_journey_stages'>): Promise<ProductJourneyStage> {
     const { data: stage, error } = await this.supabase
       .from('product_journey_stages')
       .update(data)
@@ -169,7 +171,7 @@ export class ProductDesignService {
     return data || [];
   }
 
-  async addJourneyAction(projectId: string, data: Omit<ProductJourneyAction, 'id' | 'created_at' | 'updated_at'>): Promise<ProductJourneyAction> {
+  async addJourneyAction(projectId: string, data: Insert<'product_journey_actions'>): Promise<ProductJourneyAction> {
     const { data: action, error } = await this.supabase
       .from('product_journey_actions')
       .insert({ ...data, project_id: projectId })
@@ -180,7 +182,7 @@ export class ProductDesignService {
     return action;
   }
 
-  async updateJourneyAction(id: string, data: Partial<Omit<ProductJourneyAction, 'id' | 'created_at' | 'updated_at'>>): Promise<ProductJourneyAction> {
+  async updateJourneyAction(id: string, data: Update<'product_journey_actions'>): Promise<ProductJourneyAction> {
     const { data: action, error } = await this.supabase
       .from('product_journey_actions')
       .update(data)
@@ -212,7 +214,7 @@ export class ProductDesignService {
     return data || [];
   }
 
-  async addJourneyPainPoint(projectId: string, data: Omit<ProductJourneyPainPoint, 'id' | 'created_at' | 'updated_at'>): Promise<ProductJourneyPainPoint> {
+  async addJourneyPainPoint(projectId: string, data: Insert<'product_journey_pain_points'>): Promise<ProductJourneyPainPoint> {
     const { data: painPoint, error } = await this.supabase
       .from('product_journey_pain_points')
       .insert({ ...data, project_id: projectId })
@@ -223,7 +225,7 @@ export class ProductDesignService {
     return painPoint;
   }
 
-  async updateJourneyPainPoint(id: string, data: Partial<Omit<ProductJourneyPainPoint, 'id' | 'created_at' | 'updated_at'>>): Promise<ProductJourneyPainPoint> {
+  async updateJourneyPainPoint(id: string, data: Update<'product_journey_pain_points'>): Promise<ProductJourneyPainPoint> {
     const { data: painPoint, error } = await this.supabase
       .from('product_journey_pain_points')
       .update(data)

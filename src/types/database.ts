@@ -1093,6 +1093,7 @@ export type Database = {
           sentiment: string | null
           tags: string[] | null
           updated_at: string | null
+          contact_email: string | null
         }
         Insert: {
           company?: string | null
@@ -1107,6 +1108,7 @@ export type Database = {
           sentiment?: string | null
           tags?: string[] | null
           updated_at?: string | null
+          contact_email?: string | null
         }
         Update: {
           company?: string | null
@@ -1121,6 +1123,7 @@ export type Database = {
           sentiment?: string | null
           tags?: string[] | null
           updated_at?: string | null
+          contact_email?: string | null
         }
         Relationships: [
           {

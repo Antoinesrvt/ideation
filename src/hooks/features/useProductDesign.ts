@@ -9,8 +9,11 @@ import type {
   ProductJourneyStage,
   ProductJourneyAction,
   ProductJourneyPainPoint,
-  ChangeType
+  ChangeType,
+  Insert,
+  Update
 } from '@/store/types';
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
 
 // Constants for retry logic
 const MAX_RETRIES = 3;
@@ -38,28 +41,28 @@ export interface UseProductDesignReturn {
   error: Error | null;
 
   // Wireframes
-  addWireframe: (wireframe: Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>) => Promise<ProductWireframe | null>;
-  updateWireframe: (params: { id: string; data: Partial<Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ProductWireframe | null>;
+  addWireframe: (wireframe: Insert<'product_wireframes'>) => Promise<ProductWireframe | null>;
+  updateWireframe: (params: { id: string; data: Update<'product_wireframes'> }) => Promise<ProductWireframe | null>;
   deleteWireframe: (id: string) => Promise<boolean>;
 
   // Features
-  addFeature: (feature: Omit<ProductFeature, 'id' | 'created_at' | 'updated_at'>) => Promise<ProductFeature | null>;
-  updateFeature: (params: { id: string; data: Partial<Omit<ProductFeature, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ProductFeature | null>;
+  addFeature: (feature: Insert<'product_features'>) => Promise<ProductFeature | null>;
+  updateFeature: (params: { id: string; data: Update<'product_features'> }) => Promise<ProductFeature | null>;
   deleteFeature: (id: string) => Promise<boolean>;
 
   // Journey Stages
-  addJourneyStage: (stage: Omit<ProductJourneyStage, 'id' | 'created_at' | 'updated_at'>) => Promise<ProductJourneyStage | null>;
-  updateJourneyStage: (params: { id: string; data: Partial<Omit<ProductJourneyStage, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ProductJourneyStage | null>;
+  addJourneyStage: (stage: Insert<'product_journey_stages'>) => Promise<ProductJourneyStage | null>;
+  updateJourneyStage: (params: { id: string; data: Update<'product_journey_stages'> }) => Promise<ProductJourneyStage | null>;
   deleteJourneyStage: (id: string) => Promise<boolean>;
 
   // Journey Actions
-  addJourneyAction: (action: Omit<ProductJourneyAction, 'id' | 'created_at' | 'updated_at'>) => Promise<ProductJourneyAction | null>;
-  updateJourneyAction: (params: { id: string; data: Partial<Omit<ProductJourneyAction, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ProductJourneyAction | null>;
+  addJourneyAction: (action: Insert<'product_journey_actions'>) => Promise<ProductJourneyAction | null>;
+  updateJourneyAction: (params: { id: string; data: Update<'product_journey_actions'> }) => Promise<ProductJourneyAction | null>;
   deleteJourneyAction: (id: string) => Promise<boolean>;
 
   // Journey Pain Points
-  addJourneyPainPoint: (painPoint: Omit<ProductJourneyPainPoint, 'id' | 'created_at' | 'updated_at'>) => Promise<ProductJourneyPainPoint | null>;
-  updateJourneyPainPoint: (params: { id: string; data: Partial<Omit<ProductJourneyPainPoint, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ProductJourneyPainPoint | null>;
+  addJourneyPainPoint: (painPoint: Insert<'product_journey_pain_points'>) => Promise<ProductJourneyPainPoint | null>;
+  updateJourneyPainPoint: (params: { id: string; data: Update<'product_journey_pain_points'> }) => Promise<ProductJourneyPainPoint | null>;
   deleteJourneyPainPoint: (id: string) => Promise<boolean>;
   
   // Diff helpers
@@ -254,670 +257,261 @@ export function useProductDesign(projectId: string | undefined): UseProductDesig
                     journeyActionsError || 
                     journeyPainPointsError;
 
-  // === Wireframes Operations ===
-  const addWireframe = useCallback(async (wireframe: Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>): Promise<ProductWireframe | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeWireframe: ProductWireframe = {
-      ...wireframe,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalWireframes = [...store.currentData.productWireframes];
-    
-    try {
-      // 1. Update store optimistically
-      store.addProductWireframe(completeWireframe);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.addWireframe(projectId, wireframe)
-      );
-      
-      // 3. Update store with real ID
-      store.updateProductWireframe(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.wireframes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding wireframe:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setProductWireframes(originalWireframes);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // === Wireframe Operations ===
+  // Use our optimistic helper hooks
+  const addWireframeOptimistic = useOptimisticCreate<'product_wireframes'>({
+    projectId,
+    tableName: 'product_wireframes',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.wireframes],
+    setSubmitting,
+    methods: {
+      add: 'addWireframe'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateWireframe = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ProductWireframe, 'id' | 'created_at' | 'updated_at'>> }): Promise<ProductWireframe | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalWireframe = store.currentData.productWireframes.find(w => w.id === id);
-    if (!originalWireframe) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateProductWireframe(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.updateWireframe(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.wireframes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating wireframe:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalWireframe) {
-        store.updateProductWireframe(id, originalWireframe);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateWireframeOptimistic = useOptimisticUpdate<'product_wireframes'>({
+    tableName: 'product_wireframes',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.wireframes],
+    setSubmitting,
+    methods: {
+      update: 'updateWireframe'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteWireframeOptimistic = useOptimisticDelete({
+    tableName: 'product_wireframes',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.wireframes],
+    setSubmitting,
+    methods: {
+      delete: 'deleteWireframe'
+    }
+  });
+
+  // === Feature Operations ===
+  // Use our optimistic helper hooks
+  const addFeatureOptimistic = useOptimisticCreate<'product_features'>({
+    projectId,
+    tableName: 'product_features',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.features],
+    setSubmitting,
+    methods: {
+      add: 'addFeature'
+    }
+  });
+
+  const updateFeatureOptimistic = useOptimisticUpdate<'product_features'>({
+    tableName: 'product_features',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.features],
+    setSubmitting,
+    methods: {
+      update: 'updateFeature'
+    }
+  });
+
+  const deleteFeatureOptimistic = useOptimisticDelete({
+    tableName: 'product_features',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.features],
+    setSubmitting,
+    methods: {
+      delete: 'deleteFeature'
+    }
+  });
+
+  // === Journey Stage Operations ===
+  // Use our optimistic helper hooks
+  const addJourneyStageOptimistic = useOptimisticCreate<'product_journey_stages'>({
+    projectId,
+    tableName: 'product_journey_stages',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyStages],
+    setSubmitting,
+    methods: {
+      add: 'addJourneyStage'
+    }
+  });
+
+  const updateJourneyStageOptimistic = useOptimisticUpdate<'product_journey_stages'>({
+    tableName: 'product_journey_stages',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyStages],
+    setSubmitting,
+    methods: {
+      update: 'updateJourneyStage'
+    }
+  });
+
+  const deleteJourneyStageOptimistic = useOptimisticDelete({
+    tableName: 'product_journey_stages',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyStages],
+    setSubmitting,
+    methods: {
+      delete: 'deleteJourneyStage'
+    }
+  });
+
+  // === Journey Action Operations ===
+  // Use our optimistic helper hooks
+  const addJourneyActionOptimistic = useOptimisticCreate<'product_journey_actions'>({
+    projectId,
+    tableName: 'product_journey_actions',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyActions],
+    setSubmitting,
+    methods: {
+      add: 'addJourneyAction'
+    }
+  });
+
+  const updateJourneyActionOptimistic = useOptimisticUpdate<'product_journey_actions'>({
+    tableName: 'product_journey_actions',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyActions],
+    setSubmitting,
+    methods: {
+      update: 'updateJourneyAction'
+    }
+  });
+
+  const deleteJourneyActionOptimistic = useOptimisticDelete({
+    tableName: 'product_journey_actions',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyActions],
+    setSubmitting,
+    methods: {
+      delete: 'deleteJourneyAction'
+    }
+  });
+
+  // === Journey Pain Point Operations ===
+  // Use our optimistic helper hooks
+  const addJourneyPainPointOptimistic = useOptimisticCreate<'product_journey_pain_points'>({
+    projectId,
+    tableName: 'product_journey_pain_points',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyPainPoints],
+    setSubmitting,
+    methods: {
+      add: 'addJourneyPainPoint'
+    }
+  });
+
+  const updateJourneyPainPointOptimistic = useOptimisticUpdate<'product_journey_pain_points'>({
+    tableName: 'product_journey_pain_points',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyPainPoints],
+    setSubmitting,
+    methods: {
+      update: 'updateJourneyPainPoint'
+    }
+  });
+
+  const deleteJourneyPainPointOptimistic = useOptimisticDelete({
+    tableName: 'product_journey_pain_points',
+    store,
+    service: productDesignService,
+    queryClient,
+    queryKey: [...queryKeys.journeyPainPoints],
+    setSubmitting,
+    methods: {
+      delete: 'deleteJourneyPainPoint'
+    }
+  });
+
+  // Exposed API methods
+  const addWireframe = useCallback(async (wireframe: Insert<'product_wireframes'>): Promise<ProductWireframe | null> => {
+    return addWireframeOptimistic(wireframe);
+  }, [addWireframeOptimistic]);
+
+  const updateWireframe = useCallback(async (params: { id: string; data: Update<'product_wireframes'> }): Promise<ProductWireframe | null> => {
+    return updateWireframeOptimistic(params.id, params.data);
+  }, [updateWireframeOptimistic]);
 
   const deleteWireframe = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalWireframes = [...store.currentData.productWireframes];
-    const wireframeToDelete = originalWireframes.find(w => w.id === id);
-    if (!wireframeToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteProductWireframe(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        productDesignService.deleteWireframe(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.wireframes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting wireframe:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setProductWireframes(originalWireframes);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteWireframeOptimistic(id);
+  }, [deleteWireframeOptimistic]);
 
-  // === Features Operations ===
-  const addFeature = useCallback(async (feature: Omit<ProductFeature, 'id' | 'created_at' | 'updated_at'>): Promise<ProductFeature | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeFeature: ProductFeature = {
-      ...feature,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalFeatures = [...store.currentData.productFeatures];
-    
-    try {
-      // 1. Update store optimistically
-      store.addProductFeature(completeFeature);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.addFeature(projectId, feature)
-      );
-      
-      // 3. Update store with real ID
-      store.updateProductFeature(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.features });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding feature:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setProductFeatures(originalFeatures);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const addFeature = useCallback(async (feature: Insert<'product_features'>): Promise<ProductFeature | null> => {
+    return addFeatureOptimistic(feature);
+  }, [addFeatureOptimistic]);
 
-  const updateFeature = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ProductFeature, 'id' | 'created_at' | 'updated_at'>> }): Promise<ProductFeature | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalFeature = store.currentData.productFeatures.find(f => f.id === id);
-    if (!originalFeature) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateProductFeature(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.updateFeature(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.features });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating feature:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalFeature) {
-        store.updateProductFeature(id, originalFeature);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const updateFeature = useCallback(async (params: { id: string; data: Update<'product_features'> }): Promise<ProductFeature | null> => {
+    return updateFeatureOptimistic(params.id, params.data);
+  }, [updateFeatureOptimistic]);
 
   const deleteFeature = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalFeatures = [...store.currentData.productFeatures];
-    const featureToDelete = originalFeatures.find(f => f.id === id);
-    if (!featureToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteProductFeature(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        productDesignService.deleteFeature(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.features });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting feature:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setProductFeatures(originalFeatures);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteFeatureOptimistic(id);
+  }, [deleteFeatureOptimistic]);
 
-  // === Journey Stages Operations ===
-  const addJourneyStage = useCallback(async (stage: Omit<ProductJourneyStage, 'id' | 'created_at' | 'updated_at'>): Promise<ProductJourneyStage | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeStage: ProductJourneyStage = {
-      ...stage,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalStages = [...store.currentData.productJourneyStages];
-    
-    try {
-      // 1. Update store optimistically
-      store.addProductJourneyStage(completeStage);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.addJourneyStage(projectId, stage)
-      );
-      
-      // 3. Update store with real ID
-      store.updateProductJourneyStage(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyStages });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding journey stage:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setProductJourneyStages(originalStages);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const addJourneyStage = useCallback(async (stage: Insert<'product_journey_stages'>): Promise<ProductJourneyStage | null> => {
+    return addJourneyStageOptimistic(stage);
+  }, [addJourneyStageOptimistic]);
 
-  const updateJourneyStage = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ProductJourneyStage, 'id' | 'created_at' | 'updated_at'>> }): Promise<ProductJourneyStage | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalStage = store.currentData.productJourneyStages.find(s => s.id === id);
-    if (!originalStage) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateProductJourneyStage(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.updateJourneyStage(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyStages });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating journey stage:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalStage) {
-        store.updateProductJourneyStage(id, originalStage);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const updateJourneyStage = useCallback(async (params: { id: string; data: Update<'product_journey_stages'> }): Promise<ProductJourneyStage | null> => {
+    return updateJourneyStageOptimistic(params.id, params.data);
+  }, [updateJourneyStageOptimistic]);
 
   const deleteJourneyStage = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalStages = [...store.currentData.productJourneyStages];
-    const stageToDelete = originalStages.find(s => s.id === id);
-    if (!stageToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteProductJourneyStage(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        productDesignService.deleteJourneyStage(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyStages });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting journey stage:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setProductJourneyStages(originalStages);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteJourneyStageOptimistic(id);
+  }, [deleteJourneyStageOptimistic]);
 
-  // === Journey Actions Operations ===
-  const addJourneyAction = useCallback(async (action: Omit<ProductJourneyAction, 'id' | 'created_at' | 'updated_at'>): Promise<ProductJourneyAction | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeAction: ProductJourneyAction = {
-      ...action,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalActions = [...store.currentData.productJourneyActions];
-    
-    try {
-      // 1. Update store optimistically
-      store.addProductJourneyAction(completeAction);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.addJourneyAction(projectId, action)
-      );
-      
-      // 3. Update store with real ID
-      store.updateProductJourneyAction(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyActions });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding journey action:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setProductJourneyActions(originalActions);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const addJourneyAction = useCallback(async (action: Insert<'product_journey_actions'>): Promise<ProductJourneyAction | null> => {
+    return addJourneyActionOptimistic(action);
+  }, [addJourneyActionOptimistic]);
 
-  const updateJourneyAction = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ProductJourneyAction, 'id' | 'created_at' | 'updated_at'>> }): Promise<ProductJourneyAction | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalAction = store.currentData.productJourneyActions.find(a => a.id === id);
-    if (!originalAction) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateProductJourneyAction(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.updateJourneyAction(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyActions });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating journey action:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalAction) {
-        store.updateProductJourneyAction(id, originalAction);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const updateJourneyAction = useCallback(async (params: { id: string; data: Update<'product_journey_actions'> }): Promise<ProductJourneyAction | null> => {
+    return updateJourneyActionOptimistic(params.id, params.data);
+  }, [updateJourneyActionOptimistic]);
 
   const deleteJourneyAction = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalActions = [...store.currentData.productJourneyActions];
-    const actionToDelete = originalActions.find(a => a.id === id);
-    if (!actionToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteProductJourneyAction(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        productDesignService.deleteJourneyAction(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyActions });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting journey action:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setProductJourneyActions(originalActions);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteJourneyActionOptimistic(id);
+  }, [deleteJourneyActionOptimistic]);
 
-  // === Journey Pain Points Operations ===
-  const addJourneyPainPoint = useCallback(async (painPoint: Omit<ProductJourneyPainPoint, 'id' | 'created_at' | 'updated_at'>): Promise<ProductJourneyPainPoint | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completePainPoint: ProductJourneyPainPoint = {
-      ...painPoint,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalPainPoints = [...store.currentData.productJourneyPainPoints];
-    
-    try {
-      // 1. Update store optimistically
-      store.addProductJourneyPainPoint(completePainPoint);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.addJourneyPainPoint(projectId, painPoint)
-      );
-      
-      // 3. Update store with real ID
-      store.updateProductJourneyPainPoint(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyPainPoints });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding journey pain point:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setProductJourneyPainPoints(originalPainPoints);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const addJourneyPainPoint = useCallback(async (painPoint: Insert<'product_journey_pain_points'>): Promise<ProductJourneyPainPoint | null> => {
+    return addJourneyPainPointOptimistic(painPoint);
+  }, [addJourneyPainPointOptimistic]);
 
-  const updateJourneyPainPoint = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ProductJourneyPainPoint, 'id' | 'created_at' | 'updated_at'>> }): Promise<ProductJourneyPainPoint | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalPainPoint = store.currentData.productJourneyPainPoints.find(p => p.id === id);
-    if (!originalPainPoint) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateProductJourneyPainPoint(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        productDesignService.updateJourneyPainPoint(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyPainPoints });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating journey pain point:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalPainPoint) {
-        store.updateProductJourneyPainPoint(id, originalPainPoint);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  const updateJourneyPainPoint = useCallback(async (params: { id: string; data: Update<'product_journey_pain_points'> }): Promise<ProductJourneyPainPoint | null> => {
+    return updateJourneyPainPointOptimistic(params.id, params.data);
+  }, [updateJourneyPainPointOptimistic]);
 
   const deleteJourneyPainPoint = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalPainPoints = [...store.currentData.productJourneyPainPoints];
-    const painPointToDelete = originalPainPoints.find(p => p.id === id);
-    if (!painPointToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteProductJourneyPainPoint(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        productDesignService.deleteJourneyPainPoint(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.journeyPainPoints });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting journey pain point:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setProductJourneyPainPoints(originalPainPoints);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteJourneyPainPointOptimistic(id);
+  }, [deleteJourneyPainPointOptimistic]);
 
   // Diff helpers
   const getWireframeChangeType = useCallback((id: string): ChangeType => 

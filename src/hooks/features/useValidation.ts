@@ -8,9 +8,14 @@ import type {
   ValidationABTest,
   ValidationUserFeedback,
   ValidationHypothesis,
-  ChangeType
+  ChangeType,
+  Insert,
+  Update
 } from '@/store/types';
 import { validationService } from '@/lib/services';
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
+
+
 
 export interface UseValidationReturn {
   data: ValidationData;
@@ -18,23 +23,23 @@ export interface UseValidationReturn {
   error: Error | null;
 
   // Experiments
-  addExperiment: (experiment: Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>) => Promise<ValidationExperiment | null>;
-  updateExperiment: (params: { id: string; data: Partial<Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ValidationExperiment | null>;
+  addExperiment: (experiment: Insert<'validation_experiments'>) => Promise<ValidationExperiment | null>;
+  updateExperiment: (params: { id: string; data: Update<'validation_experiments'> }) => Promise<ValidationExperiment | null>;
   deleteExperiment: (id: string) => Promise<boolean>;
 
   // AB Tests
-  addABTest: (test: Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>) => Promise<ValidationABTest | null>;
-  updateABTest: (params: { id: string; data: Partial<Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ValidationABTest | null>;
+  addABTest: (abTest: Insert<'validation_ab_tests'>) => Promise<ValidationABTest | null>;
+  updateABTest: (params: { id: string; data: Update<'validation_ab_tests'> }) => Promise<ValidationABTest | null>;
   deleteABTest: (id: string) => Promise<boolean>;
 
   // User Feedback
-  addUserFeedback: (feedback: Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>) => Promise<ValidationUserFeedback | null>;
-  updateUserFeedback: (params: { id: string; data: Partial<Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ValidationUserFeedback | null>;
+  addUserFeedback: (feedback: Insert<'validation_user_feedback'>) => Promise<ValidationUserFeedback | null>;
+  updateUserFeedback: (params: { id: string; data: Update<'validation_user_feedback'> }) => Promise<ValidationUserFeedback | null>;
   deleteUserFeedback: (id: string) => Promise<boolean>;
 
   // Hypotheses
-  addHypothesis: (hypothesis: Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>) => Promise<ValidationHypothesis | null>;
-  updateHypothesis: (params: { id: string; data: Partial<Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>> }) => Promise<ValidationHypothesis | null>;
+  addHypothesis: (hypothesis: Insert<'validation_hypotheses'>) => Promise<ValidationHypothesis | null>;
+  updateHypothesis: (params: { id: string; data: Update<'validation_hypotheses'> }) => Promise<ValidationHypothesis | null>;
   deleteHypothesis: (id: string) => Promise<boolean>;
 
   // Diff helpers
@@ -47,6 +52,18 @@ export interface UseValidationReturn {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+
+// Helper function outside of React component (no hooks)
+function compareArrays<T extends { id: string }>(arr1: T[], arr2: T[]): boolean {
+  if (arr1.length !== arr2.length) return true;
+  
+  // Sort both arrays by ID for consistent comparison
+  const sorted1 = [...arr1].sort((a, b) => a.id.localeCompare(b.id));
+  const sorted2 = [...arr2].sort((a, b) => a.id.localeCompare(b.id));
+  
+  // Compare the stringified versions
+  return JSON.stringify(sorted1) !== JSON.stringify(sorted2);
+}
 
 /**
  * Executes a function with retry logic
@@ -131,25 +148,41 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
   // Update store when data changes
   useEffect(() => {
     if (experimentsData) {
-      store.setValidationExperiments(experimentsData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentExperiments = store.currentData.validationExperiments || [];
+      if (compareArrays(currentExperiments, experimentsData)) {
+        store.setValidationExperiments(experimentsData);
+      }
     }
   }, [experimentsData, store]);
 
   useEffect(() => {
     if (abTestsData) {
-      store.setValidationABTests(abTestsData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentABTests = store.currentData.validationABTests || [];
+      if (compareArrays(currentABTests, abTestsData)) {
+        store.setValidationABTests(abTestsData);
+      }
     }
   }, [abTestsData, store]);
 
   useEffect(() => {
     if (userFeedbackData) {
-      store.setValidationUserFeedback(userFeedbackData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentUserFeedback = store.currentData.validationUserFeedback || [];
+      if (compareArrays(currentUserFeedback, userFeedbackData)) {
+        store.setValidationUserFeedback(userFeedbackData);
+      }
     }
   }, [userFeedbackData, store]);
 
   useEffect(() => {
     if (hypothesesData) {
-      store.setValidationHypotheses(hypothesesData);
+      // Only update store if the data is different to prevent infinite loops
+      const currentHypotheses = store.currentData.validationHypotheses || [];
+      if (compareArrays(currentHypotheses, hypothesesData)) {
+        store.setValidationHypotheses(hypothesesData);
+      }
     }
   }, [hypothesesData, store]);
 
@@ -182,12 +215,16 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
       };
     }
   }, [
-    store.comparisonMode, 
-    storeData,
-    experimentsData,
-    abTestsData,
-    userFeedbackData,
-    hypothesesData
+    store.comparisonMode,
+    // Only include storeData in dependencies when in comparison mode
+    ...(store.comparisonMode ? [storeData] : []),
+    // Only depend on query data when not in comparison mode
+    ...(store.comparisonMode ? [] : [
+      experimentsData,
+      abTestsData,
+      userFeedbackData,
+      hypothesesData
+    ])
   ]);
 
   // Compute loading and error states
@@ -195,536 +232,212 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
   const queryError = experimentsError || abTestsError || userFeedbackError || hypothesesError;
 
   // === Experiments Operations ===
-  const addExperiment = useCallback(async (experiment: Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationExperiment | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeExperiment: ValidationExperiment = {
-      ...experiment,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalExperiments = [...store.currentData.validationExperiments];
-    
-    try {
-      // 1. Update store optimistically
-      store.addValidationExperiment(completeExperiment);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.addExperiment(projectId, experiment)
-      );
-      
-      // 3. Update store with real ID
-      store.updateValidationExperiment(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.experiments });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding experiment:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setValidationExperiments(originalExperiments);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addExperimentOptimistic = useOptimisticCreate<'validation_experiments'>({
+    projectId,
+    tableName: 'validation_experiments',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.experiments],
+    setSubmitting,
+    methods: {
+      add: 'addExperiment'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateExperiment = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationExperiment, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationExperiment | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalExperiment = store.currentData.validationExperiments.find(e => e.id === id);
-    if (!originalExperiment) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateValidationExperiment(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.updateExperiment(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.experiments });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating experiment:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalExperiment) {
-        store.updateValidationExperiment(id, originalExperiment);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateExperimentOptimistic = useOptimisticUpdate<'validation_experiments'>({
+    tableName: 'validation_experiments',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.experiments],
+    setSubmitting,
+    methods: {
+      update: 'updateExperiment'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteExperimentOptimistic = useOptimisticDelete({
+    tableName: 'validation_experiments',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.experiments],
+    setSubmitting,
+    methods: {
+      delete: 'deleteExperiment'
+    }
+  });
+
+  // Exposed experiment operations with proper typing
+  const addExperiment = useCallback(async (experiment: Insert<'validation_experiments'>): Promise<ValidationExperiment | null> => {
+    return addExperimentOptimistic(experiment);
+  }, [addExperimentOptimistic]);
+
+  const updateExperiment = useCallback(async (params: { id: string; data: Update<'validation_experiments'> }): Promise<ValidationExperiment | null> => {
+    return updateExperimentOptimistic(params.id, params.data);
+  }, [updateExperimentOptimistic]);
 
   const deleteExperiment = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalExperiments = [...store.currentData.validationExperiments];
-    const experimentToDelete = originalExperiments.find(e => e.id === id);
-    if (!experimentToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteValidationExperiment(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        validationService.deleteExperiment(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.experiments });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting experiment:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setValidationExperiments(originalExperiments);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteExperimentOptimistic(id);
+  }, [deleteExperimentOptimistic]);
 
   // === AB Tests Operations ===
-  const addABTest = useCallback(async (test: Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationABTest | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeTest: ValidationABTest = {
-      ...test,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalTests = [...store.currentData.validationABTests];
-    
-    try {
-      // 1. Update store optimistically
-      store.addValidationABTest(completeTest);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.addABTest(projectId, test)
-      );
-      
-      // 3. Update store with real ID
-      store.updateValidationABTest(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.abTests });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding AB test:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setValidationABTests(originalTests);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addABTestOptimistic = useOptimisticCreate<'validation_ab_tests'>({
+    projectId,
+    tableName: 'validation_ab_tests',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.abTests],
+    setSubmitting,
+    methods: {
+      add: 'addABTest'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateABTest = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationABTest | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalTest = store.currentData.validationABTests.find(t => t.id === id);
-    if (!originalTest) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateValidationABTest(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.updateABTest(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.abTests });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating AB test:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalTest) {
-        store.updateValidationABTest(id, originalTest);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateABTestOptimistic = useOptimisticUpdate<'validation_ab_tests'>({
+    tableName: 'validation_ab_tests',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.abTests],
+    setSubmitting,
+    methods: {
+      update: 'updateABTest'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteABTestOptimistic = useOptimisticDelete({
+    tableName: 'validation_ab_tests',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.abTests],
+    setSubmitting,
+    methods: {
+      delete: 'deleteABTest'
+    }
+  });
+
+  // Exposed AB Test operations with proper typing
+  const addABTest = useCallback(async (abTest: Insert<'validation_ab_tests'>): Promise<ValidationABTest | null> => {
+    return addABTestOptimistic(abTest);
+  }, [addABTestOptimistic]);
+
+  const updateABTest = useCallback(async (params: { id: string; data: Update<'validation_ab_tests'> }): Promise<ValidationABTest | null> => {
+    return updateABTestOptimistic(params.id, params.data);
+  }, [updateABTestOptimistic]);
 
   const deleteABTest = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalTests = [...store.currentData.validationABTests];
-    const testToDelete = originalTests.find(t => t.id === id);
-    if (!testToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteValidationABTest(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        validationService.deleteABTest(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.abTests });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting AB test:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setValidationABTests(originalTests);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteABTestOptimistic(id);
+  }, [deleteABTestOptimistic]);
 
   // === User Feedback Operations ===
-  const addUserFeedback = useCallback(async (feedback: Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationUserFeedback | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeFeedback: ValidationUserFeedback = {
-      ...feedback,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalFeedback = [...store.currentData.validationUserFeedback];
-    
-    try {
-      // 1. Update store optimistically
-      store.addValidationUserFeedback(completeFeedback);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.addUserFeedback(projectId, feedback)
-      );
-      
-      // 3. Update store with real ID
-      store.updateValidationUserFeedback(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.userFeedback });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding user feedback:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setValidationUserFeedback(originalFeedback);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addUserFeedbackOptimistic = useOptimisticCreate<'validation_user_feedback'>({
+    projectId,
+    tableName: 'validation_user_feedback',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.userFeedback],
+    setSubmitting,
+    methods: {
+      add: 'addUserFeedback'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateUserFeedback = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationUserFeedback, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationUserFeedback | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalFeedback = store.currentData.validationUserFeedback.find(f => f.id === id);
-    if (!originalFeedback) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateValidationUserFeedback(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.updateUserFeedback(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.userFeedback });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating user feedback:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalFeedback) {
-        store.updateValidationUserFeedback(id, originalFeedback);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateUserFeedbackOptimistic = useOptimisticUpdate<'validation_user_feedback'>({
+    tableName: 'validation_user_feedback',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.userFeedback],
+    setSubmitting,
+    methods: {
+      update: 'updateUserFeedback'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteUserFeedbackOptimistic = useOptimisticDelete({
+    tableName: 'validation_user_feedback',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.userFeedback],
+    setSubmitting,
+    methods: {
+      delete: 'deleteUserFeedback'
+    }
+  });
+
+  // Exposed User Feedback operations with proper typing
+  const addUserFeedback = useCallback(async (feedback: Insert<'validation_user_feedback'>): Promise<ValidationUserFeedback | null> => {
+    return addUserFeedbackOptimistic(feedback);
+  }, [addUserFeedbackOptimistic]);
+
+  const updateUserFeedback = useCallback(async (params: { id: string; data: Update<'validation_user_feedback'> }): Promise<ValidationUserFeedback | null> => {
+    return updateUserFeedbackOptimistic(params.id, params.data);
+  }, [updateUserFeedbackOptimistic]);
 
   const deleteUserFeedback = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalFeedback = [...store.currentData.validationUserFeedback];
-    const feedbackToDelete = originalFeedback.find(f => f.id === id);
-    if (!feedbackToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteValidationUserFeedback(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        validationService.deleteUserFeedback(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.userFeedback });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting user feedback:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setValidationUserFeedback(originalFeedback);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteUserFeedbackOptimistic(id);
+  }, [deleteUserFeedbackOptimistic]);
 
   // === Hypotheses Operations ===
-  const addHypothesis = useCallback(async (hypothesis: Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>): Promise<ValidationHypothesis | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeHypothesis: ValidationHypothesis = {
-      ...hypothesis,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalHypotheses = [...store.currentData.validationHypotheses];
-    
-    try {
-      // 1. Update store optimistically
-      store.addValidationHypothesis(completeHypothesis);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.addHypothesis(projectId, hypothesis)
-      );
-      
-      // 3. Update store with real ID
-      store.updateValidationHypothesis(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.hypotheses });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding hypothesis:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setValidationHypotheses(originalHypotheses);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addHypothesisOptimistic = useOptimisticCreate<'validation_hypotheses'>({
+    projectId,
+    tableName: 'validation_hypotheses',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.hypotheses],
+    setSubmitting,
+    methods: {
+      add: 'addHypothesis'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateHypothesis = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<ValidationHypothesis, 'id' | 'created_at' | 'updated_at'>> }): Promise<ValidationHypothesis | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalHypothesis = store.currentData.validationHypotheses.find(h => h.id === id);
-    if (!originalHypothesis) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateValidationHypothesis(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        validationService.updateHypothesis(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.hypotheses });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating hypothesis:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalHypothesis) {
-        store.updateValidationHypothesis(id, originalHypothesis);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateHypothesisOptimistic = useOptimisticUpdate<'validation_hypotheses'>({
+    tableName: 'validation_hypotheses',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.hypotheses],
+    setSubmitting,
+    methods: {
+      update: 'updateHypothesis'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteHypothesisOptimistic = useOptimisticDelete({
+    tableName: 'validation_hypotheses',
+    store,
+    service: validationService,
+    queryClient,
+    queryKey: [...queryKeys.hypotheses],
+    setSubmitting,
+    methods: {
+      delete: 'deleteHypothesis'
+    }
+  });
+
+  // Exposed Hypothesis operations with proper typing
+  const addHypothesis = useCallback(async (hypothesis: Insert<'validation_hypotheses'>): Promise<ValidationHypothesis | null> => {
+    return addHypothesisOptimistic(hypothesis);
+  }, [addHypothesisOptimistic]);
+
+  const updateHypothesis = useCallback(async (params: { id: string; data: Update<'validation_hypotheses'> }): Promise<ValidationHypothesis | null> => {
+    return updateHypothesisOptimistic(params.id, params.data);
+  }, [updateHypothesisOptimistic]);
 
   const deleteHypothesis = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalHypotheses = [...store.currentData.validationHypotheses];
-    const hypothesisToDelete = originalHypotheses.find(h => h.id === id);
-    if (!hypothesisToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteValidationHypothesis(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        validationService.deleteHypothesis(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.hypotheses });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting hypothesis:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setValidationHypotheses(originalHypotheses);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteHypothesisOptimistic(id);
+  }, [deleteHypothesisOptimistic]);
 
   // Diff helpers
   const getExperimentChangeType = useCallback((id: string): ChangeType => 
@@ -743,7 +456,7 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     // Data queries
     data,
     isLoading,
-    error,
+    error: error || queryError,
 
     // Experiments
     addExperiment,

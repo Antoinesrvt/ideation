@@ -1,14 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { GRPService, GRPModel } from '@/lib/services/features/grp-service';
+import { GRPService, GRPModel, GRPCategory } from '@/lib/services/features/grp-service';
 import { grpService } from '@/lib/services';
 import { useProjectStore } from '@/store';
-import type { 
-  GrpCategory, 
-  GrpSection, 
-  GrpItem,
-  ChangeType
-} from '@/store/types';
+import type { GrpCategory as GrpCategoryType, GrpSection, GrpItem, ChangeType, Insert, Update } from '@/store/types';
+import { Database } from '@/types/database';
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
+
 
 // Constants for retry logic
 const MAX_RETRIES = 3;
@@ -35,9 +33,9 @@ export interface UseGRPReturn {
   error: Error | null;
 
   // Core operations
-  addItem: (category: string | GrpCategory, section: string, item: NewGRPItem) => Promise<GrpItem | null>;
-  updateItem: (category: string | GrpCategory, section: string, id: string, data: Partial<NewGRPItem>) => Promise<GrpItem | null>;
-  deleteItem: (category: string | GrpCategory, section: string, id: string) => Promise<boolean>;
+  addItem: (category: string | GRPCategory, section: string, item: Insert<'grp_items'>) => Promise<GrpItem | null>;
+  updateItem: (category: string | GRPCategory, section: string, id: string, data: Update<'grp_items'>) => Promise<GrpItem | null>;
+  deleteItem: (category: string | GRPCategory, section: string, id: string) => Promise<boolean>;
 
   // Diff helpers
   getItemChangeType: (id: string) => ChangeType;
@@ -89,6 +87,7 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
     all: ['grp', projectId] as const,
     categories: ['grp', projectId, 'categories'] as const,
     sections: ['grp', projectId, 'sections'] as const,
+    items: ['grp', projectId, 'items'] as const,
     model: ['grp', projectId, 'model'] as const,
   }), [projectId]);
 
@@ -129,7 +128,7 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
       // Collect sections from all categories
       const allSections: GrpSection[] = [];
       for (const category of categoriesData) {
-        const sections = await grpService.getSections(projectId, category.id);
+        const sections = await grpService.getSections(projectId);
         allSections.push(...sections);
       }
       return allSections;
@@ -227,7 +226,7 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
 
   // Helper function to transform the store data into a GRP model
   function buildGRPModelFromStoreData(data: {
-    grpCategories: GrpCategory[];
+    grpCategories: GrpCategoryType[];
     grpSections: GrpSection[];
     grpItems: ExtendedGrpItem[];
   }): GRPModel {
@@ -249,37 +248,36 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
         ecosysteme: []
       }
     };
-    
-    // Map sections to their respective categories
-    const sectionToCategory = new Map<string, string>();
-    data.grpSections.forEach(section => {
-      const category = data.grpCategories.find(c => c.id === section.category_id);
-      if (category && category.category_type) {
-        sectionToCategory.set(section.id, category.category_type);
-      }
-    });
-    
-    // Organize items into their respective categories and sections
-    data.grpItems.forEach(item => {
-      const sectionId = item.section_id;
-      if (!sectionId) return;
-      
-      const categoryType = sectionToCategory.get(sectionId);
-      if (!categoryType) return;
-      
+
+    // Helper function to map section IDs to model sections
+    const getSectionMapping = (sectionId: string): { category: keyof GRPModel; section: string } | null => {
       const section = data.grpSections.find(s => s.id === sectionId);
-      if (!section || !section.name) return;
+      if (!section) return null;
+
+      // Extract category and section from the section_type
+      // Assume section_type format is "category_sectionName"
+      const parts = section.section_type?.split('_');
+      if (parts?.length !== 2) return null;
+
+      return {
+        category: parts[0] as keyof GRPModel,
+        section: parts[1]
+      };
+    };
+
+    // Populate model with items
+    data.grpItems.forEach(item => {
+      if (!item.section_id) return;
+
+      const mapping = getSectionMapping(item.section_id);
+      if (!mapping) return;
+
+      const { category, section } = mapping;
       
-      // Map section names to the appropriate model key
-      // Convert section name (e.g., "Proposition Valeur") to camelCase (e.g., "propositionValeur")
-      const sectionKey = section.name.replace(/\s+(.)/g, (_, c) => c.toLowerCase());
-      
-      // Place the item in the appropriate section of the model
-      if (categoryType in model && sectionKey in model[categoryType as keyof GRPModel]) {
-        (model[categoryType as keyof GRPModel] as any)[sectionKey].push(item);
-      }
+      // Type assertion to access dynamic property
+      (model[category] as any)[section].push(item);
     });
-    
+
     return model;
   }
 
@@ -287,227 +285,166 @@ export function useGRP(projectId: string | undefined): UseGRPReturn {
   const isLoading = grpModelLoading || categoriesLoading || sectionsLoading;
   const queryError = grpModelError || categoriesError || sectionsError;
 
-  // === Core Operations ===
+  // Create optimistic helpers base
+  const addItemOptimistic = useOptimisticCreate<'grp_items'>({
+    projectId,
+    tableName: 'grp_items',
+    store,
+    service: grpService,
+    queryClient,
+    queryKey: [...queryKeys.items],
+    setSubmitting
+  });
+
+  const updateItemOptimistic = useOptimisticUpdate<'grp_items'>({
+    tableName: 'grp_items',
+    store,
+    service: grpService,
+    queryClient,
+    queryKey: [...queryKeys.items],
+    setSubmitting
+  });
+
+  const deleteItemOptimistic = useOptimisticDelete({
+    tableName: 'grp_items',
+    store,
+    service: grpService,
+    queryClient,
+    queryKey: [...queryKeys.items],
+    setSubmitting
+  });
+
+  // === Core Operations with Category and Section Context ===
   const addItem = useCallback(async (
-    category: string | GrpCategory, 
+    category: string | GRPCategory, 
     section: string, 
-    item: NewGRPItem
+    item: Insert<'grp_items'>
   ): Promise<GrpItem | null> => {
-    if (!projectId) return null;
+    if (!projectId || !sectionsData) return null;
     
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
+    // Ensure category is a string
+    const categoryKey = typeof category === 'string' 
+      ? category 
+      : (category as { category_type?: string }).category_type || 'generation';
     
-    // Create complete item with temp ID
-    const completeItem: GrpItem = {
-      ...item,
-      id: tempId,
-      project_id: projectId,
-      section_id: '', // Will be set by the service
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+    // Find the section ID that matches the category and section
+    const sectionObj = sectionsData.find(s => 
+      s.section_type === `${categoryKey}_${section}`
+    );
     
-    // Track original store state for possible rollback
-    const originalItems = [...store.currentData.grpItems];
-    
-    try {
-      // 1. Update store optimistically
-      store.addGrpItem(completeItem);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => {
-        // Need to convert from GrpCategory (database row) to GRPCategory (string enum)
-        // GRPCategory is one of: 'generation', 'remuneration', 'partage'
-        let categoryKey: string;
-        
-        if (typeof category === 'string') {
-          // If it's already a string, use it directly
-          categoryKey = category;
-        } else if (typeof category === 'object' && category !== null) {
-          // If it's a GrpCategory object from the database, extract the category_type
-          categoryKey = category.category_type || 'generation';
-        } else {
-          // Default fallback
-          categoryKey = 'generation';
-        }
-        
-        // Make sure it's one of the valid GRPCategory values
-        const validCategoryKey = ['generation', 'remuneration', 'partage'].includes(categoryKey)
-          ? categoryKey as 'generation' | 'remuneration' | 'partage'
-          : 'generation';
-          
-        return grpService.addItem(projectId, validCategoryKey, section, item);
-      });
-      
-      // 3. Update store with real ID
-      store.updateGrpItem(tempId, { 
-        id: result.id,
-        section_id: result.section_id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding GRP item:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setGrpItems(originalItems);
-      
-      setError(err as Error);
+    if (!sectionObj) {
+      console.error(`Section ${section} in category ${categoryKey} not found`);
       return null;
-    } finally {
-      setSubmitting(false);
     }
-  }, [projectId, store, queryClient, queryKeys.all]);
+    
+    // Add section_id to the item
+    const itemWithSection = {
+      ...item,
+      section_id: sectionObj.id
+    } as Insert<'grp_items'>;
+    
+    // Use the optimistic helper for the actual operation
+    return addItemOptimistic(itemWithSection);
+  }, [projectId, sectionsData, addItemOptimistic]);
 
   const updateItem = useCallback(async (
-    category: string | GrpCategory, 
+    category: string | GRPCategory, 
     section: string, 
     id: string, 
-    data: Partial<NewGRPItem>
+    data: Update<'grp_items'>
   ): Promise<GrpItem | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalItem = store.currentData.grpItems.find(i => i.id === id);
-    if (!originalItem) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateGrpItem(id, data);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        grpService.updateItem(id, data)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating GRP item:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalItem) {
-        store.updateGrpItem(id, originalItem);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys.all]);
+    // We don't need the category and section parameters for update operations
+    // But we keep them for API consistency
+    return updateItemOptimistic(id, data);
+  }, [updateItemOptimistic]);
 
   const deleteItem = useCallback(async (
-    category: string | GrpCategory, 
+    category: string | GRPCategory, 
     section: string, 
     id: string
   ): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalItems = [...store.currentData.grpItems];
-    const itemToDelete = originalItems.find(i => i.id === id);
-    if (!itemToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteGrpItem(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        grpService.deleteItem(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting GRP item:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setGrpItems(originalItems);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys.all]);
+    // We don't need the category and section parameters for delete operations
+    // But we keep them for API consistency
+    return deleteItemOptimistic(id);
+  }, [deleteItemOptimistic]);
 
-  // === Helper Functions ===
+  // === Diff Helpers ===
+  const getItemChangeType = useCallback((id: string): ChangeType => 
+    store.getItemChangeType('grpItems', id), [store]);
+
+  const getCategoryChangeType = useCallback((id: string): ChangeType => 
+    store.getItemChangeType('grpCategories', id), [store]);
+
+  const getSectionChangeType = useCallback((id: string): ChangeType => 
+    store.getItemChangeType('grpSections', id), [store]);
+
+  // === Analytics ===
   const getAllItems = useCallback((): ExtendedGrpItem[] => {
-    return storeData.grpItems;
-  }, [storeData.grpItems]);
-
-  const getGRPMetrics = useCallback(() => {
-    const items = getAllItems();
-    if (items.length === 0) return null;
+    const allItems: ExtendedGrpItem[] = [];
     
-    const categoryCounts: Record<string, number> = {};
-    
-    items.forEach(item => {
-      const categoryType = item.categoryType;
-      if (!categoryCounts[categoryType]) {
-        categoryCounts[categoryType] = 0;
-      }
-      categoryCounts[categoryType]++;
+    // Loop through the model to get all items with their category and section context
+    Object.entries(model).forEach(([categoryName, categorySections]) => {
+      Object.entries(categorySections).forEach(([sectionName, items]) => {
+        // Add category and section information to each item
+        allItems.push(...(items as GrpItem[]).map(item => ({
+          ...item,
+          categoryType: categoryName,
+          sectionName: sectionName
+        })));
+      });
     });
     
+    return allItems;
+  }, [model]);
+
+  const getGRPMetrics = useCallback(() => {
+    const allItems = getAllItems();
+    if (allItems.length === 0) return null;
+
+    // Count items by category
+    const categoryCounts: Record<string, number> = {
+      generation: 0,
+      remuneration: 0,
+      partage: 0
+    };
+    
+    allItems.forEach(item => {
+      if (item.categoryType in categoryCounts) {
+        categoryCounts[item.categoryType]++;
+      }
+    });
+
+    // Find most and least populated categories
     const categories = Object.keys(categoryCounts);
     const mostPopulatedCategory = categories.reduce((a, b) => 
       categoryCounts[a] > categoryCounts[b] ? a : b, categories[0]);
     const leastPopulatedCategory = categories.reduce((a, b) => 
       categoryCounts[a] < categoryCounts[b] ? a : b, categories[0]);
-    
-    const totalItems = items.length;
-    const itemsWithPercentage = items.filter(item => item.percentage !== null).length;
-    const itemsWithoutPercentage = totalItems - itemsWithPercentage;
-    
+
+    // Count items with percentage data
+    const itemsWithPercentage = allItems.filter(item => item.percentage !== null).length;
+    const itemsWithoutPercentage = allItems.length - itemsWithPercentage;
+
+    // Calculate completion percentage
+    const totalSections = 9; // 3 categories × 3 sections each
+    const populatedSections = new Set(allItems.map(item => `${item.categoryType}_${item.sectionName}`)).size;
+    const completionPercentage = Math.round((populatedSections / totalSections) * 100);
+
     return {
-      totalItems,
+      totalItems: allItems.length,
       itemsWithPercentage,
       itemsWithoutPercentage,
       categoryCounts,
       mostPopulatedCategory,
       leastPopulatedCategory,
-      completionPercentage: totalItems > 0 
-        ? (itemsWithPercentage / totalItems) * 100 
-        : 0
+      completionPercentage
     };
   }, [getAllItems]);
-
-  // Diff helpers
-  const getItemChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('grpItems', id), [store]);
-  
-  const getCategoryChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('grpCategories', id), [store]);
-  
-  const getSectionChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('grpSections', id), [store]);
 
   return {
     data: model,
     isLoading,
-    error: queryError,
+    error: error || queryError,
 
     // Core operations
     addItem,

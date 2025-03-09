@@ -1,7 +1,11 @@
 import { Database } from '@/types/database';
 
 // Database table types
-type TablesRow<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
+export type TablesRow<T extends keyof Database['public']['Tables']> =
+  Database["public"]["Tables"][T]["Row"];
+// Define Insert types based on the Database types
+export type Insert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
+export type Update<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update'];
 
 // Project types
 export type Project = TablesRow<'projects'>;
@@ -408,18 +412,60 @@ export interface DiffMetadata {
   featureItemTags?: FeatureDiff;
 }
 
-export interface ProjectStore extends ProjectState, ProjectActions {
-  // UI state
-  comparisonMode: boolean;
+// Optimistic update types
+export type OptimisticOperation = 'create' | 'update' | 'delete';
+
+export interface OptimisticItem<T> {
+  id: string;
+  isOptimistic: boolean;
+  pendingOperation: OptimisticOperation;
+  data: T;
+  originalId?: string; // For tracking updates to existing items
+  tableName: string;
+}
+
+export interface OptimisticItemsState {
+  // Key is the temporary ID for optimistic items
+  [id: string]: OptimisticItem<any>;
+}
+
+export interface OptimisticStoreActions {
+  // Add an optimistic item that will be replaced with the real item after API call
+  addOptimisticItem: <T extends object>(
+    tempId: string, 
+    tableName: string, 
+    data: T, 
+    operation: OptimisticOperation
+  ) => void;
   
-  // Diff metadata
+  // Replace a temporary optimistic item with the real one from the server
+  replaceOptimisticItem: <T extends object>(
+    tempId: string, 
+    realItem: T
+  ) => void;
+  
+  // Remove an optimistic item (e.g., on error)
+  removeOptimisticItem: (
+    tempId: string
+  ) => void;
+  
+  // Get a list of all optimistic items
+  getOptimisticItems: () => OptimisticItemsState;
+  
+  // Check if an item is an optimistic one
+  isOptimisticItem: (id: string) => boolean;
+  
+  // Helper to map table names to feature keys
+  getFeatureKeyFromTable: (tableName: string) => keyof ProjectState['currentData'] | null;
+}
+
+export type ProjectStore = ProjectState & ProjectActions & OptimisticStoreActions & {
+  comparisonMode: boolean;
   diffMetadata: DiffMetadata;
   
-  // Change tracking actions
+  // Diff tracking
   calculateDiff: () => void;
   getItemChangeType: (feature: keyof ProjectState['currentData'], id: string) => ChangeType;
-  
-  // Selective change application
   applySelectedChanges: (changeSelections: Record<string, boolean>) => void;
   discardSelectedChanges: (changeSelections: Record<string, boolean>) => void;
-} 
+}; 

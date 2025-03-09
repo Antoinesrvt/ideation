@@ -1,8 +1,12 @@
 import { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import type { 
   CanvasSection,
-  CanvasItem
+  CanvasItem,
+  Insert,
+  Update
 } from '@/store/types';
+import type { Database } from '@/types/database';
+
 
 export interface BusinessModelCanvas {
   keyPartners: CanvasItem[];
@@ -17,6 +21,11 @@ export interface BusinessModelCanvas {
 }
 
 export type CanvasSectionKey = keyof BusinessModelCanvas;
+
+export interface BusinessModelData {
+  sections: CanvasSection[];
+  items: CanvasItem[];
+}
 
 export class BusinessModelService {
   constructor(private supabase: SupabaseClient) {}
@@ -35,67 +44,98 @@ export class BusinessModelService {
     return section.replace(/([A-Z])/g, '_$1').toLowerCase();
   }
 
-  // === Sections ===
-  async getSections(projectId: string): Promise<CanvasSection[]> {
+  // === Canvas Sections ===
+  async getCanvasSections(projectId: string): Promise<CanvasSection[]> {
     try {
       const { data, error } = await this.supabase
         .from('canvas_sections')
         .select('*')
         .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .order('position');
 
-      if (error) this.handleError(error, 'getSections');
+      if (error) this.handleError(error, 'getCanvasSections');
       return data || [];
     } catch (error) {
-      this.handleError(error as Error, 'getSections');
+      this.handleError(error as Error, 'getCanvasSections');
     }
   }
 
-  // === Items ===
-  async getItems(projectId: string, sectionId: string): Promise<CanvasItem[]> {
+  async addCanvasSection(projectId: string, data: Insert<'canvas_sections'>): Promise<CanvasSection> {
+    try {
+      const { data: section, error } = await this.supabase
+        .from('canvas_sections')
+        .insert({ ...data, project_id: projectId })
+        .select()
+        .single();
+      
+      if (error) this.handleError(error, 'addCanvasSection');
+      return section;
+    } catch (error) {
+      this.handleError(error as Error, 'addCanvasSection');
+    }
+  }
+
+  async updateCanvasSection(id: string, data: Update<'canvas_sections'>): Promise<CanvasSection> {
+    try {
+      const { data: section, error } = await this.supabase
+        .from('canvas_sections')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) this.handleError(error, 'updateCanvasSection');
+      return section;
+    } catch (error) {
+      this.handleError(error as Error, 'updateCanvasSection');
+    }
+  }
+
+  async deleteCanvasSection(id: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('canvas_sections')
+        .delete()
+        .eq('id', id);
+      
+      if (error) this.handleError(error, 'deleteCanvasSection');
+    } catch (error) {
+      this.handleError(error as Error, 'deleteCanvasSection');
+    }
+  }
+
+  // === Canvas Items ===
+  async getCanvasItems(projectId: string): Promise<CanvasItem[]> {
     try {
       const { data, error } = await this.supabase
         .from('canvas_items')
         .select('*')
         .eq('project_id', projectId)
-        .eq('section_id', sectionId)
-        .order('order_index', { ascending: true });
+        .order('created_at', { ascending: false });
 
-      if (error) this.handleError(error, 'getItems');
+      if (error) this.handleError(error, 'getCanvasItems');
       return data || [];
     } catch (error) {
-      this.handleError(error as Error, 'getItems');
+      this.handleError(error as Error, 'getCanvasItems');
     }
   }
 
-  async addItem(
-    projectId: string,
-    section: CanvasSectionKey,
-    data: Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'section_id' | 'project_id'>
-  ): Promise<CanvasItem> {
+  async addCanvasItem(projectId: string, data: Insert<'canvas_items'>): Promise<CanvasItem> {
     try {
-      const sectionId = this.getSectionId(section);
       const { data: item, error } = await this.supabase
         .from('canvas_items')
-        .insert({
-          ...data,
-          project_id: projectId,
-          section_id: sectionId
-        })
+        .insert({ ...data, project_id: projectId })
         .select()
         .single();
-
-      if (error) this.handleError(error, 'addItem');
+      
+      if (error) this.handleError(error, 'addCanvasItem');
       return item;
     } catch (error) {
-      this.handleError(error as Error, 'addItem');
+      this.handleError(error as Error, 'addCanvasItem');
     }
   }
 
-  async updateItem(
-    id: string,
-    data: Partial<Omit<CanvasItem, 'id' | 'created_at' | 'updated_at' | 'section_id' | 'project_id'>>
-  ): Promise<CanvasItem> {
+  async updateCanvasItem(id: string, data: Update<'canvas_items'>): Promise<CanvasItem> {
     try {
       const { data: item, error } = await this.supabase
         .from('canvas_items')
@@ -103,88 +143,41 @@ export class BusinessModelService {
         .eq('id', id)
         .select()
         .single();
-
-      if (error) this.handleError(error, 'updateItem');
+      
+      if (error) this.handleError(error, 'updateCanvasItem');
       return item;
     } catch (error) {
-      this.handleError(error as Error, 'updateItem');
+      this.handleError(error as Error, 'updateCanvasItem');
     }
   }
 
-  async deleteItem(id: string): Promise<void> {
+  async deleteCanvasItem(id: string): Promise<void> {
     try {
       const { error } = await this.supabase
         .from('canvas_items')
         .delete()
         .eq('id', id);
-
-      if (error) this.handleError(error, 'deleteItem');
+      
+      if (error) this.handleError(error, 'deleteCanvasItem');
     } catch (error) {
-      this.handleError(error as Error, 'deleteItem');
-    }
-  }
-
-  async moveItem(
-    id: string,
-    fromSection: CanvasSectionKey,
-    toSection: CanvasSectionKey
-  ): Promise<CanvasItem> {
-    try {
-      const toSectionId = this.getSectionId(toSection);
-      const { data: item, error } = await this.supabase
-        .from('canvas_items')
-        .update({ section_id: toSectionId })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) this.handleError(error, 'moveItem');
-      return item;
-    } catch (error) {
-      this.handleError(error as Error, 'moveItem');
+      this.handleError(error as Error, 'deleteCanvasItem');
     }
   }
 
   // === Batch Operations ===
-  async getAllCanvasData(projectId: string): Promise<BusinessModelCanvas> {
+  async getAllBusinessModelData(projectId: string): Promise<BusinessModelData> {
     try {
-      // Get all items for the project
-      const { data: items, error } = await this.supabase
-        .from('canvas_items')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('order_index', { ascending: true });
+      const [sections, items] = await Promise.all([
+        this.getCanvasSections(projectId),
+        this.getCanvasItems(projectId)
+      ]);
 
-      if (error) this.handleError(error, 'getAllCanvasData');
-
-      // Initialize empty canvas
-      const canvas: BusinessModelCanvas = {
-        keyPartners: [],
-        keyActivities: [],
-        keyResources: [],
-        valuePropositions: [],
-        customerRelationships: [],
-        channels: [],
-        customerSegments: [],
-        costStructure: [],
-        revenueStreams: []
+      return {
+        sections,
+        items
       };
-
-      // Organize items into their respective sections
-      items?.forEach(item => {
-        const sectionId = item.section_id;
-        const section = Object.keys(canvas).find(key => 
-          this.getSectionId(key as CanvasSectionKey) === sectionId
-        ) as keyof BusinessModelCanvas | undefined;
-
-        if (section) {
-          canvas[section].push(item);
-        }
-      });
-
-      return canvas;
     } catch (error) {
-      this.handleError(error as Error, 'getAllCanvasData');
+      this.handleError(error as Error, 'getAllBusinessModelData');
     }
   }
 } 

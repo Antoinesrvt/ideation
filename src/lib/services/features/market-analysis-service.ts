@@ -3,8 +3,12 @@ import type {
   MarketPersona,
   MarketInterview,
   MarketCompetitor,
-  MarketTrend
+  MarketTrend,
+  Insert,
+  Update
 } from '@/store/types';
+import type { Database } from '@/types/database';
+
 
 export interface MarketAnalysisData {
   personas: MarketPersona[];
@@ -36,7 +40,7 @@ export class MarketAnalysisService {
     return data || [];
   }
 
-  async addPersona(projectId: string, data: Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>): Promise<MarketPersona> {
+  async addPersona(projectId: string, data: Insert<'market_personas'>): Promise<MarketPersona> {
     const { data: persona, error } = await this.supabase
       .from('market_personas')
       .insert({ ...data, project_id: projectId })
@@ -47,7 +51,7 @@ export class MarketAnalysisService {
     return persona;
   }
 
-  async updatePersona(id: string, data: Partial<Omit<MarketPersona, 'id' | 'created_at' | 'updated_at'>>): Promise<MarketPersona> {
+  async updatePersona(id: string, data: Update<'market_personas'>): Promise<MarketPersona> {
     const { data: persona, error } = await this.supabase
       .from('market_personas')
       .update(data)
@@ -79,7 +83,7 @@ export class MarketAnalysisService {
     return data || [];
   }
 
-  async addInterview(projectId: string, data: Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>): Promise<MarketInterview> {
+  async addInterview(projectId: string, data: Insert<'market_interviews'>): Promise<MarketInterview> {
     const { data: interview, error } = await this.supabase
       .from('market_interviews')
       .insert({ ...data, project_id: projectId })
@@ -90,7 +94,7 @@ export class MarketAnalysisService {
     return interview;
   }
 
-  async updateInterview(id: string, data: Partial<Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>>): Promise<MarketInterview> {
+  async updateInterview(id: string, data: Update<'market_interviews'>): Promise<MarketInterview> {
     const { data: interview, error } = await this.supabase
       .from('market_interviews')
       .update(data)
@@ -122,7 +126,7 @@ export class MarketAnalysisService {
     return data || [];
   }
 
-  async addCompetitor(projectId: string, data: Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>): Promise<MarketCompetitor> {
+  async addCompetitor(projectId: string, data: Insert<'market_competitors'>): Promise<MarketCompetitor> {
     const { data: competitor, error } = await this.supabase
       .from('market_competitors')
       .insert({ ...data, project_id: projectId })
@@ -133,7 +137,7 @@ export class MarketAnalysisService {
     return competitor;
   }
 
-  async updateCompetitor(id: string, data: Partial<Omit<MarketCompetitor, 'id' | 'created_at' | 'updated_at'>>): Promise<MarketCompetitor> {
+  async updateCompetitor(id: string, data: Update<'market_competitors'>): Promise<MarketCompetitor> {
     const { data: competitor, error } = await this.supabase
       .from('market_competitors')
       .update(data)
@@ -165,7 +169,7 @@ export class MarketAnalysisService {
     return data || [];
   }
 
-  async addTrend(projectId: string, data: Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>): Promise<MarketTrend> {
+  async addTrend(projectId: string, data: Insert<'market_trends'>): Promise<MarketTrend> {
     const { data: trend, error } = await this.supabase
       .from('market_trends')
       .insert({ ...data, project_id: projectId })
@@ -176,7 +180,7 @@ export class MarketAnalysisService {
     return trend;
   }
 
-  async updateTrend(id: string, data: Partial<Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>>): Promise<MarketTrend> {
+  async updateTrend(id: string, data: Update<'market_trends'>): Promise<MarketTrend> {
     const { data: trend, error } = await this.supabase
       .from('market_trends')
       .update(data)
@@ -207,8 +211,8 @@ export class MarketAnalysisService {
     ]);
 
     return {
-        personas,
-        interviews,
+      personas,
+      interviews,
       competitors,
       trends
     };

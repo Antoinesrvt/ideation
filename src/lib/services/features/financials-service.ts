@@ -3,7 +3,9 @@ import type {
   FinancialRevenueStream,
   FinancialCostStructure,
   FinancialPricingStrategy,
-  FinancialProjection
+  FinancialProjection,
+  Insert,
+  Update
 } from '@/store/types';
 
 export interface FinancialsData {
@@ -36,7 +38,7 @@ export class FinancialsService {
     return data || [];
   }
 
-  async addRevenueStream(projectId: string, data: Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialRevenueStream> {
+  async addRevenueStream(projectId: string, data: Insert<'financial_revenue_streams'>): Promise<FinancialRevenueStream> {
     const { data: stream, error } = await this.supabase
       .from('financial_revenue_streams')
       .insert({ ...data, project_id: projectId })
@@ -47,7 +49,7 @@ export class FinancialsService {
     return stream;
   }
 
-  async updateRevenueStream(id: string, data: Partial<Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>>): Promise<FinancialRevenueStream> {
+  async updateRevenueStream(id: string, data: Update<'financial_revenue_streams'>): Promise<FinancialRevenueStream> {
     const { data: stream, error } = await this.supabase
       .from('financial_revenue_streams')
       .update(data)
@@ -79,7 +81,7 @@ export class FinancialsService {
     return data || [];
   }
 
-  async addCostStructure(projectId: string, data: Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialCostStructure> {
+  async addCostStructure(projectId: string, data: Insert<'financial_cost_structure'>): Promise<FinancialCostStructure> {
     const { data: cost, error } = await this.supabase
       .from('financial_cost_structure')
       .insert({ ...data, project_id: projectId })
@@ -90,7 +92,7 @@ export class FinancialsService {
     return cost;
   }
 
-  async updateCostStructure(id: string, data: Partial<Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>>): Promise<FinancialCostStructure> {
+  async updateCostStructure(id: string, data: Update<'financial_cost_structure'>): Promise<FinancialCostStructure> {
     const { data: cost, error } = await this.supabase
       .from('financial_cost_structure')
       .update(data)
@@ -122,7 +124,7 @@ export class FinancialsService {
     return data || [];
   }
 
-  async addPricingStrategy(projectId: string, data: Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialPricingStrategy> {
+  async addPricingStrategy(projectId: string, data: Insert<'financial_pricing_strategies'>): Promise<FinancialPricingStrategy> {
     const { data: strategy, error } = await this.supabase
       .from('financial_pricing_strategies')
       .insert({ ...data, project_id: projectId })
@@ -133,7 +135,7 @@ export class FinancialsService {
     return strategy;
   }
 
-  async updatePricingStrategy(id: string, data: Partial<Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>>): Promise<FinancialPricingStrategy> {
+  async updatePricingStrategy(id: string, data: Update<'financial_pricing_strategies'>): Promise<FinancialPricingStrategy> {
     const { data: strategy, error } = await this.supabase
       .from('financial_pricing_strategies')
       .update(data)
@@ -165,7 +167,7 @@ export class FinancialsService {
     return data || [];
   }
 
-  async addProjection(projectId: string, data: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialProjection> {
+  async addProjection(projectId: string, data: Insert<'financial_projections'>): Promise<FinancialProjection> {
     const { data: projection, error } = await this.supabase
       .from('financial_projections')
       .insert({ ...data, project_id: projectId })
@@ -176,7 +178,7 @@ export class FinancialsService {
     return projection;
   }
 
-  async updateProjection(id: string, data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>>): Promise<FinancialProjection> {
+  async updateProjection(id: string, data: Update<'financial_projections'>): Promise<FinancialProjection> {
     const { data: projection, error } = await this.supabase
       .from('financial_projections')
       .update(data)

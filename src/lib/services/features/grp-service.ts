@@ -2,8 +2,12 @@ import { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import type { 
   GrpCategory,
   GrpSection,
-  GrpItem
+  GrpItem,
+  Insert,
+  Update
 } from '@/store/types';
+import type { Database } from '@/types/database';
+
 
 export interface GRPModel {
   generation: {
@@ -44,14 +48,14 @@ export class GRPService {
     return `${category}_${sectionType}`;
   }
 
-  // === Categories ===
+  // === GRP Categories ===
   async getCategories(projectId: string): Promise<GrpCategory[]> {
     try {
       const { data, error } = await this.supabase
         .from('grp_categories')
         .select('*')
         .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
+        .order('position');
 
       if (error) this.handleError(error, 'getCategories');
       return data || [];
@@ -60,15 +64,58 @@ export class GRPService {
     }
   }
 
-  // === Sections ===
-  async getSections(projectId: string, categoryId: string): Promise<GrpSection[]> {
+  async addCategory(projectId: string, data: Insert<'grp_categories'>): Promise<GrpCategory> {
+    try {
+      const { data: category, error } = await this.supabase
+        .from('grp_categories')
+        .insert({ ...data, project_id: projectId })
+        .select()
+        .single();
+
+      if (error) this.handleError(error, 'addCategory');
+      return category;
+    } catch (error) {
+      this.handleError(error as Error, 'addCategory');
+    }
+  }
+
+  async updateCategory(id: string, data: Update<'grp_categories'>): Promise<GrpCategory> {
+    try {
+      const { data: category, error } = await this.supabase
+        .from('grp_categories')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) this.handleError(error, 'updateCategory');
+      return category;
+    } catch (error) {
+      this.handleError(error as Error, 'updateCategory');
+    }
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('grp_categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) this.handleError(error, 'deleteCategory');
+    } catch (error) {
+      this.handleError(error as Error, 'deleteCategory');
+    }
+  }
+
+  // === GRP Sections ===
+  async getSections(projectId: string): Promise<GrpSection[]> {
     try {
       const { data, error } = await this.supabase
         .from('grp_sections')
         .select('*')
         .eq('project_id', projectId)
-        .eq('category_id', categoryId)
-        .order('created_at', { ascending: false });
+        .order('position');
 
       if (error) this.handleError(error, 'getSections');
       return data || [];
@@ -77,15 +124,58 @@ export class GRPService {
     }
   }
 
-  // === Items ===
-  async getItems(projectId: string, sectionId: string): Promise<GrpItem[]> {
+  async addSection(projectId: string, data: Insert<'grp_sections'>): Promise<GrpSection> {
+    try {
+      const { data: section, error } = await this.supabase
+        .from('grp_sections')
+        .insert({ ...data, project_id: projectId })
+        .select()
+        .single();
+
+      if (error) this.handleError(error, 'addSection');
+      return section;
+    } catch (error) {
+      this.handleError(error as Error, 'addSection');
+    }
+  }
+
+  async updateSection(id: string, data: Update<'grp_sections'>): Promise<GrpSection> {
+    try {
+      const { data: section, error } = await this.supabase
+        .from('grp_sections')
+        .update(data)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) this.handleError(error, 'updateSection');
+      return section;
+    } catch (error) {
+      this.handleError(error as Error, 'updateSection');
+    }
+  }
+
+  async deleteSection(id: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('grp_sections')
+        .delete()
+        .eq('id', id);
+
+      if (error) this.handleError(error, 'deleteSection');
+    } catch (error) {
+      this.handleError(error as Error, 'deleteSection');
+    }
+  }
+
+  // === GRP Items ===
+  async getItems(projectId: string): Promise<GrpItem[]> {
     try {
       const { data, error } = await this.supabase
         .from('grp_items')
         .select('*')
         .eq('project_id', projectId)
-        .eq('section_id', sectionId)
-        .order('order_index', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) this.handleError(error, 'getItems');
       return data || [];
@@ -94,21 +184,11 @@ export class GRPService {
     }
   }
 
-  async addItem(
-    projectId: string, 
-    category: GRPCategory,
-    section: string,
-    data: Omit<GrpItem, 'id' | 'created_at' | 'updated_at' | 'section_id' | 'project_id'>
-  ): Promise<GrpItem> {
+  async addItem(projectId: string, data: Insert<'grp_items'>): Promise<GrpItem> {
     try {
-      const sectionId = this.getSectionId(category, section);
       const { data: item, error } = await this.supabase
         .from('grp_items')
-        .insert({
-          ...data,
-          project_id: projectId,
-          section_id: sectionId
-        })
+        .insert({ ...data, project_id: projectId })
         .select()
         .single();
 
@@ -119,10 +199,7 @@ export class GRPService {
     }
   }
 
-  async updateItem(
-    id: string,
-    data: Partial<Omit<GrpItem, 'id' | 'created_at' | 'updated_at' | 'section_id' | 'project_id'>>
-  ): Promise<GrpItem> {
+  async updateItem(id: string, data: Update<'grp_items'>): Promise<GrpItem> {
     try {
       const { data: item, error } = await this.supabase
         .from('grp_items')

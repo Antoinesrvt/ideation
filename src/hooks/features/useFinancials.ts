@@ -7,9 +7,12 @@ import type {
   FinancialCostStructure,
   FinancialPricingStrategy,
   FinancialProjection,
-  ChangeType
+  ChangeType,
+  Insert,
+  Update
 } from '@/store/types';
 import { financialsService } from '@/lib/services';
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
 
 export interface UseFinancialsReturn {
   data: FinancialsData;
@@ -17,23 +20,23 @@ export interface UseFinancialsReturn {
   error: Error | null;
 
   // Revenue Streams
-  addRevenueStream: (stream: Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>) => Promise<FinancialRevenueStream | null>;
-  updateRevenueStream: (params: { id: string; data: Partial<Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>> }) => Promise<FinancialRevenueStream | null>;
+  addRevenueStream: (stream: Insert<'financial_revenue_streams'>) => Promise<FinancialRevenueStream | null>;
+  updateRevenueStream: (params: { id: string; data: Update<'financial_revenue_streams'> }) => Promise<FinancialRevenueStream | null>;
   deleteRevenueStream: (id: string) => Promise<boolean>;
 
   // Cost Structure
-  addCostStructure: (cost: Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>) => Promise<FinancialCostStructure | null>;
-  updateCostStructure: (params: { id: string; data: Partial<Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>> }) => Promise<FinancialCostStructure | null>;
+  addCostStructure: (cost: Insert<'financial_cost_structure'>) => Promise<FinancialCostStructure | null>;
+  updateCostStructure: (params: { id: string; data: Update<'financial_cost_structure'> }) => Promise<FinancialCostStructure | null>;
   deleteCostStructure: (id: string) => Promise<boolean>;
 
   // Pricing Strategies
-  addPricingStrategy: (strategy: Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>) => Promise<FinancialPricingStrategy | null>;
-  updatePricingStrategy: (params: { id: string; data: Partial<Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>> }) => Promise<FinancialPricingStrategy | null>;
+  addPricingStrategy: (strategy: Insert<'financial_pricing_strategies'>) => Promise<FinancialPricingStrategy | null>;
+  updatePricingStrategy: (params: { id: string; data: Update<'financial_pricing_strategies'> }) => Promise<FinancialPricingStrategy | null>;
   deletePricingStrategy: (id: string) => Promise<boolean>;
 
   // Financial Projections
-  addProjection: (projection: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>) => Promise<FinancialProjection | null>;
-  updateProjection: (params: { id: string; data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>> }) => Promise<FinancialProjection | null>;
+  addProjection: (projection: Insert<'financial_projections'>) => Promise<FinancialProjection | null>;
+  updateProjection: (params: { id: string; data: Update<'financial_projections'> }) => Promise<FinancialProjection | null>;
   deleteProjection: (id: string) => Promise<boolean>;
   
   // Diff helpers
@@ -194,537 +197,212 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
   const queryError = revenueStreamsError || costStructureError || pricingStrategiesError || projectionsError;
 
   // === Revenue Streams Operations ===
-  const addRevenueStream = useCallback(async (stream: Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialRevenueStream | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeStream: FinancialRevenueStream = {
-      ...stream,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalStreams = [...store.currentData.financialRevenueStreams];
-    
-    try {
-      // 1. Update store optimistically
-      store.addFinancialRevenueStream(completeStream);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.addRevenueStream(projectId, stream)
-      );
-      
-      // 3. Update store with real ID
-      store.updateFinancialRevenueStream(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.revenueStreams });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding revenue stream:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setFinancialRevenueStreams(originalStreams);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addRevenueStreamOptimistic = useOptimisticCreate<'financial_revenue_streams'>({
+    projectId,
+    tableName: 'financial_revenue_streams',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.revenueStreams],
+    setSubmitting,
+    methods: {
+      add: 'addRevenueStream'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateRevenueStream = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<FinancialRevenueStream, 'id' | 'created_at' | 'updated_at'>> }): Promise<FinancialRevenueStream | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalStream = store.currentData.financialRevenueStreams.find(s => s.id === id);
-    if (!originalStream) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateFinancialRevenueStream(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.updateRevenueStream(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.revenueStreams });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating revenue stream:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalStream) {
-        store.updateFinancialRevenueStream(id, originalStream);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateRevenueStreamOptimistic = useOptimisticUpdate<'financial_revenue_streams'>({
+    tableName: 'financial_revenue_streams',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.revenueStreams],
+    setSubmitting,
+    methods: {
+      update: 'updateRevenueStream'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteRevenueStreamOptimistic = useOptimisticDelete({
+    tableName: 'financial_revenue_streams',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.revenueStreams],
+    setSubmitting,
+    methods: {
+      delete: 'deleteRevenueStream'
+    }
+  });
+
+  // Exposed revenue stream operations with proper typing
+  const addRevenueStream = useCallback(async (stream: Insert<'financial_revenue_streams'>): Promise<FinancialRevenueStream | null> => {
+    return addRevenueStreamOptimistic(stream);
+  }, [addRevenueStreamOptimistic]);
+
+  const updateRevenueStream = useCallback(async (params: { id: string; data: Update<'financial_revenue_streams'> }): Promise<FinancialRevenueStream | null> => {
+    return updateRevenueStreamOptimistic(params.id, params.data);
+  }, [updateRevenueStreamOptimistic]);
 
   const deleteRevenueStream = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalStreams = [...store.currentData.financialRevenueStreams];
-    const streamToDelete = originalStreams.find(s => s.id === id);
-    if (!streamToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteFinancialRevenueStream(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        financialsService.deleteRevenueStream(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.revenueStreams });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting revenue stream:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setFinancialRevenueStreams(originalStreams);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteRevenueStreamOptimistic(id);
+  }, [deleteRevenueStreamOptimistic]);
 
   // === Cost Structure Operations ===
-  const addCostStructure = useCallback(async (cost: Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialCostStructure | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeCost: FinancialCostStructure = {
-      ...cost,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalCosts = [...store.currentData.financialCostStructure];
-    
-    try {
-      // 1. Update store optimistically
-      store.addFinancialCostStructure(completeCost);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.addCostStructure(projectId, cost)
-      );
-      
-      // 3. Update store with real ID
-      store.updateFinancialCostStructure(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.costStructure });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding cost structure:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setFinancialCostStructure(originalCosts);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addCostStructureOptimistic = useOptimisticCreate<'financial_cost_structure'>({
+    projectId,
+    tableName: 'financial_cost_structure',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.costStructure],
+      setSubmitting,
+    methods: {
+      add: 'addCostStructure'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateCostStructure = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<FinancialCostStructure, 'id' | 'created_at' | 'updated_at'>> }): Promise<FinancialCostStructure | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalCost = store.currentData.financialCostStructure.find(c => c.id === id);
-    if (!originalCost) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateFinancialCostStructure(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.updateCostStructure(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.costStructure });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating cost structure:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalCost) {
-        store.updateFinancialCostStructure(id, originalCost);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateCostStructureOptimistic = useOptimisticUpdate<'financial_cost_structure'>({
+    tableName: 'financial_cost_structure',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.costStructure],
+    setSubmitting,
+    methods: {
+      update: 'updateCostStructure'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteCostStructureOptimistic = useOptimisticDelete({
+    tableName: 'financial_cost_structure',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.costStructure],
+    setSubmitting,
+    methods: {
+      delete: 'deleteCostStructure'
+    }
+  });
+
+  // Exposed cost structure operations with proper typing
+  const addCostStructure = useCallback(async (cost: Insert<'financial_cost_structure'>): Promise<FinancialCostStructure | null> => {
+    return addCostStructureOptimistic(cost);
+  }, [addCostStructureOptimistic]);
+
+  const updateCostStructure = useCallback(async (params: { id: string; data: Update<'financial_cost_structure'> }): Promise<FinancialCostStructure | null> => {
+    return updateCostStructureOptimistic(params.id, params.data);
+  }, [updateCostStructureOptimistic]);
 
   const deleteCostStructure = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalCosts = [...store.currentData.financialCostStructure];
-    const costToDelete = originalCosts.find(c => c.id === id);
-    if (!costToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteFinancialCostStructure(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        financialsService.deleteCostStructure(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.costStructure });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting cost structure:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setFinancialCostStructure(originalCosts);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteCostStructureOptimistic(id);
+  }, [deleteCostStructureOptimistic]);
 
   // === Pricing Strategies Operations ===
-  const addPricingStrategy = useCallback(async (strategy: Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialPricingStrategy | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeStrategy: FinancialPricingStrategy = {
-      ...strategy,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalStrategies = [...store.currentData.financialPricingStrategies];
-    
-    try {
-      // 1. Update store optimistically
-      store.addFinancialPricingStrategy(completeStrategy);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.addPricingStrategy(projectId, strategy)
-      );
-      
-      // 3. Update store with real ID
-      store.updateFinancialPricingStrategy(tempId, { 
-        id: result.id,
-        created_at: result.created_at,
-        updated_at: result.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.pricingStrategies });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding pricing strategy:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setFinancialPricingStrategies(originalStrategies);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addPricingStrategyOptimistic = useOptimisticCreate<'financial_pricing_strategies'>({
+    projectId,
+    tableName: 'financial_pricing_strategies',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.pricingStrategies],
+    setSubmitting,
+    methods: {
+      add: 'addPricingStrategy'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updatePricingStrategy = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<FinancialPricingStrategy, 'id' | 'created_at' | 'updated_at'>> }): Promise<FinancialPricingStrategy | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalStrategy = store.currentData.financialPricingStrategies.find(s => s.id === id);
-    if (!originalStrategy) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateFinancialPricingStrategy(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.updatePricingStrategy(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.pricingStrategies });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating pricing strategy:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalStrategy) {
-        store.updateFinancialPricingStrategy(id, originalStrategy);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updatePricingStrategyOptimistic = useOptimisticUpdate<'financial_pricing_strategies'>({
+    tableName: 'financial_pricing_strategies',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.pricingStrategies],
+    setSubmitting,
+    methods: {
+      update: 'updatePricingStrategy'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deletePricingStrategyOptimistic = useOptimisticDelete({
+    tableName: 'financial_pricing_strategies',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.pricingStrategies],
+    setSubmitting,
+    methods: {
+      delete: 'deletePricingStrategy'
+    }
+  });
+
+  // Exposed pricing strategy operations with proper typing
+  const addPricingStrategy = useCallback(async (strategy: Insert<'financial_pricing_strategies'>): Promise<FinancialPricingStrategy | null> => {
+    return addPricingStrategyOptimistic(strategy);
+  }, [addPricingStrategyOptimistic]);
+
+  const updatePricingStrategy = useCallback(async (params: { id: string; data: Update<'financial_pricing_strategies'> }): Promise<FinancialPricingStrategy | null> => {
+    return updatePricingStrategyOptimistic(params.id, params.data);
+  }, [updatePricingStrategyOptimistic]);
 
   const deletePricingStrategy = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalStrategies = [...store.currentData.financialPricingStrategies];
-    const strategyToDelete = originalStrategies.find(s => s.id === id);
-    if (!strategyToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteFinancialPricingStrategy(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        financialsService.deletePricingStrategy(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.pricingStrategies });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting pricing strategy:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setFinancialPricingStrategies(originalStrategies);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deletePricingStrategyOptimistic(id);
+  }, [deletePricingStrategyOptimistic]);
 
   // === Financial Projections Operations ===
-  const addProjection = useCallback(async (projection: Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>): Promise<FinancialProjection | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const completeProjection: FinancialProjection = {
-      ...projection,
-      id: tempId,
-      project_id: projectId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    
-    // Track original store state for possible rollback
-    const originalProjections = [...store.currentData.financialProjections];
-    
-    try {
-      // 1. Update store optimistically
-      store.addFinancialProjection(completeProjection);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.addProjection(projectId, projection)
-      );
-      
-      // 3. Update store with real ID
-      const projectionData = result.data as FinancialProjection;
-      store.updateFinancialProjection(tempId, { 
-        id: projectionData.id,
-        created_at: projectionData.created_at,
-        updated_at: projectionData.updated_at
-      });
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.projections });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return projectionData;
-    } catch (err) {
-      console.error('Error adding projection:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setFinancialProjections(originalProjections);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  // Use our optimistic helper hooks
+  const addProjectionOptimistic = useOptimisticCreate<'financial_projections'>({
+    projectId,
+    tableName: 'financial_projections',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.projections],
+    setSubmitting,
+    methods: {
+      add: 'addProjection'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
 
-  const updateProjection = useCallback(async ({ id, data: updates }: { id: string; data: Partial<Omit<FinancialProjection, 'id' | 'created_at' | 'updated_at'>> }): Promise<FinancialProjection | null> => {
-    if (!projectId) return null;
-    
-    // Store original item for rollback
-    const originalProjection = store.currentData.financialProjections.find(p => p.id === id);
-    if (!originalProjection) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateFinancialProjection(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        financialsService.updateProjection(id, updates)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.projections });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result.data as FinancialProjection;
-    } catch (err) {
-      console.error('Error updating projection:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalProjection) {
-        store.updateFinancialProjection(id, originalProjection);
-      }
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
+  const updateProjectionOptimistic = useOptimisticUpdate<'financial_projections'>({
+    tableName: 'financial_projections',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.projections],
+    setSubmitting,
+    methods: {
+      update: 'updateProjection'
     }
-  }, [projectId, store, queryClient, queryKeys]);
+  });
+
+  const deleteProjectionOptimistic = useOptimisticDelete({
+    tableName: 'financial_projections',
+    store,
+    service: financialsService,
+    queryClient,
+    queryKey: [...queryKeys.projections],
+    setSubmitting,
+    methods: {
+      delete: 'deleteProjection'
+    }
+  });
+
+  // Exposed financial projection operations with proper typing
+  const addProjection = useCallback(async (projection: Insert<'financial_projections'>): Promise<FinancialProjection | null> => {
+    return addProjectionOptimistic(projection);
+  }, [addProjectionOptimistic]);
+
+  const updateProjection = useCallback(async (params: { id: string; data: Update<'financial_projections'> }): Promise<FinancialProjection | null> => {
+    return updateProjectionOptimistic(params.id, params.data);
+  }, [updateProjectionOptimistic]);
 
   const deleteProjection = useCallback(async (id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalProjections = [...store.currentData.financialProjections];
-    const projectionToDelete = originalProjections.find(p => p.id === id);
-    if (!projectionToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteFinancialProjection(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        financialsService.deleteProjection(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.projections });
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting projection:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setFinancialProjections(originalProjections);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    return deleteProjectionOptimistic(id);
+  }, [deleteProjectionOptimistic]);
   
   // Diff helpers
   const getRevenueStreamChangeType = useCallback((id: string): ChangeType => 
@@ -742,7 +420,7 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
   return {
     data,
     isLoading,
-    error,
+    error: error || queryError,
 
     // Revenue Streams
     addRevenueStream,

@@ -3,17 +3,10 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { BusinessModelCanvas, CanvasSectionKey } from '@/lib/services/features/business-model-service';
 import { businessModelService } from '@/lib/services';
 import { useProjectStore } from '@/store';
-import type { CanvasItem, CanvasSection, ChangeType } from '@/store/types';
+import type { CanvasItem, CanvasSection, ChangeType, Insert, Update } from '@/store/types';
+import { Database } from '@/types/database';
+import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
 
-// Type for new canvas items before they are added to the database
-type NewCanvasItem = {
-  text: string;
-  color: string | null;
-  tags: string[] | null;
-  checked: boolean | null;
-  order_index: number | null;
-  created_by: string | null;
-};
 
 // Extended CanvasItem with section property for the UI needs
 interface ExtendedCanvasItem extends CanvasItem {
@@ -30,10 +23,9 @@ export interface UseBusinessModelReturn {
   error: Error | null;
 
   // Core operations
-  addItem: (section: CanvasSectionKey, item: NewCanvasItem) => Promise<CanvasItem | null>;
-  updateItem: (section: CanvasSectionKey, id: string, data: Partial<NewCanvasItem>) => Promise<CanvasItem | null>;
+  addItem: (section: CanvasSectionKey, item: Insert<'canvas_items'>) => Promise<CanvasItem | null>;
+  updateItem: (section: CanvasSectionKey, id: string, data: Update<'canvas_items'>) => Promise<CanvasItem | null>;
   deleteItem: (section: CanvasSectionKey, id: string) => Promise<boolean>;
-  moveItem: (id: string, fromSection: CanvasSectionKey, toSection: CanvasSectionKey) => Promise<CanvasItem | null>;
 
   // Diff helpers
   getItemChangeType: (id: string) => ChangeType;
@@ -107,7 +99,7 @@ export function useBusinessModel(projectId: string | undefined): UseBusinessMode
     error: sectionsError 
   } = useQuery({
     queryKey: queryKeys.sections,
-    queryFn: () => businessModelService.getSections(projectId!),
+    queryFn: () => businessModelService.getCanvasSections(projectId!),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -119,7 +111,7 @@ export function useBusinessModel(projectId: string | undefined): UseBusinessMode
     error: canvasError 
   } = useQuery({
     queryKey: queryKeys.all,
-    queryFn: () => businessModelService.getAllCanvasData(projectId!),
+    queryFn: () => businessModelService.getAllBusinessModelData(projectId!),
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -134,17 +126,7 @@ export function useBusinessModel(projectId: string | undefined): UseBusinessMode
   useEffect(() => {
     if (canvasData) {
       // Extract all canvas items from all sections
-      const allItems = [
-        ...canvasData.keyPartners,
-        ...canvasData.keyActivities,
-        ...canvasData.keyResources,
-        ...canvasData.valuePropositions,
-        ...canvasData.customerRelationships,
-        ...canvasData.channels,
-        ...canvasData.customerSegments,
-        ...canvasData.costStructure,
-        ...canvasData.revenueStreams
-      ];
+      const allItems = canvasData.items || [];
       
       // Update only if different
       if (!arraysEqual(allItems, store.currentData.canvasItems)) {
@@ -172,18 +154,8 @@ export function useBusinessModel(projectId: string | undefined): UseBusinessMode
     if (store.comparisonMode) {
       return storeData.canvasItems;
     } else if (canvasData) {
-      // Extract all canvas items from all sections
-      return [
-        ...canvasData.keyPartners,
-        ...canvasData.keyActivities,
-        ...canvasData.keyResources,
-        ...canvasData.valuePropositions,
-        ...canvasData.customerRelationships,
-        ...canvasData.channels,
-        ...canvasData.customerSegments,
-        ...canvasData.costStructure,
-        ...canvasData.revenueStreams
-      ];
+      // Extract all canvas items from canvas data
+      return canvasData.items || [];
     }
     return [];
   }, [store.comparisonMode, storeData.canvasItems, canvasData]);
@@ -208,267 +180,145 @@ export function useBusinessModel(projectId: string | undefined): UseBusinessMode
   const isLoading = sectionsLoading || canvasLoading;
   const queryError = sectionsError || canvasError;
 
-  // === Core Operations ===
-  const addItem = useCallback(async (section: CanvasSectionKey, item: NewCanvasItem): Promise<CanvasItem | null> => {
-    if (!projectId) return null;
-    
-    // Generate temp ID for optimistic update
-    const tempId = `temp-${Date.now()}`;
-    
-    // Create complete item with temp ID
-    const tempItem: ExtendedCanvasItem = {
-      id: tempId,
-      project_id: projectId,
-      section_id: '', // This would be filled if you have a sections table
-      text: item.text,
-      color: item.color,
-      tags: item.tags,
-      checked: item.checked,
-      order_index: item.order_index || 0,
-      created_by: item.created_by,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      section: section // Add section for UI
-    };
-    
-    // Track original store state for possible rollback
-    const originalItems = [...store.currentData.canvasItems];
-    
-    try {
-      // 1. Update store optimistically
-      store.addCanvasItem(tempItem as unknown as CanvasItem);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        businessModelService.addItem(projectId, section, item)
-      );
-      
-      // 3. Remove temp item and add the real one 
-      store.deleteCanvasItem(tempId);
-      
-      // Add section to the returned item
-      const itemWithSection: ExtendedCanvasItem = {
-        ...(result),
-        section: section
-      };
-      store.addCanvasItem(itemWithSection);
-      
-      // 4. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error adding canvas item:', err);
-      
-      // 5. Revert optimistic update on error
-      store.setCanvasItems(originalItems);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  // Create optimistic helpers base
+  const addItemOptimistic = useOptimisticCreate<'canvas_items'>({
+    projectId,
+    tableName: 'canvas_items',
+    store,
+    service: businessModelService,
+    queryClient,
+    queryKey: [...queryKeys.items],
+    setSubmitting
+  });
 
-  const updateItem = useCallback(async (section: CanvasSectionKey, id: string, data: Partial<NewCanvasItem>): Promise<CanvasItem | null> => {
+  const updateItemOptimistic = useOptimisticUpdate<'canvas_items'>({
+    tableName: 'canvas_items',
+    store,
+    service: businessModelService,
+    queryClient,
+    queryKey: [...queryKeys.items],
+    setSubmitting
+  });
+
+  const deleteItemOptimistic = useOptimisticDelete({
+    tableName: 'canvas_items',
+    store,
+    service: businessModelService,
+    queryClient,
+    queryKey: [...queryKeys.items],
+    setSubmitting
+  });
+
+  // === Core Operations with Section Context ===
+  const addItem = useCallback(async (section: CanvasSectionKey, item: Insert<'canvas_items'>): Promise<CanvasItem | null> => {
     if (!projectId) return null;
     
-    // Store original item for rollback
-    const originalItem = store.currentData.canvasItems.find(i => i.id === id);
-    if (!originalItem) return null;
-    
-    try {
-      // 1. Update store optimistically
-      store.updateCanvasItem(id, data);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        businessModelService.updateItem(id, data)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error updating canvas item:', err);
-      
-      // 4. Revert optimistic update on error
-      if (originalItem) {
-        store.updateCanvasItem(id, originalItem);
-      }
-      
-      setError(err as Error);
+    // Get the section ID for the given section type
+    const sectionObj = sections.find(s => s.section_type === section);
+    if (!sectionObj) {
+      console.error(`Section ${section} not found`);
       return null;
-    } finally {
-      setSubmitting(false);
     }
-  }, [projectId, store, queryClient, queryKeys]);
+    
+    // Add section_id to the item
+    const itemWithSection = {
+      ...item,
+      section_id: sectionObj.id
+    } as Insert<'canvas_items'>;
+    
+    // Use the optimistic helper for the actual operation
+    return addItemOptimistic(itemWithSection);
+  }, [projectId, sections, addItemOptimistic]);
+
+  const updateItem = useCallback(async (section: CanvasSectionKey, id: string, data: Update<'canvas_items'>): Promise<CanvasItem | null> => {
+    // We don't need the section parameter for update operations
+    // But we keep it for API consistency
+    return updateItemOptimistic(id, data);
+  }, [updateItemOptimistic]);
 
   const deleteItem = useCallback(async (section: CanvasSectionKey, id: string): Promise<boolean> => {
-    if (!projectId) return false;
-    
-    // Store original items for rollback
-    const originalItems = [...store.currentData.canvasItems];
-    const itemToDelete = originalItems.find(item => item.id === id);
-    
-    if (!itemToDelete) return false;
-    
-    try {
-      // 1. Update store optimistically
-      store.deleteCanvasItem(id);
-      
-      setSubmitting(true);
-      
-      // 2. Delete from Supabase with retry logic
-      await executeWithRetry(() => 
-        businessModelService.deleteItem(id)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return true;
-    } catch (err) {
-      console.error('Error deleting canvas item:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setCanvasItems(originalItems);
-      
-      setError(err as Error);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+    // We don't need the section parameter for delete operations
+    // But we keep it for API consistency
+    return deleteItemOptimistic(id);
+  }, [deleteItemOptimistic]);
 
-  const moveItem = useCallback(async (id: string, fromSection: CanvasSectionKey, toSection: CanvasSectionKey): Promise<CanvasItem | null> => {
-    if (!projectId) return null;
-    
-    // Store original items for rollback
-    const originalItems = [...store.currentData.canvasItems];
-    const itemToMove = originalItems.find(item => item.id === id);
-    
-    if (!itemToMove) return null;
-    
-    try {
-      // 1. Update store optimistically
-      // We need to cast this since our store doesn't know about the section property
-      const updates = { 
-        section: toSection 
-      } as unknown as Partial<CanvasItem>;
-      
-      store.updateCanvasItem(id, updates);
-      
-      setSubmitting(true);
-      
-      // 2. Update Supabase with retry logic
-      const result = await executeWithRetry(() => 
-        businessModelService.moveItem(id, fromSection, toSection)
-      );
-      
-      // 3. Invalidate queries to keep React Query cache in sync
-      queryClient.invalidateQueries({ queryKey: queryKeys.all });
-      
-      setError(null);
-      return result;
-    } catch (err) {
-      console.error('Error moving canvas item:', err);
-      
-      // 4. Revert optimistic update on error
-      store.setCanvasItems(originalItems);
-      
-      setError(err as Error);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [projectId, store, queryClient, queryKeys]);
+  // === Diff Helpers ===
+  const getItemChangeType = useCallback((id: string): ChangeType => 
+    store.getItemChangeType('canvasItems', id), [store]);
 
-  // === Helper Functions ===
+  const getSectionChangeType = useCallback((id: string): ChangeType => 
+    store.getItemChangeType('canvasSections', id), [store]);
+
+  // === Analytics ===
   const getAllItems = useCallback((): ExtendedCanvasItem[] => {
-    return storeData.canvasItems;
-  }, [storeData.canvasItems]);
+    // Map all items to include their section name for UI needs
+    return items.map(item => {
+      const sectionObj = sections.find(s => s.id === item.section_id);
+      return {
+        ...item,
+        section: sectionObj?.section_type || 'unknown'
+      } as ExtendedCanvasItem;
+    });
+  }, [items, sections]);
 
   const getCanvasMetrics = useCallback(() => {
-    const items = getAllItems();
-    if (items.length === 0) return null;
+    if (!transformedData) return null;
+
+    const allItems = [
+      ...transformedData.keyPartners,
+      ...transformedData.keyActivities,
+      ...transformedData.keyResources,
+      ...transformedData.valuePropositions,
+      ...transformedData.customerRelationships,
+      ...transformedData.channels,
+      ...transformedData.customerSegments,
+      ...transformedData.costStructure,
+      ...transformedData.revenueStreams
+    ];
+
+    const itemsPerSection: Record<string, number> = {
+      keyPartners: transformedData.keyPartners.length,
+      keyActivities: transformedData.keyActivities.length,
+      keyResources: transformedData.keyResources.length,
+      valuePropositions: transformedData.valuePropositions.length,
+      customerRelationships: transformedData.customerRelationships.length,
+      channels: transformedData.channels.length,
+      customerSegments: transformedData.customerSegments.length,
+      costStructure: transformedData.costStructure.length,
+      revenueStreams: transformedData.revenueStreams.length,
+    };
+
+    const sectionEntries = Object.entries(itemsPerSection);
+    const mostPopulatedSection = sectionEntries.reduce((max, [section, count]) => 
+      count > itemsPerSection[max] ? section : max, sectionEntries[0][0]);
     
-    const itemsPerSection: Record<string, number> = {};
+    const leastPopulatedSection = sectionEntries.reduce((min, [section, count]) => 
+      count < itemsPerSection[min] ? section : min, sectionEntries[0][0]);
+
+    const totalItems = allItems.length;
     
-    items.forEach(item => {
-      const section = item.section;
-      if (!itemsPerSection[section]) {
-        itemsPerSection[section] = 0;
-      }
-      itemsPerSection[section]++;
-    });
-    
-    const sections = Object.keys(itemsPerSection);
-    const mostPopulatedSection = sections.reduce((a, b) => 
-      itemsPerSection[a] > itemsPerSection[b] ? a : b, sections[0]);
-    const leastPopulatedSection = sections.reduce((a, b) => 
-      itemsPerSection[a] < itemsPerSection[b] ? a : b, sections[0]);
-    
-    const totalItems = items.length;
-    const itemsWithDescription = items.filter(item => item.checked).length;
-    
+    // Consider a canvas "complete" if it has at least 1 item in each section
+    const nonEmptySections = Object.values(itemsPerSection).filter(count => count > 0).length;
+    const completionPercentage = Math.round((nonEmptySections / Object.keys(itemsPerSection).length) * 100);
+
     return {
       totalItems,
       itemsPerSection,
       mostPopulatedSection,
       leastPopulatedSection,
-      completionPercentage: totalItems > 0 
-        ? (itemsWithDescription / totalItems) * 100 
-        : 0
+      completionPercentage
     };
-  }, [getAllItems]);
-
-  // Diff helpers
-  const getItemChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('canvasItems', id), [store]);
-  
-  const getSectionChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('canvasSections', id), [store]);
-
-  // If in comparison mode, use store data, otherwise use React Query data
-  const data: BusinessModelCanvas = useMemo(() => {
-    if (store.comparisonMode) {
-      // In comparison mode, use the transformed store data
-      return transformedData;
-    } else {
-      // In normal mode, use React Query data
-      return canvasData || {
-        keyPartners: [],
-        keyActivities: [],
-        keyResources: [],
-        valuePropositions: [],
-        customerRelationships: [],
-        channels: [],
-        customerSegments: [],
-        costStructure: [],
-        revenueStreams: []
-      };
-    }
-  }, [store.comparisonMode, transformedData, canvasData]);
+  }, [transformedData]);
 
   return {
-    data,
+    data: transformedData,
     isLoading,
-    error,
+    error: error || queryError,
 
     // Core operations
     addItem,
     updateItem,
     deleteItem,
-    moveItem,
 
     // Diff helpers
     getItemChangeType,

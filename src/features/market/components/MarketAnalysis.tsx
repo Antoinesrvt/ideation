@@ -1,29 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { 
   ArrowUpRight, BarChart2, ChevronRight, Info, PlusCircle, 
   Users, UserSearch, Search, TrendingUp, Activity, AlertCircle,
   Target, ScaleIcon, LineChart, HelpCircle
 } from 'lucide-react';
-import { CustomerPersonaCard } from './CustomerPersonaCard';
-import { CustomerInterviewCard } from './CustomerInterviewCard';
+import { EnhancedCustomerPersonaCard } from './EnhancedCustomerPersonaCard';
+import { EnhancedCustomerInterviewCard } from './EnhancedCustomerInterviewCard';
 import { CompetitorTable } from './CompetitorTable';
-import { MarketTrendCard } from './MarketTrendCard';
+import { EnhancedMarketTrendCard } from './EnhancedMarketTrendCard';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useProjectStore } from '@/store';
-import { useAIStore } from '@/hooks/useAIStore';
-import { generateId } from '@/lib/utils';
 import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
 import { useParams } from 'next/navigation';
 import TabList from "@/features/common/components/TabList";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
+import { SectionTab } from '@/components/ui/section-tab';
 
 const marketTabs = [
   {
@@ -47,7 +44,6 @@ const marketTabs = [
     icon: <TrendingUp className="h-4 w-4 mr-2" />,
   },
 ];
-import { SectionTab } from '@/components/ui/section-tab';
 
 // Animation variants for the tab content
 const tabContentVariants = {
@@ -197,7 +193,8 @@ export function MarketAnalysis() {
         key_insights: null,
         tags: null,
         project_id: projectId,
-        created_by: null
+        created_by: null,
+        contact_email: null
       });
       
       toast({
@@ -596,9 +593,8 @@ export function MarketAnalysis() {
                             key={persona.id}
                             variants={itemVariants}
                           >
-                            <CustomerPersonaCard
+                            <EnhancedCustomerPersonaCard
                               persona={persona}
-                              onEdit={(id) => {}}
                               onUpdate={handleUpdatePersona}
                               onDelete={handleDeletePersona}
                             />
@@ -624,7 +620,7 @@ export function MarketAnalysis() {
                     <SectionTab
                       icon={<UserSearch className="h-5 w-5 text-primary-700" />}
                       title="Customer Interviews"
-                      description="Document insights from customer conversations to validate your ideas and identify needs."
+                      description="Document insights from customer conversations to validate your market assumptions."
                       onCreate={handleAddInterview}
                       count={data.interviews.length}
                       helper={{
@@ -633,21 +629,21 @@ export function MarketAnalysis() {
                         content: (
                           <div className="space-y-3">
                             <p className="text-dark-700">
-                              Tips for effective customer interviews:
+                              Best practices for customer interviews:
                             </p>
                             <ul className="list-disc list-inside text-dark-600 space-y-1">
                               <li>Ask open-ended questions</li>
-                              <li>Focus on their problems, not your solutions</li>
-                              <li>Listen more than you talk</li>
-                              <li>Look for patterns across multiple interviews</li>
-                              <li>Take detailed notes and ask for clarification</li>
+                              <li>Focus on problems, not solutions</li>
+                              <li>Explore their workflows and frustrations</li>
+                              <li>Listen more than you speak</li>
+                              <li>Note key insights and pain points</li>
                             </ul>
                           </div>
                         )
                       }}
                       hasItems={data.interviews.length > 0}
                       emptyState={{
-                        description: "Record insights from customer conversations to understand their needs and pain points."
+                        description: "Record interviews with potential customers to validate your assumptions."
                       }}
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -656,9 +652,8 @@ export function MarketAnalysis() {
                             key={interview.id}
                             variants={itemVariants}
                           >
-                            <CustomerInterviewCard
+                            <EnhancedCustomerInterviewCard
                               interview={interview}
-                              onEdit={(id) => {}}
                               onUpdate={handleUpdateInterview}
                               onDelete={handleDeleteInterview}
                             />
@@ -683,43 +678,41 @@ export function MarketAnalysis() {
                   <TabsContent value="competitors" className="mt-0 border-none shadow-none" forceMount>
                     <SectionTab
                       icon={<Target className="h-5 w-5 text-primary-700" />}
-                      title="Competitive Analysis"
-                      description="Analyze your competitors to identify market gaps and opportunities for your product."
+                      title="Competitors"
+                      description="Track your competition to identify market gaps and opportunities."
                       onCreate={handleAddCompetitor}
                       count={data.competitors.length}
                       helper={{
                         icon: <Info className="h-5 w-5" />,
-                        title: "Conducting Competitive Analysis",
+                        title: "Competitive Analysis",
                         content: (
                           <div className="space-y-3">
                             <p className="text-dark-700">
-                              When analyzing competitors, consider:
+                              Focus on these aspects when analyzing competitors:
                             </p>
                             <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Direct vs. indirect competitors</li>
-                              <li>Their key strengths and weaknesses</li>
-                              <li>Pricing strategies and market positioning</li>
-                              <li>Marketing and distribution channels</li>
-                              <li>Customer reviews and sentiment</li>
+                              <li>Core features and differentiators</li>
+                              <li>Pricing strategy and positioning</li>
+                              <li>Target customer segments</li>
+                              <li>Strengths to learn from</li>
+                              <li>Weaknesses you can exploit</li>
                             </ul>
-                            <p className="text-dark-600 pt-2">
-                              Look for gaps in the market that your product can address.
-                            </p>
                           </div>
                         )
                       }}
                       hasItems={data.competitors.length > 0}
                       emptyState={{
-                        description: "Analyze competitors to identify market gaps and opportunities for differentiation."
+                        description: "Add competitors to analyze market positioning and identify opportunities."
                       }}
                     >
-                      <CompetitorTable
-                        competitors={data.competitors}
-                        onAdd={handleAddCompetitor}
-                        onEdit={(id) => {}}
-                        onUpdate={handleUpdateCompetitor}
-                        onDelete={handleDeleteCompetitor}
-                      />
+                      <div className="pt-2">
+                        <CompetitorTable
+                          competitors={data.competitors}
+                          onAdd={handleAddCompetitor}
+                          onUpdate={handleUpdateCompetitor}
+                          onDelete={handleDeleteCompetitor}
+                        />
+                      </div>
                     </SectionTab>
                   </TabsContent>
                 </motion.div>
@@ -739,7 +732,7 @@ export function MarketAnalysis() {
                     <SectionTab
                       icon={<TrendingUp className="h-5 w-5 text-primary-700" />}
                       title="Market Trends"
-                      description="Monitor industry trends to understand market direction and potential opportunities or threats."
+                      description="Track industry trends that could impact your product strategy."
                       onCreate={handleAddTrend}
                       count={data.trends.length}
                       helper={{
@@ -751,17 +744,18 @@ export function MarketAnalysis() {
                               How to identify and analyze market trends:
                             </p>
                             <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Monitor industry publications and research reports</li>
-                              <li>Track technological advancements and their potential impact</li>
-                              <li>Consider social and economic factors</li>
-                              <li>Validate trends through customer feedback and data</li>
+                              <li>Follow industry news and reports</li>
+                              <li>Monitor technological advancements</li>
+                              <li>Observe changes in customer behavior</li>
+                              <li>Evaluate as opportunities or threats</li>
+                              <li>Assess potential impact on your business</li>
                             </ul>
                           </div>
                         )
                       }}
                       hasItems={data.trends.length > 0}
                       emptyState={{
-                        description: "Track industry trends to identify opportunities and threats for your product strategy."
+                        description: "Monitor industry trends to stay ahead of market changes that could affect your product."
                       }}
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
@@ -770,9 +764,8 @@ export function MarketAnalysis() {
                             key={trend.id}
                             variants={itemVariants}
                           >
-                            <MarketTrendCard
+                            <EnhancedMarketTrendCard
                               trend={trend}
-                              onEdit={(id) => {}}
                               onUpdate={handleUpdateTrend}
                               onDelete={handleDeleteTrend}
                             />

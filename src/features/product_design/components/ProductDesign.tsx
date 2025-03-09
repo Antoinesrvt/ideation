@@ -198,7 +198,6 @@ export const ProductDesign: React.FC = () => {
         screen_type: "desktop",
         order_index: uiData.wireframes.length,
         tags: [],
-        created_by: null,
       });
 
       toast({
@@ -233,7 +232,6 @@ export const ProductDesign: React.FC = () => {
         impact: 2,
         tags: [],
         notes: "",
-        created_by: null,
       });
 
       toast({
@@ -262,7 +260,6 @@ export const ProductDesign: React.FC = () => {
         description: "",
         completed: false,
         order_index: uiData.journeyStages.length,
-        created_by: null,
       });
 
       toast({
@@ -434,7 +431,7 @@ export const ProductDesign: React.FC = () => {
                         icon={<Layout className="h-5 w-5 text-primary-700" />}
                         title="Wireframes"
                         description="Visualize your product's interface and user flow"
-                        onCreate={handleAddWireframe}
+                        onCreate={() => handleAddWireframe()}
                         count={data.wireframes.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
@@ -494,7 +491,7 @@ export const ProductDesign: React.FC = () => {
                         icon={<MapPin className="h-5 w-5 text-primary-700" />}
                         title="Feature Map"
                         description="Prioritize features for your product roadmap"
-                        onCreate={handleAddFeature}
+                        onCreate={() => handleAddFeature()}
                         count={data.features.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
@@ -576,7 +573,7 @@ export const ProductDesign: React.FC = () => {
                         icon={<Map className="h-5 w-5 text-primary-700" />}
                         title="User Journey"
                         description="Map out your user's experience with your product"
-                        onCreate={handleAddJourneyStage}
+                        onCreate={() => handleAddJourneyStage()}
                         count={data.journey.stages.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,

@@ -2,8 +2,12 @@ import { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import type { 
   TeamMember,
   TeamTask,
-  TeamResponsibilityMatrix
+  TeamResponsibilityMatrix,
+  Insert,
+  Update
 } from '@/store/types';
+import type { Database } from '@/types/database';
+
 
 export interface TeamData {
   members: TeamMember[];
@@ -39,7 +43,7 @@ export class TeamService {
     }
   }
 
-  async addMember(projectId: string, data: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>): Promise<TeamMember> {
+  async addMember(projectId: string, data: Insert<'team_members'>): Promise<TeamMember> {
     try {
       const { data: member, error } = await this.supabase
         .from('team_members')
@@ -54,7 +58,7 @@ export class TeamService {
     }
   }
 
-  async updateMember(id: string, data: Partial<Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>>): Promise<TeamMember> {
+  async updateMember(id: string, data: Update<'team_members'>): Promise<TeamMember> {
     try {
       const { data: member, error } = await this.supabase
         .from('team_members')
@@ -99,7 +103,7 @@ export class TeamService {
     }
   }
 
-  async addTask(projectId: string, data: Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>): Promise<TeamTask> {
+  async addTask(projectId: string, data: Insert<'team_tasks'>): Promise<TeamTask> {
     try {
       const { data: task, error } = await this.supabase
         .from('team_tasks')
@@ -114,7 +118,7 @@ export class TeamService {
     }
   }
 
-  async updateTask(id: string, data: Partial<Omit<TeamTask, 'id' | 'created_at' | 'updated_at'>>): Promise<TeamTask> {
+  async updateTask(id: string, data: Update<'team_tasks'>): Promise<TeamTask> {
     try {
       const { data: task, error } = await this.supabase
         .from('team_tasks')
@@ -159,7 +163,7 @@ export class TeamService {
     }
   }
 
-  async addResponsibility(projectId: string, data: Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>): Promise<TeamResponsibilityMatrix> {
+  async addResponsibility(projectId: string, data: Insert<'team_responsibility_matrix'>): Promise<TeamResponsibilityMatrix> {
     try {
       const { data: responsibility, error } = await this.supabase
         .from('team_responsibility_matrix')
@@ -174,7 +178,7 @@ export class TeamService {
     }
   }
 
-  async updateResponsibility(id: string, data: Partial<Omit<TeamResponsibilityMatrix, 'id' | 'created_at' | 'updated_at'>>): Promise<TeamResponsibilityMatrix> {
+  async updateResponsibility(id: string, data: Update<'team_responsibility_matrix'>): Promise<TeamResponsibilityMatrix> {
     try {
       const { data: responsibility, error } = await this.supabase
         .from('team_responsibility_matrix')
