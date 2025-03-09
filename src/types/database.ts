@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          operationName?: string
-          query?: string
-          variables?: Json
-          extensions?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       ai_conversation_messages: {
@@ -725,9 +700,9 @@ export type Database = {
           name: string
           project_id: string | null
           strategy_type: string | null
+          target_market: string | null
           target_price_range: Json | null
           updated_at: string | null
-          target_market: string | null
         }
         Insert: {
           considerations?: string | null
@@ -738,8 +713,8 @@ export type Database = {
           name: string
           project_id?: string | null
           strategy_type?: string | null
-          target_price_range?: Json | null
           target_market?: string | null
+          target_price_range?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -751,8 +726,8 @@ export type Database = {
           name?: string
           project_id?: string | null
           strategy_type?: string | null
-          target_price_range?: Json | null
           target_market?: string | null
+          target_price_range?: Json | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1082,6 +1057,7 @@ export type Database = {
       market_interviews: {
         Row: {
           company: string | null
+          contact_email: string | null
           created_at: string | null
           created_by: string | null
           id: string
@@ -1093,10 +1069,10 @@ export type Database = {
           sentiment: string | null
           tags: string[] | null
           updated_at: string | null
-          contact_email: string | null
         }
         Insert: {
           company?: string | null
+          contact_email?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -1108,10 +1084,10 @@ export type Database = {
           sentiment?: string | null
           tags?: string[] | null
           updated_at?: string | null
-          contact_email?: string | null
         }
         Update: {
           company?: string | null
+          contact_email?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -1123,7 +1099,6 @@ export type Database = {
           sentiment?: string | null
           tags?: string[] | null
           updated_at?: string | null
-          contact_email?: string | null
         }
         Relationships: [
           {
@@ -1777,6 +1752,60 @@ export type Database = {
           },
         ]
       }
+      project_roles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          project_id: string | null
+          required_skills: Json | null
+          responsibilities: Json | null
+          template_id: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          project_id?: string | null
+          required_skills?: Json | null
+          responsibilities?: Json | null
+          template_id?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          project_id?: string | null
+          required_skills?: Json | null
+          responsibilities?: Json | null
+          template_id?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_roles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_roles_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "role_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_tags: {
         Row: {
           color: string | null
@@ -1942,6 +1971,39 @@ export type Database = {
         }
         Relationships: []
       }
+      role_templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          required_skills: Json | null
+          responsibilities: Json | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          required_skills?: Json | null
+          responsibilities?: Json | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          required_skills?: Json | null
+          responsibilities?: Json | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       search_index: {
         Row: {
           content: string | null
@@ -2039,9 +2101,11 @@ export type Database = {
           expertise: string[] | null
           id: string
           name: string
+          previous_role_id: string | null
           project_id: string | null
           responsibilities: string[] | null
           role: string
+          role_id: string | null
           status: string | null
           updated_at: string | null
           user_id: string | null
@@ -2054,9 +2118,11 @@ export type Database = {
           expertise?: string[] | null
           id?: string
           name: string
+          previous_role_id?: string | null
           project_id?: string | null
           responsibilities?: string[] | null
           role: string
+          role_id?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -2069,9 +2135,11 @@ export type Database = {
           expertise?: string[] | null
           id?: string
           name?: string
+          previous_role_id?: string | null
           project_id?: string | null
           responsibilities?: string[] | null
           role?: string
+          role_id?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -2084,6 +2152,13 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "team_members_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "project_roles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       team_responsibility_matrix: {
@@ -2092,9 +2167,11 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          entry_type: string
           id: string
           project_id: string | null
           raci_matrix: Json | null
+          role_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2102,9 +2179,11 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          entry_type?: string
           id?: string
           project_id?: string | null
           raci_matrix?: Json | null
+          role_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2112,9 +2191,11 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          entry_type?: string
           id?: string
           project_id?: string | null
           raci_matrix?: Json | null
+          role_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2123,6 +2204,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_responsibility_matrix_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "project_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -2431,7 +2519,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      raci_matrix_view: {
+        Row: {
+          area: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          entry_type: string | null
+          id: string | null
+          project_id: string | null
+          raci_matrix: Json | null
+          role_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          entry_type?: string | null
+          id?: string | null
+          project_id?: string | null
+          raci_matrix?: Json | null
+          role_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          area?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          entry_type?: string | null
+          id?: string | null
+          project_id?: string | null
+          raci_matrix?: Json | null
+          role_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_responsibility_matrix_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_responsibility_matrix_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "project_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never

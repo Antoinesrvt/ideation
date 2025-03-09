@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getInitials } from './TeamManagement';
-import { TeamMember, TeamTask } from '@/store/types';
+import { TeamMember, TeamTask, ProjectRole } from '@/store/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { itemVariants } from './TeamManagement';
-import { Role } from './RoleCard';
+import { Role } from './EnhancedRoleCard';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -36,12 +36,30 @@ import {
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
 
+// Status colors
+const statusColors = {
+  active: 'bg-green-500',
+  inactive: 'bg-gray-500',
+  leave: 'bg-amber-500',
+  pending: 'bg-sky-500'
+};
+
+// Availability options
+const availabilityOptions = [
+  { value: 'full-time', label: 'Full-time' },
+  { value: 'part-time', label: 'Part-time' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'freelance', label: 'Freelance' }
+];
+
 interface EnhancedMemberCardProps {
   member: TeamMember;
   roles: Role[];
   tasks: TeamTask[];
+  projectRoles?: ProjectRole[];
   onUpdate: (id: string, data: Partial<TeamMember>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onChangeRole?: (member: TeamMember) => void;
   readOnly?: boolean;
 }
 
@@ -49,8 +67,10 @@ const EnhancedMemberCard = ({
   member, 
   roles, 
   tasks, 
+  projectRoles = [],
   onUpdate, 
   onDelete,
+  onChangeRole,
   readOnly = false
 }: EnhancedMemberCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -61,6 +81,7 @@ const EnhancedMemberCard = ({
   const [formData, setFormData] = useState({
     name: member.name,
     role: member.role,
+    role_id: member.role_id || null,
     email: member.contact_info && typeof member.contact_info === 'object' ? 
            (member.contact_info as any).email || '' : '',
     expertise: [...(member.expertise || [])],
@@ -69,13 +90,64 @@ const EnhancedMemberCard = ({
     status: member.status || 'active'
   });
 
+  // Combine both legacy roles and project roles for the dropdown
+  const combinedRoles = [...roles];
+  
+  // Add project roles that are not already in the legacy roles list
+  projectRoles.forEach(projectRole => {
+    // Check if this role is already in the legacy roles by title
+    const exists = roles.some(role => role.title === projectRole.title);
+    if (!exists) {
+      // Convert ProjectRole to Role format for the UI
+      combinedRoles.push({
+        id: projectRole.id,
+        title: projectRole.title,
+        description: projectRole.description || '',
+        responsibilities: Array.isArray(projectRole.responsibilities) 
+          ? projectRole.responsibilities 
+          : (typeof projectRole.responsibilities === 'string' 
+              ? JSON.parse(projectRole.responsibilities) 
+              : []),
+        requiredSkills: Array.isArray(projectRole.required_skills) 
+          ? projectRole.required_skills 
+          : (typeof projectRole.required_skills === 'string' 
+              ? JSON.parse(projectRole.required_skills) 
+              : [])
+      });
+    }
+  });
+
   // Get tasks assigned to this member
   const getMemberTasks = () => {
     return tasks.filter(task => task.team_member_id === member.id);
   };
 
-  // Get role details
+  // Get role details - check both legacy roles and project roles
   const getRoleDetails = () => {
+    // First try to find by role_id if available
+    if (member.role_id) {
+      const projectRole = projectRoles.find(r => r.id === member.role_id);
+      if (projectRole) {
+        // Convert ProjectRole to Role format for the UI
+        return {
+          id: projectRole.id,
+          title: projectRole.title,
+          description: projectRole.description || '',
+          responsibilities: Array.isArray(projectRole.responsibilities) 
+            ? projectRole.responsibilities 
+            : (typeof projectRole.responsibilities === 'string' 
+                ? JSON.parse(projectRole.responsibilities) 
+                : []),
+          requiredSkills: Array.isArray(projectRole.required_skills) 
+            ? projectRole.required_skills 
+            : (typeof projectRole.required_skills === 'string' 
+                ? JSON.parse(projectRole.required_skills) 
+                : [])
+        };
+      }
+    }
+    
+    // Fallback to legacy roles by title
     return roles.find(r => r.title === member.role);
   };
 
@@ -90,10 +162,20 @@ const EnhancedMemberCard = ({
 
   // Handle select changes
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    if (name === 'role') {
+      // When role selection changes, we need to update both role and role_id
+      const selectedRole = combinedRoles.find(r => r.title === value);
+      setFormData(prev => ({
+        ...prev,
+        role: value,
+        role_id: selectedRole?.id || null
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Add expertise
@@ -136,7 +218,8 @@ const EnhancedMemberCard = ({
 
   // Remove expertise
   const removeExpertise = (index: number) => {
-    const updatedExpertise = formData.expertise.filter((_, i) => i !== index);
+    const updatedExpertise = [...formData.expertise];
+    updatedExpertise.splice(index, 1);
     setFormData(prev => ({
       ...prev,
       expertise: updatedExpertise
@@ -145,7 +228,8 @@ const EnhancedMemberCard = ({
 
   // Remove responsibility
   const removeResponsibility = (index: number) => {
-    const updatedResponsibilities = formData.responsibilities.filter((_, i) => i !== index);
+    const updatedResponsibilities = [...formData.responsibilities];
+    updatedResponsibilities.splice(index, 1);
     setFormData(prev => ({
       ...prev,
       responsibilities: updatedResponsibilities
@@ -190,6 +274,7 @@ const EnhancedMemberCard = ({
     setFormData({
       name: member.name,
       role: member.role,
+      role_id: member.role_id || null,
       email: member.contact_info && typeof member.contact_info === 'object' ? 
              (member.contact_info as any).email || '' : '',
       expertise: [...(member.expertise || [])],
@@ -216,6 +301,7 @@ const EnhancedMemberCard = ({
       await onUpdate(member.id, {
         name: formData.name,
         role: formData.role,
+        role_id: formData.role_id,
         contact_info: { email: formData.email },
         expertise: filteredExpertise,
         responsibilities: filteredResponsibilities,
@@ -243,14 +329,6 @@ const EnhancedMemberCard = ({
       setIsSubmitting(false);
     }
   };
-
-  // Available options for dropdown selects
-  const availabilityOptions = [
-    { value: 'full-time', label: 'Full-time' },
-    { value: 'part-time', label: 'Part-time' },
-    { value: 'contract', label: 'Contract' },
-    { value: 'consultant', label: 'Consultant' }
-  ];
 
   const statusOptions = [
     { value: 'active', label: 'Active' },
@@ -304,7 +382,7 @@ const EnhancedMemberCard = ({
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {roles.map(role => (
+                        {combinedRoles.map(role => (
                           <SelectItem key={role.id} value={role.title}>
                             {role.title}
                           </SelectItem>

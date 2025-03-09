@@ -1,9 +1,9 @@
 import React from 'react';
-import { TeamMember, TeamTask } from '@/store/types';
+import { TeamMember, TeamTask, ProjectRole } from '@/store/types';
 import { Plus, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EnhancedMemberCard from './EnhancedMemberCard';
-import { Role } from './RoleCard';
+import { Role } from './EnhancedRoleCard';
 import { motion } from 'framer-motion';
 import { staggerContainer } from './TeamManagement';
 
@@ -11,26 +11,43 @@ interface EnhancedMembersProps {
   members: TeamMember[];
   roles: Role[];
   tasks: TeamTask[];
+  projectRoles?: ProjectRole[];
   onAdd: (member: Omit<TeamMember, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   onUpdate: (id: string, data: Partial<TeamMember>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onChangeRole?: (member: TeamMember) => void;
 }
 
 const EnhancedMembers = ({ 
   members, 
   roles, 
   tasks, 
+  projectRoles = [],
   onAdd, 
   onUpdate, 
-  onDelete 
+  onDelete,
+  onChangeRole 
 }: EnhancedMembersProps) => {
   
   // Create a new member with default values
   const handleAddMember = async () => {
+    // Find first available role from project roles or legacy roles
+    let defaultRole = '';
+    let defaultRoleId = null;
+    
+    if (projectRoles.length > 0) {
+      defaultRole = projectRoles[0].title;
+      defaultRoleId = projectRoles[0].id;
+    } else if (roles.length > 0) {
+      defaultRole = roles[0].title;
+    }
+    
     // Default member data
     const newMember = {
       name: 'New Team Member',
-      role: roles.length > 0 ? roles[0].title : 'Team Member',
+      role: defaultRole || 'Team Member',
+      role_id: defaultRoleId,
+      previous_role_id: null,
       contact_info: { email: 'email@example.com' },
       expertise: ['Add skill'],
       responsibilities: ['Add responsibility'],
@@ -75,8 +92,10 @@ const EnhancedMembers = ({
               member={member} 
               roles={roles} 
               tasks={tasks} 
+              projectRoles={projectRoles}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              onChangeRole={onChangeRole}
             />
           ))}
         </motion.div>

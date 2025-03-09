@@ -145,61 +145,69 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const projectDetails = currentData.project;
   
   return (
-      <div className="flex flex-col w-full h-full min-h-screen bg-gray-50">
-        {/* Header */}
-        <Header
-          activeSection={activeSection}
-          projectName={projectDetails.title || ""}
-          sidebarCollapsed={sidebarCollapsed}
-          // toggleSidebar={toggleSidebar}
-        />
-
-        {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <Sidebar
-            projectName={projectDetails.title || ""}
-            lastEdited={projectDetails.updated_at || new Date().toISOString()}
-            completion={0} //TODO: add real completion
+      <div className="flex flex-col w-full h-screen overflow-hidden bg-gray-50">
+        {/* Header - Fixed at top with z-index */}
+        <div className="flex-none z-50 bg-white border-b">
+          <Header
             activeSection={activeSection}
-            setActiveSection={setActiveSection}
-            collapsed={sidebarCollapsed}
+            projectName={projectDetails.title || ""}
+            sidebarCollapsed={sidebarCollapsed}
+            // toggleSidebar={toggleSidebar}
           />
+        </div>
 
-          {/* Content Area */}
-          <div className="flex-1 overflow-auto p-6">
-            <ErrorBoundary>
-              <AIProjectWrapper>
-                {activeSection === "overview" && <ProjectOverview project={projectDetails} />}
+        {/* Main Content Area - Remaining height with hidden overflow */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar - Full height with own scrolling */}
+          <div 
+            className={`${sidebarCollapsed ? 'w-20' : 'w-64'} flex-none h-full overflow-y-auto scrollbar-hide transition-all duration-300 ease-in-out border-r`}
+          >
+            <Sidebar
+              projectName={projectDetails.title || ""}
+              lastEdited={projectDetails.updated_at || new Date().toISOString()}
+              completion={0} //TODO: add real completion
+              activeSection={activeSection}
+              setActiveSection={setActiveSection}
+              collapsed={sidebarCollapsed}
+            />
+          </div>
 
-                {activeSection === "ai" && <AIDashboard />}
+          {/* Content Area - Independent scrolling container */}
+          <div className="flex-1 h-full overflow-y-auto scrollbar-hide">
+            <div className="p-6">
+              <ErrorBoundary>
+                <AIProjectWrapper>
+                  {activeSection === "overview" && <ProjectOverview project={projectDetails} />}
 
-                {activeSection === "canvas" && <BusinessModelCanvas />}
+                  {activeSection === "ai" && <AIDashboard />}
 
-                {activeSection === "grp" && <GRPModel />}
+                  {activeSection === "canvas" && <BusinessModelCanvas />}
 
-                {activeSection === "market" && <MarketAnalysis />}
+                  {activeSection === "grp" && <GRPModel />}
 
-                {activeSection === "product-design" && <ProductDesign />}
+                  {activeSection === "market" && <MarketAnalysis />}
 
-                {activeSection === "validation" && <Validation />}
+                  {activeSection === "product-design" && <ProductDesign />}
 
-                {activeSection === "financials" &&
-                <FinancialProjections />
-                }
+                  {activeSection === "validation" && <Validation />}
 
-                {activeSection === "team" && 
-                <TeamManagement />
-                }
+                  {activeSection === "financials" &&
+                  <FinancialProjections />
+                  }
+
+                  {activeSection === "team" && 
+                  <TeamManagement />
+                  }
 
 
-                {activeSection === "documents" && projectDetails && (
-                  <DocumentGenerator />
-                )}
+                  {activeSection === "documents" && projectDetails && (
+                    <DocumentGenerator />
+                  )}
 
-                {activeSection === "external-tools" && <ExternalTools />}
-              </AIProjectWrapper>
-            </ErrorBoundary>
+                  {activeSection === "external-tools" && <ExternalTools />}
+                </AIProjectWrapper>
+              </ErrorBoundary>
+            </div>
           </div>
         </div>
 

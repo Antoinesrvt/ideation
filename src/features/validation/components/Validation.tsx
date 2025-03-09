@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react";
 import { v4 as uuidv4 } from "uuid";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,36 +17,36 @@ import { ExperimentsList } from "./ExperimentsList";
 import { ABTestsList } from "./ABTestsList";
 import { UserFeedbackList } from "./UserFeedbackList";
 import { HypothesesList } from "./HypothesesList";
-import {
-  ExperimentForm,
-  ABTestForm,
-  UserFeedbackForm,
+import { 
+  ExperimentForm, 
+  ABTestForm, 
+  UserFeedbackForm, 
   HypothesisForm,
 } from "@/features/validation/components/forms";
-import {
-  Check,
-  HelpCircle,
+import { 
+  Check, 
+  HelpCircle, 
   ChevronDown,
-  ChevronRight,
-  Info,
+  ChevronRight, 
+  Info, 
   Lightbulb,
   LineChart,
-  MessageSquare,
-  ClipboardCheck,
+  MessageSquare, 
+  ClipboardCheck, 
   Beaker,
   AlertCircle,
   ArrowRight,
   Plus,
   MessageCircle,
   Split,
-  PlusCircle,
-  CheckCircle2,
-  Clock,
+  PlusCircle, 
+  CheckCircle2, 
+  Clock, 
   XCircle,
   PanelTop,
   FileText,
 } from "lucide-react";
-import {
+import { 
   ValidationHypothesis,
 } from "@/store/types";
 
@@ -96,7 +96,7 @@ export const Validation: React.FC = () => {
   const { currentData } = useProjectStore();
   const projectId = currentData.project?.id;
   const { toast } = useToast();
-
+  
   // Use the validation hook
   const {
     data: validationData,
@@ -115,16 +115,16 @@ export const Validation: React.FC = () => {
     updateHypothesis,
     deleteHypothesis,
   } = useValidation(projectId);
-
+  
   const [activeTab, setActiveTab] = useState<string>("hypotheses");
   const [searchQuery, setSearchQuery] = useState<string>("");
-
+  
   // Add form state
   const [experimentFormOpen, setExperimentFormOpen] = useState(false);
   const [abTestFormOpen, setABTestFormOpen] = useState(false);
   const [userFeedbackFormOpen, setUserFeedbackFormOpen] = useState(false);
   const [hypothesisFormOpen, setHypothesisFormOpen] = useState(false);
-
+  
   const counts = {
     experiments: validationData.experiments.length,
     abTests: validationData.abTests.length,
@@ -454,7 +454,7 @@ export const Validation: React.FC = () => {
       });
     }
   };
-
+  
   if (isLoading) {
     return (
       <Card>
@@ -484,106 +484,106 @@ export const Validation: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Validation Dashboard Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Hypotheses Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Hypotheses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Lightbulb className="h-5 w-5 text-amber-500 mr-2" />
+        {/* Validation Dashboard Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Hypotheses Card */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Hypotheses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Lightbulb className="h-5 w-5 text-amber-500 mr-2" />
                 <span className="text-2xl font-bold">{counts.hypotheses}</span>
-              </div>
-              <div className="text-xs font-medium text-gray-500">
+                </div>
+                <div className="text-xs font-medium text-gray-500">
                 {
                   validationData.hypotheses.filter(
                     (h) => h.status === "validated"
                   ).length
                 }{" "}
                 validated
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Experiments Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Experiments
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Beaker className="h-5 w-5 text-purple-600 mr-2" />
+          {/* Experiments Card */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Experiments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Beaker className="h-5 w-5 text-purple-600 mr-2" />
                 <span className="text-2xl font-bold">{counts.experiments}</span>
-              </div>
-              <div className="text-xs font-medium text-gray-500">
+                </div>
+                <div className="text-xs font-medium text-gray-500">
                 {
                   validationData.experiments.filter(
                     (e) => e.status === "completed"
                   ).length
                 }{" "}
                 completed
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* A/B Tests Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              A/B Tests
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Split className="h-5 w-5 text-blue-600 mr-2" />
+          {/* A/B Tests Card */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                A/B Tests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Split className="h-5 w-5 text-blue-600 mr-2" />
                 <span className="text-2xl font-bold">{counts.abTests}</span>
-              </div>
-              <div className="text-xs font-medium text-gray-500">
+                </div>
+                <div className="text-xs font-medium text-gray-500">
                 {
                   validationData.abTests.filter((t) => t.status === "completed")
                     .length
                 }{" "}
                 completed
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* User Feedback Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              User Feedback
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <MessageCircle className="h-5 w-5 text-green-600 mr-2" />
+          {/* User Feedback Card */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                User Feedback
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <MessageCircle className="h-5 w-5 text-green-600 mr-2" />
                 <span className="text-2xl font-bold">{counts.feedback}</span>
-              </div>
-              <div className="text-xs font-medium text-gray-500">
+                </div>
+                <div className="text-xs font-medium text-gray-500">
                 {
                   validationData.userFeedback.filter(
                     (f) => f.sentiment === "positive"
                   ).length
                 }{" "}
                 positive
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
       </div>
 
       {/* <HoverCard>
@@ -633,54 +633,54 @@ export const Validation: React.FC = () => {
                 title: "Creating Effective Hypotheses",
                 content: (
                   <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Hypothesis Structure
                         </h4>
                         <ul className="text-sm text-dark-600 space-y-1.5">
-                          <li className="flex items-start">
+                    <li className="flex items-start">
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
-                            <span>Make it specific and testable</span>
-                          </li>
-                          <li className="flex items-start">
+                      <span>Make it specific and testable</span>
+                    </li>
+                    <li className="flex items-start">
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
                             <span>
                               Use format: "We believe that [doing X] will result
                               in [outcome Y]"
                             </span>
-                          </li>
-                          <li className="flex items-start">
+                    </li>
+                    <li className="flex items-start">
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
-                            <span>Include how you'll measure success</span>
-                          </li>
-                        </ul>
-                      </div>
-                      <div>
+                      <span>Include how you'll measure success</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Prioritizing Hypotheses
                         </h4>
                         <ul className="text-sm text-dark-600 space-y-1.5">
-                          <li className="flex items-start">
+                    <li className="flex items-start">
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
-                            <span>Start with riskiest assumptions</span>
-                          </li>
-                          <li className="flex items-start">
+                      <span>Start with riskiest assumptions</span>
+                    </li>
+                    <li className="flex items-start">
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
                             <span>
                               Focus on assumptions that could invalidate your
                               idea
                             </span>
-                          </li>
-                          <li className="flex items-start">
+                    </li>
+                    <li className="flex items-start">
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
                             <span>
                               Order by impact and effort required to test
                             </span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
                     <div className="bg-white/80 rounded-md p-3 border border-primary-100 mt-2">
                       <p className="text-sm font-medium text-primary-800 mb-1">
                         Example hypothesis:
@@ -700,21 +700,21 @@ export const Validation: React.FC = () => {
                   "Formulate and track your key business hypotheses and their validation status",
               }}
             >
-              <HypothesesList
-                hypotheses={validationData.hypotheses}
+            <HypothesesList
+              hypotheses={validationData.hypotheses}
                 onUpdate={handleUpdateHypothesis}
                 onDelete={handleDeleteHypothesis}
               />
             </SectionTab>
 
-            <HypothesisForm
-              open={hypothesisFormOpen}
-              onOpenChange={setHypothesisFormOpen}
+          <HypothesisForm
+            open={hypothesisFormOpen}
+            onOpenChange={setHypothesisFormOpen}
               onSubmit={handleAddHypothesis}
-            />
-          </TabsContent>
+          />
+        </TabsContent>
 
-          <TabsContent value="experiments">
+        <TabsContent value="experiments">
             <SectionTab
               icon={<FileText className="h-5 w-5 text-primary-700" />}
               title="Experiments"
@@ -727,7 +727,7 @@ export const Validation: React.FC = () => {
                 content: (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Experiment Design
                         </h4>
@@ -747,8 +747,8 @@ export const Validation: React.FC = () => {
                             </span>
                           </li>
                         </ul>
-                      </div>
-                      <div>
+                </div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Experiment Types
                         </h4>
@@ -767,9 +767,9 @@ export const Validation: React.FC = () => {
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
                             <span>MVPs to test actual usage behavior</span>
                           </li>
-                        </ul>
-                      </div>
-                    </div>
+                  </ul>
+                </div>
+              </div>
                   </div>
                 ),
               }}
@@ -779,21 +779,21 @@ export const Validation: React.FC = () => {
                   "Run experiments to test your hypotheses and gather evidence about your product's viability",
               }}
             >
-              <ExperimentsList
-                experiments={validationData.experiments}
+            <ExperimentsList
+              experiments={validationData.experiments}
                 onUpdate={handleUpdateExperiment}
                 onDelete={handleDeleteExperiment}
-              />
+            />
             </SectionTab>
 
-            <ExperimentForm
-              open={experimentFormOpen}
-              onOpenChange={setExperimentFormOpen}
+          <ExperimentForm
+            open={experimentFormOpen}
+            onOpenChange={setExperimentFormOpen}
               onSubmit={handleAddExperiment}
-            />
-          </TabsContent>
+          />
+        </TabsContent>
 
-          <TabsContent value="ab-tests">
+        <TabsContent value="ab-tests">
             <SectionTab
               icon={<Split className="h-5 w-5 text-primary-700" />}
               title="A/B Tests"
@@ -806,7 +806,7 @@ export const Validation: React.FC = () => {
                 content: (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Test Setup
                         </h4>
@@ -827,8 +827,8 @@ export const Validation: React.FC = () => {
                             <span>Run tests for adequate time periods</span>
                           </li>
                         </ul>
-                      </div>
-                      <div>
+                </div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Common Test Areas
                         </h4>
@@ -845,9 +845,9 @@ export const Validation: React.FC = () => {
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
                             <span>Pricing models and feature presentation</span>
                           </li>
-                        </ul>
-                      </div>
-                    </div>
+                  </ul>
+                </div>
+              </div>
                   </div>
                 ),
               }}
@@ -857,22 +857,22 @@ export const Validation: React.FC = () => {
                   "Create A/B tests to compare different versions of your product and optimize performance",
               }}
             >
-              <ABTestsList
-                tests={validationData.abTests}
+            <ABTestsList
+              tests={validationData.abTests}
                 onUpdate={handleUpdateABTest}
                 onDelete={handleDeleteABTest}
-              />
+            />
             </SectionTab>
 
-            <ABTestForm
-              open={abTestFormOpen}
-              onOpenChange={setABTestFormOpen}
+          <ABTestForm
+            open={abTestFormOpen}
+            onOpenChange={setABTestFormOpen}
               onSubmit={handleAddABTest}
               // hypotheses={validationData.hypotheses}
-            />
-          </TabsContent>
+          />
+        </TabsContent>
 
-          <TabsContent value="user-feedback">
+        <TabsContent value="user-feedback">
             <SectionTab
               icon={<MessageSquare className="h-5 w-5 text-primary-700" />}
               title="User Feedback"
@@ -885,7 +885,7 @@ export const Validation: React.FC = () => {
                 content: (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Feedback Methods
                         </h4>
@@ -907,8 +907,8 @@ export const Validation: React.FC = () => {
                             </span>
                           </li>
                         </ul>
-                      </div>
-                      <div>
+                </div>
+                <div>
                         <h4 className="font-medium text-primary-800 mb-2">
                           Feedback Analysis
                         </h4>
@@ -927,9 +927,9 @@ export const Validation: React.FC = () => {
                             <ChevronRight className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0 text-primary-500" />
                             <span>Prioritize based on business goals</span>
                           </li>
-                        </ul>
-                      </div>
-                    </div>
+                  </ul>
+                </div>
+              </div>
                   </div>
                 ),
               }}
@@ -939,21 +939,21 @@ export const Validation: React.FC = () => {
                   "Collect and document user feedback to improve your product based on real user needs",
               }}
             >
-              <UserFeedbackList
-                feedback={validationData.userFeedback}
+            <UserFeedbackList
+              feedback={validationData.userFeedback}
                 onUpdate={handleUpdateUserFeedback}
                 onDelete={handleDeleteUserFeedback}
-              />
+            />
             </SectionTab>
 
-            <UserFeedbackForm
-              open={userFeedbackFormOpen}
-              onOpenChange={setUserFeedbackFormOpen}
+          <UserFeedbackForm
+            open={userFeedbackFormOpen}
+            onOpenChange={setUserFeedbackFormOpen}
               onSubmit={handleAddUserFeedback}
-            />
-          </TabsContent>
-        </Tabs>
+          />
+        </TabsContent>
+      </Tabs>
       </div>
     </div>
   );
-};
+}; 

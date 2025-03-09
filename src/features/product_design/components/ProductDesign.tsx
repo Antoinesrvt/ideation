@@ -96,12 +96,12 @@ export const ProductDesign: React.FC = () => {
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("wireframes");
-  const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({
-    wireframes: false,
-    features: false,
-    journey: false,
-  });
-
+    const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({
+      wireframes: false,
+      features: false,
+      journey: false,
+    });
+  
   // Track which help sections are expanded
   const [expandedHelp, setExpandedHelp] = useState<{
     wireframes: boolean;
@@ -115,7 +115,7 @@ export const ProductDesign: React.FC = () => {
 
   // Track which journey stage is currently selected
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
-
+  
   // Use the hook with proper error handling
   const {
     data,
@@ -153,7 +153,7 @@ export const ProductDesign: React.FC = () => {
     }),
     [data]
   );
-
+  
   // Helper function to determine if an item is new/modified in comparison mode
   const getItemStatus = (
     section: "wireframes" | "features" | "journeyStages",
@@ -194,7 +194,7 @@ export const ProductDesign: React.FC = () => {
         project_id: projectId,
         name: "New Wireframe",
         description: "",
-        image_url: null,
+      image_url: null,
         screen_type: "desktop",
         order_index: uiData.wireframes.length,
         tags: [],
@@ -214,7 +214,7 @@ export const ProductDesign: React.FC = () => {
       });
     }
   };
-
+  
   // Handle adding a new feature
   const handleAddFeature = async (
     priority: "must" | "should" | "could" | "wont" = "should"
@@ -228,9 +228,9 @@ export const ProductDesign: React.FC = () => {
         description: "",
         priority,
         status: "planned",
-        effort: 2,
-        impact: 2,
-        tags: [],
+      effort: 2,
+      impact: 2,
+      tags: [],
         notes: "",
       });
 
@@ -248,7 +248,7 @@ export const ProductDesign: React.FC = () => {
       });
     }
   };
-
+  
   // Handle adding a new journey stage
   const handleAddJourneyStage = async () => {
     const projectId = currentData.project?.id || "";
@@ -258,7 +258,7 @@ export const ProductDesign: React.FC = () => {
         project_id: projectId,
         name: "New Stage",
         description: "",
-        completed: false,
+      completed: false,
         order_index: uiData.journeyStages.length,
       });
 
@@ -394,7 +394,7 @@ export const ProductDesign: React.FC = () => {
             </Card>
           </div>
         </div>
-
+        
         <LayoutGroup id="product-design-tabs">
           <div className="space-y-6">
             <Tabs
@@ -409,7 +409,7 @@ export const ProductDesign: React.FC = () => {
                   activeTab={activeTab}
                   onTabChange={setActiveTab}
                 />
-              </div>
+                  </div>
 
               <AnimatePresence mode="wait">
                 {activeTab === "wireframes" && (
@@ -445,15 +445,15 @@ export const ProductDesign: React.FC = () => {
                                 <li>
                                   Visualize page layouts without visual design
                                   distractions
-                                </li>
+                        </li>
                                 <li>Test user flows before development</li>
                                 <li>Get early stakeholder feedback</li>
                                 <li>Define content hierarchy and structure</li>
                                 <li>
                                   Plan responsive layouts and interactions
-                                </li>
-                              </ul>
-                            </div>
+                        </li>
+                      </ul>
+                    </div>
                           ),
                         }}
                         hasItems={data.wireframes.length > 0}
@@ -468,7 +468,7 @@ export const ProductDesign: React.FC = () => {
                           onSelect={(id) => console.log(id)}
                         />
                       </SectionTab>
-                    </TabsContent>
+          </TabsContent>
                   </motion.div>
                 )}
 
@@ -502,40 +502,40 @@ export const ProductDesign: React.FC = () => {
                                 The MoSCoW method helps prioritize features:
                               </p>
                               <div className="grid grid-cols-2 gap-2">
-                                <div className="p-2 bg-red-50 border border-red-100 rounded">
+                        <div className="p-2 bg-red-50 border border-red-100 rounded">
                                   <h5 className="text-xs font-medium text-red-800">
                                     Must Have
                                   </h5>
                                   <p className="text-xs text-red-600">
                                     Critical for MVP
                                   </p>
-                                </div>
-                                <div className="p-2 bg-yellow-50 border border-yellow-100 rounded">
+                        </div>
+                        <div className="p-2 bg-yellow-50 border border-yellow-100 rounded">
                                   <h5 className="text-xs font-medium text-yellow-800">
                                     Should Have
                                   </h5>
                                   <p className="text-xs text-yellow-600">
                                     Important but not critical
                                   </p>
-                                </div>
-                                <div className="p-2 bg-green-50 border border-green-100 rounded">
+                        </div>
+                        <div className="p-2 bg-green-50 border border-green-100 rounded">
                                   <h5 className="text-xs font-medium text-green-800">
                                     Could Have
                                   </h5>
                                   <p className="text-xs text-green-600">
                                     Nice to have
                                   </p>
-                                </div>
-                                <div className="p-2 bg-gray-50 border border-gray-100 rounded">
+                        </div>
+                        <div className="p-2 bg-gray-50 border border-gray-100 rounded">
                                   <h5 className="text-xs font-medium text-gray-800">
                                     Won't Have
                                   </h5>
                                   <p className="text-xs text-gray-600">
                                     Future consideration
                                   </p>
-                                </div>
-                              </div>
-                            </div>
+                        </div>
+                      </div>
+                    </div>
                           ),
                         }}
                         hasItems={data.features.length > 0}
@@ -550,7 +550,7 @@ export const ProductDesign: React.FC = () => {
                           onEditFeature={(id) => console.log(id)}
                         />
                       </SectionTab>
-                    </TabsContent>
+          </TabsContent>
                   </motion.div>
                 )}
 
@@ -586,15 +586,15 @@ export const ProductDesign: React.FC = () => {
                               <ul className="list-disc list-inside text-dark-600 space-y-1">
                                 <li>
                                   Define clear user stages and touchpoints
-                                </li>
+                        </li>
                                 <li>Identify pain points and opportunities</li>
                                 <li>Map user emotions and expectations</li>
                                 <li>
                                   Connect stages to features and solutions
-                                </li>
+                        </li>
                                 <li>Track user progress and success metrics</li>
-                              </ul>
-                            </div>
+                      </ul>
+                    </div>
                           ),
                         }}
                         hasItems={data.journey.stages.length > 0}
@@ -603,19 +603,19 @@ export const ProductDesign: React.FC = () => {
                             "Create a user journey map to visualize the complete user experience with your product.",
                         }}
                       >
-                        <UserJourneyMap
+                <UserJourneyMap 
                           stages={data.journey.stages}
                           selectedStage={selectedStageId || undefined}
-                          onSelectStage={setSelectedStageId}
-                          onAddStage={handleAddJourneyStage}
-                          onEditStage={(id) => console.log(id)}
-                        />
+                  onSelectStage={setSelectedStageId} 
+                  onAddStage={handleAddJourneyStage} 
+                  onEditStage={(id) => console.log(id)} 
+                />
                       </SectionTab>
-                    </TabsContent>
+          </TabsContent>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </Tabs>
+        </Tabs>
           </div>
         </LayoutGroup>
       </div>

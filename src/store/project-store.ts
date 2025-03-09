@@ -52,7 +52,10 @@ import {
   // Optimistic Update types
   OptimisticItem,
   OptimisticItemsState,
-  OptimisticOperation
+  OptimisticOperation,
+  ProjectRole,
+  // Role Template
+  RoleTemplate
 } from './types';
 
 // Initial state
@@ -91,6 +94,7 @@ const initialState: ProjectState = {
     teamMembers: [],
     teamTasks: [],
     teamResponsibilityMatrix: [],
+    projectRoles: [],
     // Documents
     documents: [],
     documentCollaborators: [],
@@ -140,6 +144,7 @@ const initialDiffMetadata: DiffMetadata = {
   relatedItems: { additions: [], modifications: [], deletions: [] },
   projectTags: { additions: [], modifications: [], deletions: [] },
   featureItemTags: { additions: [], modifications: [], deletions: [] },
+  projectRoles: { additions: [], modifications: [], deletions: [] },
 };
 
 // Create the base atom
@@ -207,8 +212,8 @@ const calculateArrayDiff = <T extends { id: string }>(
 
 // Helper function to get the feature key for a table name
 const getFeatureKeyFromTable = (tableName: string): keyof ProjectState['currentData'] | null => {
-  // Map table names to their corresponding feature key in the store
   const tableToFeatureMap: Record<string, keyof ProjectState['currentData']> = {
+    'projects': 'project',
     'canvas_sections': 'canvasSections',
     'canvas_items': 'canvasItems',
     'grp_categories': 'grpCategories',
@@ -234,6 +239,7 @@ const getFeatureKeyFromTable = (tableName: string): keyof ProjectState['currentD
     'team_members': 'teamMembers',
     'team_tasks': 'teamTasks',
     'team_responsibility_matrix': 'teamResponsibilityMatrix',
+    'project_roles': 'projectRoles',
     'documents': 'documents',
     'document_collaborators': 'documentCollaborators',
     'project_notifications': 'notifications',
@@ -241,7 +247,7 @@ const getFeatureKeyFromTable = (tableName: string): keyof ProjectState['currentD
     'project_tags': 'projectTags',
     'feature_item_tags': 'featureItemTags',
   };
-
+  
   return tableToFeatureMap[tableName] || null;
 };
 
@@ -1967,7 +1973,7 @@ export function useProjectStore(): ProjectStore {
     }, [setState]),
 
     discardChanges: useCallback(() => {
-      setState((prev) => {
+      setState(prev => {
         if (prev.stagedData) {
           return {
             ...prev,
@@ -1998,5 +2004,47 @@ export function useProjectStore(): ProjectStore {
         error,
       }));
     }, [setState]),
+
+    // Project Roles actions
+    setProjectRoles: useCallback((roles: ProjectRole[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          projectRoles: roles
+        }
+      }));
+    }, [setState]),
+
+    addProjectRole: useCallback((role: ProjectRole) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          projectRoles: [...prev.currentData.projectRoles, role]
+        }
+      }));
+    }, [setState]),
+
+    updateProjectRole: useCallback((id: string, updates: Partial<ProjectRole>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          projectRoles: updateArray(prev.currentData.projectRoles, id, updates)
+        }
+      }));
+    }, [setState]),
+
+    deleteProjectRole: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          projectRoles: prev.currentData.projectRoles.filter(r => r.id !== id)
+        }
+      }));
+    }, [setState]),
+
   };
 } 

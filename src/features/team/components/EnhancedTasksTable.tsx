@@ -29,10 +29,14 @@ const EnhancedTasksTable = ({
   const onAdd = async () => {
     try {
 
-      const task = {
+      const task: Insert<'team_tasks'> = {
         title: "New Task",
         description: "This is a new task",
         project_id: projectId,
+        status: "not_started",
+        priority: "medium",
+        due_date: null,
+        team_member_id: null
       };
 
       // Use the appropriate method from the teamData API

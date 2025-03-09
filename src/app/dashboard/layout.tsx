@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
-import { UserNav } from '@/components/dashboard/user-nav'
+import { Header } from '@/components/project/Header'
 
 export default function DashboardLayout({
   children,
@@ -12,22 +12,17 @@ export default function DashboardLayout({
   const pathname = usePathname()
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar - Fixed */}
-      <div className="fixed inset-y-0 z-50 hidden w-64 lg:block">
-        <Sidebar />
-      </div>
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
+      {/* Top Navigation - Full width */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background">
+        <Header isDashboard={true} />
+      </header>
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col lg:pl-64">
-        {/* Top Navigation */}
-        <header className="sticky top-0 z-40 border-b bg-background">
-          <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-            <div className="flex flex-1 items-center justify-end">
-              <UserNav />
-            </div>
-          </div>
-        </header>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - starts after header */}
+        <div className="hidden lg:block w-64 border-r">
+          <Sidebar />
+        </div>
 
         {/* Main Content Area - Scrollable */}
         <main className="flex-1 overflow-y-auto p-4">
@@ -35,5 +30,5 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
-  )
+  );
 } 

@@ -48,7 +48,6 @@ export type ValidationHypothesis = TablesRow<'validation_hypotheses'>;
 export type TeamMember = TablesRow<'team_members'>;
 export type TeamTask = TablesRow<'team_tasks'>;
 export type TeamResponsibilityMatrix = TablesRow<'team_responsibility_matrix'>;
-
 // Document types
 export type Document = TablesRow<'documents'>;
 export type DocumentCollaborator = TablesRow<'document_collaborators'>;
@@ -70,6 +69,10 @@ export interface RACIMatrixData {
 export interface EnhancedTeamResponsibilityMatrix extends TeamResponsibilityMatrix {
   raci_matrix: RACIMatrixData;
 }
+
+// Add Role Template and Project Role types
+export type RoleTemplate = TablesRow<'role_templates'>;
+export type ProjectRole = TablesRow<'project_roles'>;
 
 // Store state types
 export interface ProjectState {
@@ -107,6 +110,7 @@ export interface ProjectState {
     teamMembers: TeamMember[];
     teamTasks: TeamTask[];
     teamResponsibilityMatrix: TeamResponsibilityMatrix[];
+    projectRoles: ProjectRole[];
     // Documents
     documents: Document[];
     documentCollaborators: DocumentCollaborator[];
@@ -150,6 +154,7 @@ export interface ProjectState {
     teamMembers: TeamMember[];
     teamTasks: TeamTask[];
     teamResponsibilityMatrix: TeamResponsibilityMatrix[];
+    projectRoles: ProjectRole[];
     // Documents
     documents: Document[];
     documentCollaborators: DocumentCollaborator[];
@@ -350,6 +355,13 @@ export interface ProjectActions {
   // Loading and error states
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
+  
+  // Project Roles actions
+  setProjectRoles: (roles: ProjectRole[]) => void;
+  addProjectRole: (role: ProjectRole) => void;
+  updateProjectRole: (id: string, updates: Partial<ProjectRole>) => void;
+  deleteProjectRole: (id: string) => void;
+  
 }
 
 export type ChangeType = 'added' | 'modified' | 'deleted' | 'unchanged';
@@ -402,6 +414,8 @@ export interface DiffMetadata {
   teamMembers?: FeatureDiff;
   teamTasks?: FeatureDiff;
   teamResponsibilityMatrix?: FeatureDiff;
+  projectRoles?: FeatureDiff;
+  roleTemplates?: FeatureDiff;
   // Documents
   documents?: FeatureDiff;
   documentCollaborators?: FeatureDiff;

@@ -54,7 +54,6 @@ interface ChangeItem {
 export function AIDashboard() {
   // Core state
   const [safeMode, setSafeMode] = useState(false);
-  const [activeTab, setActiveTab] = useState('suggestions');
   
   // AI settings
   const [settings, setSettings] = useState<AISettings>({
@@ -249,22 +248,55 @@ export function AIDashboard() {
   const pendingChanges = changes.length - acceptedChanges - rejectedChanges;
 
   return (
-    <div className={` relative ${safeMode ? 'bg-blue-50 border-2 border-blue-200 rounded-lg transition-all duration-300' : ''}`}>
+    <div
+      className={` relative ${
+        safeMode
+          ? "bg-blue-50 border-2 border-blue-200 rounded-lg transition-all duration-300"
+          : ""
+      }`}
+    >
       {/* Header with summary */}
       <div className="mb-8">
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
           <div className="flex items-center">
             <span className="mr-2">Suggested Changes:</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-100">{addedCount} Added</Badge>
-            <Badge variant="outline" className="ml-1 bg-blue-50 text-blue-700 hover:bg-blue-100">{modifiedCount} Modified</Badge>
-            <Badge variant="outline" className="ml-1 bg-red-50 text-red-700 hover:bg-red-100">{removedCount} Removed</Badge>
+            <Badge
+              variant="outline"
+              className="bg-green-50 text-green-700 hover:bg-green-100"
+            >
+              {addedCount} Added
+            </Badge>
+            <Badge
+              variant="outline"
+              className="ml-1 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            >
+              {modifiedCount} Modified
+            </Badge>
+            <Badge
+              variant="outline"
+              className="ml-1 bg-red-50 text-red-700 hover:bg-red-100"
+            >
+              {removedCount} Removed
+            </Badge>
           </div>
           <div className="w-px h-4 bg-slate-300 mx-2"></div>
           <div className="flex items-center">
             <span className="mr-2">Status:</span>
-            {acceptedChanges > 0 && <Badge variant="outline" className="bg-green-50 text-green-700">{acceptedChanges} Accepted</Badge>}
-            {rejectedChanges > 0 && <Badge variant="outline" className="ml-1 bg-red-50 text-red-700">{rejectedChanges} Rejected</Badge>}
-            {pendingChanges > 0 && <Badge variant="outline" className="ml-1">{pendingChanges} Pending</Badge>}
+            {acceptedChanges > 0 && (
+              <Badge variant="outline" className="bg-green-50 text-green-700">
+                {acceptedChanges} Accepted
+              </Badge>
+            )}
+            {rejectedChanges > 0 && (
+              <Badge variant="outline" className="ml-1 bg-red-50 text-red-700">
+                {rejectedChanges} Rejected
+              </Badge>
+            )}
+            {pendingChanges > 0 && (
+              <Badge variant="outline" className="ml-1">
+                {pendingChanges} Pending
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -273,311 +305,154 @@ export function AIDashboard() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Safe Mode Toggle */}
-          <SafeModeToggle 
-            enabled={safeMode} 
-            onToggle={setSafeMode}
-          />
-          
-          {/* Main Tabs */}
-          <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-2 mb-6">
-              <TabsTrigger value="suggestions" className="text-sm">
-                <MessageSquare className="w-4 h-4 mr-2" />
-                AI Suggestions
-                {pendingChanges > 0 && (
-                  <Badge className="ml-2 bg-blue-500">{pendingChanges}</Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="text-sm">
-                <Settings className="w-4 h-4 mr-2" />
-                AI Settings
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="suggestions" className="space-y-6">
-              {/* Recent AI Changes */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="w-5 h-5 text-blue-500" />
-                    Suggested Changes
-                  </CardTitle>
-                </CardHeader>
-                
-                <CardContent>
-                  {changes.length === 0 ? (
-                    <div className="text-center py-6 text-slate-500">
-                      No changes suggested yet. Ask the AI to analyze your data.
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {changes.map((change) => (
-                        <div 
-                          key={change.id} 
-                          className={`p-4 rounded-lg border-l-4 bg-white shadow-sm transition-all hover:shadow-md ${
-                            change.accepted === true ? 'opacity-75 bg-green-50 border-green-500' :
-                            change.accepted === false ? 'opacity-50 bg-slate-50 border-slate-300' :
-                            change.status === 'modified' ? 'border-blue-500' : 
-                            change.status === 'added' ? 'border-green-500' : 
-                            'border-red-500'
-                          }`}
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold flex items-center gap-2">
-                              {change.status === 'modified' ? <FileEdit className="w-4 h-4 text-blue-500" /> : 
-                              change.status === 'added' ? <Plus className="w-4 h-4 text-green-500" /> : 
-                              <Trash className="w-4 h-4 text-red-500" />}
-                              {change.title}
-                            </h3>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              change.status === 'modified' ? 'bg-blue-100 text-blue-700' : 
-                              change.status === 'added' ? 'bg-green-100 text-green-700' : 
-                              'bg-red-100 text-red-700'
-                            }`}>
-                              {change.status.charAt(0).toUpperCase() + change.status.slice(1)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-600 mb-3">{change.description}</p>
-                          
-                          {change.accepted === true ? (
-                            <div className="flex items-center text-green-600 text-sm">
-                              <CheckCircle className="w-4 h-4 mr-1.5" />
-                              Change accepted
-                            </div>
-                          ) : change.accepted === false ? (
-                            <div className="flex items-center text-red-600 text-sm">
-                              <XCircle className="w-4 h-4 mr-1.5" />
-                              Change rejected
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-xs"
-                                onClick={() => handleOpenDiffViewer(change)}
-                              >
-                                <Eye className="w-3 h-3 mr-1" />
-                                View Change
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className={`text-xs text-green-600 border-green-200 hover:bg-green-50`}
-                                onClick={() => handleAcceptChange(change.id)}
-                              >
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Accept
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                onClick={() => handleRejectChange(change.id)}
-                              >
-                                <XCircle className="w-3 h-3 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-                
-                {changes.length > 0 && (
-                  <CardFooter className="flex justify-between border-t pt-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="text-red-600 hover:bg-red-50 border-red-200"
-                      onClick={handleRejectAllChanges}
-                    >
-                      <XCircle className="w-4 h-4 mr-1.5" />
-                      Reject All
-                    </Button>
-                    <Button 
-                      size="sm"
-                      className="text-white bg-blue-600 hover:bg-blue-700"
-                      onClick={handleAcceptAllChanges}
-                    >
-                      <CheckCircle className="w-4 h-4 mr-1.5" />
-                      Accept All Changes
-                    </Button>
-                  </CardFooter>
-                )}
-              </Card>
-              
-              {/* Interaction History Card */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MessageSquare className="w-5 h-5 text-purple-500" />
-                    Recent Interactions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto">
-                    {interactionHistory.map((item) => (
+
+          <div className="space-y-6">
+            {/* Recent AI Changes */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Sparkles className="w-5 h-5 text-blue-500" />
+                  Suggested Changes
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                {changes.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500">
+                    No changes suggested yet. Ask the AI to analyze your data.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {changes.map((change) => (
                       <div
-                        key={item.id}
-                        className={`p-3 rounded-lg ${
-                          item.type === 'prompt'
-                            ? 'bg-purple-50 border border-purple-100'
-                            : item.type === 'response'
-                            ? 'bg-blue-50 border border-blue-100'
-                            : item.type === 'change'
-                            ? (item.status === 'modified' 
-                              ? 'bg-blue-50 border border-blue-100' 
-                              : item.status === 'added'
-                              ? 'bg-green-50 border border-green-100'
-                              : 'bg-red-50 border border-red-100')
-                            : 'bg-slate-50 border border-slate-100'
+                        key={change.id}
+                        className={`p-4 rounded-lg border-l-4 bg-white shadow-sm transition-all hover:shadow-md ${
+                          change.accepted === true
+                            ? "opacity-75 bg-green-50 border-green-500"
+                            : change.accepted === false
+                            ? "opacity-50 bg-slate-50 border-slate-300"
+                            : change.status === "modified"
+                            ? "border-blue-500"
+                            : change.status === "added"
+                            ? "border-green-500"
+                            : "border-red-500"
                         }`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          {item.type === 'prompt' ? (
-                            <Bot className="w-4 h-4 text-purple-500" />
-                          ) : item.type === 'response' ? (
-                            <Sparkles className="w-4 h-4 text-blue-500" />
-                          ) : item.type === 'change' ? (
-                            item.status === 'modified' ? (
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            {change.status === "modified" ? (
                               <FileEdit className="w-4 h-4 text-blue-500" />
-                            ) : item.status === 'added' ? (
+                            ) : change.status === "added" ? (
                               <Plus className="w-4 h-4 text-green-500" />
                             ) : (
                               <Trash className="w-4 h-4 text-red-500" />
-                            )
-                          ) : (
-                            <CheckCircle className="w-4 h-4 text-slate-500" />
-                          )}
-                          <span className="text-xs text-gray-500">
-                            {formatDate(item.timestamp)}
+                            )}
+                            {change.title}
+                          </h3>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              change.status === "modified"
+                                ? "bg-blue-100 text-blue-700"
+                                : change.status === "added"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {change.status.charAt(0).toUpperCase() +
+                              change.status.slice(1)}
                           </span>
                         </div>
-                        <p className="text-sm">{item.content}</p>
+                        <p className="text-sm text-slate-600 mb-3">
+                          {change.description}
+                        </p>
+
+                        {change.accepted === true ? (
+                          <div className="flex items-center text-green-600 text-sm">
+                            <CheckCircle className="w-4 h-4 mr-1.5" />
+                            Change accepted
+                          </div>
+                        ) : change.accepted === false ? (
+                          <div className="flex items-center text-red-600 text-sm">
+                            <XCircle className="w-4 h-4 mr-1.5" />
+                            Change rejected
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => handleOpenDiffViewer(change)}
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              View Change
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`text-xs text-green-600 border-green-200 hover:bg-green-50`}
+                              onClick={() => handleAcceptChange(change.id)}
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => handleRejectChange(change.id)}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="settings" className="space-y-6">
-              {/* AI Control Panel */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    AI Control Panel
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* AI Settings Sliders */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium">
-                          <Sparkles className="w-4 h-4 text-purple-500" />
-                          Creativity
-                        </label>
-                        <Slider
-                          value={[settings.creativity]}
-                          onValueChange={([value]) => handleSettingChange('creativity', value)}
-                          max={100}
-                          step={1}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-slate-500 mt-1 px-1">
-                          <span>Conservative</span>
-                          <span>Balanced</span>
-                          <span>Creative</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium">
-                          <Bot className="w-4 h-4 text-green-500" />
-                          Precision
-                        </label>
-                        <Slider
-                          value={[settings.precision]}
-                          onValueChange={([value]) => handleSettingChange('precision', value)}
-                          max={100}
-                          step={1}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-slate-500 mt-1 px-1">
-                          <span>Flexible</span>
-                          <span>Balanced</span>
-                          <span>Precise</span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="flex items-center gap-2 text-sm font-medium">
-                          <Settings className="w-4 h-4 text-orange-500" />
-                          Processing Speed
-                        </label>
-                        <Slider
-                          value={[settings.speed]}
-                          onValueChange={([value]) => handleSettingChange('speed', value)}
-                          max={100}
-                          step={1}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-slate-500 mt-1 px-1">
-                          <span>Thorough</span>
-                          <span>Balanced</span>
-                          <span>Fast</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Stats Panel */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart2 className="w-5 h-5 text-blue-500" />
-                    AI Usage Statistics
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-blue-50 p-4 rounded-lg text-center">
-                      <div className="text-3xl font-bold text-blue-600">12</div>
-                      <div className="text-sm text-slate-600">Prompts This Week</div>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg text-center">
-                      <div className="text-3xl font-bold text-purple-600">8</div>
-                      <div className="text-sm text-slate-600">Changes Applied</div>
-                    </div>
-                    <div className="bg-green-50 p-4 rounded-lg text-center">
-                      <div className="text-3xl font-bold text-green-600">83%</div>
-                      <div className="text-sm text-slate-600">Acceptance Rate</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                )}
+              </CardContent>
+
+              {changes.length > 0 && (
+                <CardFooter className="flex justify-between border-t pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50 border-red-200"
+                    onClick={handleRejectAllChanges}
+                  >
+                    <XCircle className="w-4 h-4 mr-1.5" />
+                    Reject All
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="text-white bg-blue-600 hover:bg-blue-700"
+                    onClick={handleAcceptAllChanges}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1.5" />
+                    Accept All Changes
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+
+            {/* Interaction History Card */}
+          </div>
         </div>
-        
+
         {/* Right Column */}
         <div className="space-y-6">
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-4">
-            <Button 
+            <Button
               variant={historyPanelOpen ? "default" : "outline"}
               className="w-full flex items-center justify-center gap-2"
               onClick={() => setHistoryPanelOpen(!historyPanelOpen)}
             >
               <History className="w-4 h-4" />
-              <span>{historyPanelOpen ? 'Hide History' : 'View History'}</span>
+              <span>{historyPanelOpen ? "Hide History" : "View History"}</span>
             </Button>
-            
+
             <Button
               variant="outline"
               className="w-full flex items-center justify-center gap-2"
@@ -592,26 +467,8 @@ export function AIDashboard() {
               <span>Preview Changes</span>
             </Button>
           </div>
-          
-          {/* Custom Prompt Card */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Ask AI Assistant</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-3">
-                <textarea 
-                  className="w-full border rounded-lg p-3 text-sm min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ask for help analyzing data, generating insights, or modifying your dashboard..."
-                ></textarea>
-                <Button className="self-end">
-                  <SendIcon className="w-4 h-4 mr-2" />
-                  Send
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
+
+          <SafeModeToggle enabled={safeMode} onToggle={setSafeMode} />
           {/* Suggested Prompts Card */}
           <Card>
             <CardHeader className="pb-2">
@@ -619,33 +476,103 @@ export function AIDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start text-left text-sm" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left text-sm"
+                  size="sm"
+                >
                   Analyze conversion rates across user segments
                 </Button>
-                <Button variant="outline" className="w-full justify-start text-left text-sm" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left text-sm"
+                  size="sm"
+                >
                   Show revenue forecast for next quarter
                 </Button>
-                <Button variant="outline" className="w-full justify-start text-left text-sm" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left text-sm"
+                  size="sm"
+                >
                   Compare ROI across all marketing channels
                 </Button>
-                <Button variant="outline" className="w-full justify-start text-left text-sm" size="sm">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left text-sm"
+                  size="sm"
+                >
                   Create visualizations for customer retention
                 </Button>
               </div>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MessageSquare className="w-5 h-5 text-purple-500" />
+                Recent Interactions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                {interactionHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`p-3 rounded-lg ${
+                      item.type === "prompt"
+                        ? "bg-purple-50 border border-purple-100"
+                        : item.type === "response"
+                        ? "bg-blue-50 border border-blue-100"
+                        : item.type === "change"
+                        ? item.status === "modified"
+                          ? "bg-blue-50 border border-blue-100"
+                          : item.status === "added"
+                          ? "bg-green-50 border border-green-100"
+                          : "bg-red-50 border border-red-100"
+                        : "bg-slate-50 border border-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      {item.type === "prompt" ? (
+                        <Bot className="w-4 h-4 text-purple-500" />
+                      ) : item.type === "response" ? (
+                        <Sparkles className="w-4 h-4 text-blue-500" />
+                      ) : item.type === "change" ? (
+                        item.status === "modified" ? (
+                          <FileEdit className="w-4 h-4 text-blue-500" />
+                        ) : item.status === "added" ? (
+                          <Plus className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Trash className="w-4 h-4 text-red-500" />
+                        )
+                      ) : (
+                        <CheckCircle className="w-4 h-4 text-slate-500" />
+                      )}
+                      <span className="text-xs text-gray-500">
+                        {formatDate(item.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-sm">{item.content}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-      
+
       {/* Floating Panels */}
-      <HistoryPanel 
+      <HistoryPanel
         isOpen={historyPanelOpen}
         onClose={() => setHistoryPanelOpen(false)}
-        onRevert={() => alert('This would revert to the previous version in a real app')}
+        onRevert={() =>
+          alert("This would revert to the previous version in a real app")
+        }
         events={historyEvents}
       />
-      
-      <DiffViewer 
+
+      <DiffViewer
         isOpen={diffViewerOpen && selectedChange !== null}
         onClose={() => {
           setDiffViewerOpen(false);
@@ -658,9 +585,14 @@ export function AIDashboard() {
           }
         }}
         onCancel={() => setDiffViewerOpen(false)}
-        title={`Compare Changes: ${selectedChange?.title || ''}`}
-        changeType={selectedChange?.status === 'added' ? 'added' : 
-                    selectedChange?.status === 'modified' ? 'modified' : 'removed'}
+        title={`Compare Changes: ${selectedChange?.title || ""}`}
+        changeType={
+          selectedChange?.status === "added"
+            ? "added"
+            : selectedChange?.status === "modified"
+            ? "modified"
+            : "removed"
+        }
         beforeContent={renderBeforeContent(selectedChange)}
         afterContent={renderAfterContent(selectedChange)}
       />

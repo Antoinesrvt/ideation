@@ -85,6 +85,8 @@ export function EnhancedRACIMatrix({ members, raci, onUpdate, onAdd, onDelete, r
       description: newDescription,
       project_id: raci.length > 0 ? raci[0].project_id : '',
       created_by: null,
+      entry_type: 'raci', // Specify this is a RACI entry, not a role
+      role_id: null, // No associated role
       raci_matrix: [] // Empty matrix to start
     };
     

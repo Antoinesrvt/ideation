@@ -157,14 +157,14 @@ export function MarketAnalysis() {
     
     try {
       await addPersona({
-        name: 'New Persona',
-        role: null,
-        demographics: null,
-        pain_points: null,
-        goals: null,
-        project_id: projectId,
-        created_by: null
-      });
+      name: 'New Persona',
+      role: null,
+      demographics: null,
+      pain_points: null,
+      goals: null,
+      project_id: projectId,
+      created_by: null
+    });
       
       toast({
         title: 'Success',
@@ -185,14 +185,14 @@ export function MarketAnalysis() {
     
     try {
       await addInterview({
-        name: 'New Interview',
-        company: null,
-        interview_date: new Date().toISOString(),
-        sentiment: null,
-        notes: null,
-        key_insights: null,
-        tags: null,
-        project_id: projectId,
+      name: 'New Interview',
+      company: null,
+      interview_date: new Date().toISOString(),
+      sentiment: null,
+      notes: null,
+      key_insights: null,
+      tags: null,
+      project_id: projectId,
         created_by: null,
         contact_email: null
       });
@@ -216,16 +216,16 @@ export function MarketAnalysis() {
     
     try {
       await addCompetitor({
-        name: 'New Competitor',
-        website: null,
-        strengths: null,
-        weaknesses: null,
-        price: null,
-        market_share: null,
-        notes: null,
-        project_id: projectId,
-        created_by: null
-      });
+      name: 'New Competitor',
+      website: null,
+      strengths: null,
+      weaknesses: null,
+      price: null,
+      market_share: null,
+      notes: null,
+      project_id: projectId,
+      created_by: null
+    });
       
       toast({
         title: 'Success',
@@ -246,15 +246,15 @@ export function MarketAnalysis() {
     
     try {
       await addTrend({
-        name: 'New Trend',
-        direction: null,
-        trend_type: null,
-        description: null,
-        tags: null,
-        sources: null,
-        project_id: projectId,
-        created_by: null
-      });
+      name: 'New Trend',
+      direction: null,
+      trend_type: null,
+      description: null,
+      tags: null,
+      sources: null,
+      project_id: projectId,
+      created_by: null
+    });
       
       toast({
         title: 'Success',
@@ -540,7 +540,7 @@ export function MarketAnalysis() {
           <Tabs defaultValue="personas" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex justify-between items-center mb-4">
               <TabList tabs={marketTabs} activeTab={activeTab} onTabChange={setActiveTab} />
-            </div>
+          </div>
 
             {/* Add AnimatePresence to handle the exit animations properly */}
             <AnimatePresence mode="wait">
@@ -575,7 +575,7 @@ export function MarketAnalysis() {
                               <li>Pain points and challenges</li>
                               <li>Purchasing behaviors</li>
                               <li>Decision-making factors</li>
-                            </ul>
+              </ul>
                             <p className="text-dark-600 pt-2">
                               Focus on 3-5 primary personas that represent your core customer segments.
                             </p>
@@ -587,22 +587,22 @@ export function MarketAnalysis() {
                         description: "Define who your target customers are, what they need, and what motivates their decisions."
                       }}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        {data.personas.map((persona) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {data.personas.map((persona) => (
                           <motion.div
-                            key={persona.id}
+                  key={persona.id}
                             variants={itemVariants}
                           >
                             <EnhancedCustomerPersonaCard
-                              persona={persona}
+                  persona={persona}
                               onUpdate={handleUpdatePersona}
                               onDelete={handleDeletePersona}
-                            />
+                />
                           </motion.div>
-                        ))}
-                      </div>
+              ))}
+            </div>
                     </SectionTab>
-                  </TabsContent>
+        </TabsContent>
                 </motion.div>
               )}
 
@@ -638,7 +638,7 @@ export function MarketAnalysis() {
                               <li>Listen more than you speak</li>
                               <li>Note key insights and pain points</li>
                             </ul>
-                          </div>
+            </div>
                         )
                       }}
                       hasItems={data.interviews.length > 0}
@@ -647,21 +647,21 @@ export function MarketAnalysis() {
                       }}
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        {data.interviews.map((interview) => (
+              {data.interviews.map((interview) => (
                           <motion.div
-                            key={interview.id}
+                  key={interview.id}
                             variants={itemVariants}
                           >
                             <EnhancedCustomerInterviewCard
-                              interview={interview}
+                  interview={interview}
                               onUpdate={handleUpdateInterview}
                               onDelete={handleDeleteInterview}
-                            />
+                />
                           </motion.div>
-                        ))}
-                      </div>
+              ))}
+            </div>
                     </SectionTab>
-                  </TabsContent>
+        </TabsContent>
                 </motion.div>
               )}
 
@@ -697,7 +697,7 @@ export function MarketAnalysis() {
                               <li>Strengths to learn from</li>
                               <li>Weaknesses you can exploit</li>
                             </ul>
-                          </div>
+            </div>
                         )
                       }}
                       hasItems={data.competitors.length > 0}
@@ -706,15 +706,15 @@ export function MarketAnalysis() {
                       }}
                     >
                       <div className="pt-2">
-                        <CompetitorTable
-                          competitors={data.competitors}
-                          onAdd={handleAddCompetitor}
+            <CompetitorTable
+              competitors={data.competitors}
+              onAdd={handleAddCompetitor}
                           onUpdate={handleUpdateCompetitor}
                           onDelete={handleDeleteCompetitor}
-                        />
+            />
                       </div>
                     </SectionTab>
-                  </TabsContent>
+        </TabsContent>
                 </motion.div>
               )}
 
@@ -750,7 +750,7 @@ export function MarketAnalysis() {
                               <li>Evaluate as opportunities or threats</li>
                               <li>Assess potential impact on your business</li>
                             </ul>
-                          </div>
+            </div>
                         )
                       }}
                       hasItems={data.trends.length > 0}
@@ -758,26 +758,26 @@ export function MarketAnalysis() {
                         description: "Monitor industry trends to stay ahead of market changes that could affect your product."
                       }}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                        {data.trends.map((trend) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {data.trends.map((trend) => (
                           <motion.div
-                            key={trend.id}
+                  key={trend.id}
                             variants={itemVariants}
                           >
                             <EnhancedMarketTrendCard
-                              trend={trend}
+                  trend={trend}
                               onUpdate={handleUpdateTrend}
                               onDelete={handleDeleteTrend}
-                            />
+                />
                           </motion.div>
-                        ))}
-                      </div>
+              ))}
+            </div>
                     </SectionTab>
-                  </TabsContent>
+        </TabsContent>
                 </motion.div>
               )}
             </AnimatePresence>
-          </Tabs>
+      </Tabs>
         </div>
       </LayoutGroup>
     </div>

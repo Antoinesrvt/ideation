@@ -4,15 +4,18 @@ import type {
   TeamTask,
   TeamResponsibilityMatrix,
   Insert,
-  Update
+  Update,
+  RoleTemplate,
+  ProjectRole
 } from '@/store/types';
-import type { Database } from '@/types/database';
 
 
 export interface TeamData {
   members: TeamMember[];
   tasks: TeamTask[];
   responsibilities: TeamResponsibilityMatrix[];
+  roleTemplates?: RoleTemplate[];
+  projectRoles: ProjectRole[];
 }
 
 export class TeamService {
@@ -207,19 +210,183 @@ export class TeamService {
     }
   }
 
+  // === Role Templates ===
+  async getRoleTemplates(): Promise<RoleTemplate[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('role_templates')
+        .select('*')
+        .order('title', { ascending: true });
+
+      if (error) this.handleError(error, 'getRoleTemplates');
+      return data || [];
+    } catch (error) {
+      this.handleError(error as Error, 'getRoleTemplates');
+    }
+  }
+
+  async addRoleTemplate(data: Insert<'role_templates'>): Promise<RoleTemplate> {
+    try {
+      const { data: newTemplate, error } = await this.supabase
+        .from('role_templates')
+        .insert(data)
+        .select('*')
+        .single();
+
+      if (error) this.handleError(error, 'addRoleTemplate');
+      return newTemplate;
+    } catch (error) {
+      this.handleError(error as Error, 'addRoleTemplate');
+    }
+  }
+
+  async updateRoleTemplate(id: string, data: Update<'role_templates'>): Promise<RoleTemplate> {
+    try {
+      const { data: updatedTemplate, error } = await this.supabase
+        .from('role_templates')
+        .update(data)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) this.handleError(error, 'updateRoleTemplate');
+      return updatedTemplate;
+    } catch (error) {
+      this.handleError(error as Error, 'updateRoleTemplate');
+    }
+  }
+
+  async deleteRoleTemplate(id: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('role_templates')
+        .delete()
+        .eq('id', id);
+
+      if (error) this.handleError(error, 'deleteRoleTemplate');
+    } catch (error) {
+      this.handleError(error as Error, 'deleteRoleTemplate');
+    }
+  }
+
+  // === Project Roles ===
+  async getProjectRoles(projectId: string): Promise<ProjectRole[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('project_roles')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('title', { ascending: true });
+
+      if (error) this.handleError(error, 'getProjectRoles');
+      return data || [];
+    } catch (error) {
+      this.handleError(error as Error, 'getProjectRoles');
+    }
+  }
+
+  async addProjectRole(projectId: string, data: Insert<'project_roles'>): Promise<ProjectRole> {
+    try {
+      // Ensure project_id is set
+      const roleData = {
+        ...data,
+        project_id: projectId
+      };
+
+      const { data: newRole, error } = await this.supabase
+        .from('project_roles')
+        .insert(roleData)
+        .select('*')
+        .single();
+
+      if (error) this.handleError(error, 'addProjectRole');
+      return newRole;
+    } catch (error) {
+      this.handleError(error as Error, 'addProjectRole');
+    }
+  }
+
+  async updateProjectRole(id: string, data: Update<'project_roles'>): Promise<ProjectRole> {
+    try {
+      const { data: updatedRole, error } = await this.supabase
+        .from('project_roles')
+        .update(data)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) this.handleError(error, 'updateProjectRole');
+      return updatedRole;
+    } catch (error) {
+      this.handleError(error as Error, 'updateProjectRole');
+    }
+  }
+
+  async deleteProjectRole(id: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('project_roles')
+        .delete()
+        .eq('id', id);
+
+      if (error) this.handleError(error, 'deleteProjectRole');
+    } catch (error) {
+      this.handleError(error as Error, 'deleteProjectRole');
+    }
+  }
+
+  // === Create Project Role from Template ===
+  async createRoleFromTemplate(projectId: string, templateId: string, customizations?: Partial<Omit<ProjectRole, 'id' | 'project_id' | 'template_id'>>): Promise<ProjectRole> {
+    try {
+      // First, get the template
+      const { data: template, error: templateError } = await this.supabase
+        .from('role_templates')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+
+      if (templateError) this.handleError(templateError, 'createRoleFromTemplate - fetch template');
+
+      // Create the project role
+      const roleData = {
+        project_id: projectId,
+        template_id: templateId,
+        title: customizations?.title || template.title,
+        description: customizations?.description || template.description,
+        responsibilities: customizations?.responsibilities || template.responsibilities,
+        required_skills: customizations?.required_skills || template.required_skills
+      };
+
+      const { data: newRole, error } = await this.supabase
+        .from('project_roles')
+        .insert(roleData)
+        .select('*')
+        .single();
+
+      if (error) this.handleError(error, 'createRoleFromTemplate - create role');
+      return newRole;
+    } catch (error) {
+      this.handleError(error as Error, 'createRoleFromTemplate');
+    }
+  }
+
   // === Batch Operations ===
   async getAllTeamData(projectId: string): Promise<TeamData> {
     try {
-      const [members, tasks, responsibilities] = await Promise.all([
+      const [members, tasks, responsibilities, projectRoles, roleTemplates] = await Promise.all([
         this.getMembers(projectId),
         this.getTasks(projectId),
-        this.getResponsibilities(projectId)
+        this.getResponsibilities(projectId),
+        this.getProjectRoles(projectId),
+        this.getRoleTemplates()
       ]);
 
       return {
         members,
         tasks,
-        responsibilities
+        responsibilities,
+        projectRoles,
+        roleTemplates
       };
     } catch (error) {
       this.handleError(error as Error, 'getAllTeamData');

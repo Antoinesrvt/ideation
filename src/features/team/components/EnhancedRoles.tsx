@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
-import { TeamMember } from '@/store/types';
-import { Plus, AlertTriangle, UserCog } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { TeamMember, ProjectRole, RoleTemplate, Insert } from '@/store/types';
+import { Plus, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EnhancedRoleCard, { Role } from './EnhancedRoleCard';
 import { motion } from 'framer-motion';
 import { staggerContainer } from './TeamManagement';
 import { 
   Dialog, 
-  DialogContent, 
-  DialogDescription, 
+  DialogContent,
   DialogFooter, 
   DialogHeader, 
   DialogTitle 
@@ -17,11 +16,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
+import { useProjectStore } from '@/store/project-store';
+import RoleTemplateSelector from './RoleTemplateSelector';
 
 export interface EnhancedRolesProps {
   roles: Role[];
@@ -29,6 +28,7 @@ export interface EnhancedRolesProps {
   onAdd?: (role: Omit<Role, 'id'>) => Promise<void>;
   onUpdate?: (role: Role) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  onCreateFromTemplate?: (templateId: string, customizations: Partial<ProjectRole>) => Promise<void>;
   readOnly?: boolean;
 }
 
@@ -40,10 +40,12 @@ const roleFormSchema = z.object({
   requiredSkills: z.string().optional(),
 });
 
-
-
-export function EnhancedRoles({ roles, members, onAdd, onUpdate, onDelete, readOnly = false }: EnhancedRolesProps) {
+export function EnhancedRoles({ roles, members, onAdd, onUpdate, onDelete, onCreateFromTemplate, readOnly = false }: EnhancedRolesProps) {
+  const { currentData } = useProjectStore();
+  const projectId = currentData.project?.id;
+  
   const [newRoleDialogOpen, setNewRoleDialogOpen] = useState(false);
+  const [templateSelectOpen, setTemplateSelectOpen] = useState(false);
   const [newRole, setNewRole] = useState<Omit<Role, 'id'>>({
     title: '',
     description: '',
@@ -87,6 +89,59 @@ export function EnhancedRoles({ roles, members, onAdd, onUpdate, onDelete, readO
       });
     }
   };
+  
+  const handleSelectTemplate = useCallback(async (template: RoleTemplate) => {
+    if (!onCreateFromTemplate) return;
+    
+    try {
+      // Extract the string arrays from the template
+      const responsibilities = Array.isArray(template.responsibilities) 
+        ? template.responsibilities 
+        : (typeof template.responsibilities === 'string' 
+            ? JSON.parse(template.responsibilities) 
+            : []);
+      
+      const requiredSkills = Array.isArray(template.required_skills) 
+        ? template.required_skills 
+        : (typeof template.required_skills === 'string' 
+            ? JSON.parse(template.required_skills) 
+            : []);
+      
+      // Create role from template
+      await onCreateFromTemplate(template.id, {
+        title: template.title,
+        description: template.description,
+        // Convert to JSON format for database
+        responsibilities: responsibilities,
+        required_skills: requiredSkills
+      });
+      
+      setTemplateSelectOpen(false);
+      
+      toast({
+        title: "Role created from template",
+        description: `${template.title} role has been created successfully.`
+      });
+    } catch (error) {
+      console.error("Failed to create role from template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create role from template.",
+        variant: "destructive"
+      });
+    }
+  }, [onCreateFromTemplate]);
+  
+  const handleStartRoleCreation = useCallback(() => {
+    // Show template selector first
+    setTemplateSelectOpen(true);
+  }, []);
+  
+  const handleCreateCustomRole = useCallback(() => {
+    // Close template dialog and open custom role dialog
+    setTemplateSelectOpen(false);
+    setNewRoleDialogOpen(true);
+  }, []);
 
   return (
     <Card className="w-full">
@@ -99,7 +154,7 @@ export function EnhancedRoles({ roles, members, onAdd, onUpdate, onDelete, readO
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setNewRoleDialogOpen(true)}
+            onClick={handleStartRoleCreation}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Role
@@ -127,11 +182,25 @@ export function EnhancedRoles({ roles, members, onAdd, onUpdate, onDelete, readO
         )}
       </CardContent>
 
-      {/* New Role Dialog */}
+      {/* Template Selection Dialog */}
+      <Dialog open={templateSelectOpen} onOpenChange={setTemplateSelectOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Role</DialogTitle>
+          </DialogHeader>
+          <RoleTemplateSelector 
+            projectId={projectId}
+            onSelectTemplate={handleSelectTemplate}
+            onCreateCustom={handleCreateCustomRole}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Role Dialog */}
       <Dialog open={newRoleDialogOpen} onOpenChange={setNewRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Role</DialogTitle>
+            <DialogTitle>Create Custom Role</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">

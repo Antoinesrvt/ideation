@@ -253,12 +253,14 @@ const EnhancedRoleCard = ({ role, members, onUpdate, onDelete, readOnly = false 
                 {membersInRole.map((member) => (
                   <TooltipProvider key={member.id}>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
-                            {getInitials(member.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                      <TooltipTrigger>
+                        <div>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+                              {getInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </div>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{member.name}</p>

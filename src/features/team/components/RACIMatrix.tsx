@@ -115,6 +115,8 @@ const RACIMatrix = ({ members, raci, onUpdate, onAdd, onDelete }: RACIMatrixProp
       await onAdd({
         project_id: raci[0]?.project_id || '', // Get project_id from existing items
         area: newArea,
+        entry_type: 'raci',
+        role_id: null,
         description: newDescription,
         raci_matrix: newMatrix,
         created_by: null

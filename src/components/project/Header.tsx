@@ -33,6 +33,7 @@ interface HeaderProps {
   projectName?: string;
   sidebarCollapsed?: boolean;
   toggleSidebar?: () => void;
+  isDashboard?: boolean;
 }
 
 // Map section IDs to human-readable titles
@@ -54,7 +55,8 @@ export function Header({
   activeSection = 'overview', 
   projectName = "",
   sidebarCollapsed = false,
-  toggleSidebar 
+  toggleSidebar,
+  isDashboard = false
 }: HeaderProps) {
   const [isBackHover, setIsBackHover] = useState(false);
   const { user } = useSupabase();
@@ -78,7 +80,7 @@ export function Header({
             onMouseLeave={() => setIsBackHover(false)}
           >
             <div className="relative w-8 h-8 flex items-center justify-center mr-2">
-              {isBackHover ? (
+              {isBackHover && !isDashboard ? (
                 <ArrowLeft className="h-5 w-5 text-[#7209B7] absolute transition-opacity duration-300 opacity-100" />
               ) : (
                 <div className="flex items-center absolute transition-opacity duration-300 opacity-100">
@@ -88,13 +90,21 @@ export function Header({
             </div>
             {!sidebarCollapsed && (
               <div className="flex flex-col">
-                <span className="font-semibold text-[#1A1A2A] text-sm">
+                <span
+                  className={` text-[#1A1A2A]  ${
+                    isDashboard ? "text-xl font-semibold" : "font-semibold text-sm"
+                  }`}
+                >
                   Kickoff
                 </span>
-                <div className="flex items-center">
-                  <span className="text-xs text-slate-500 truncate max-w-[120px]">{projectName}</span>
-                  <ChevronRight className="h-3 w-3 text-slate-400 ml-0.5" />
-                </div>
+                {!isDashboard && (
+                  <div className="flex items-center">
+                    <span className="text-xs text-slate-500 truncate max-w-[120px]">
+                      {projectName}
+                    </span>
+                    <ChevronRight className="h-3 w-3 text-slate-400 ml-0.5" />
+                  </div>
+                )}
               </div>
             )}
           </Link>

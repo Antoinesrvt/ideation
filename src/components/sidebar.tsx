@@ -48,17 +48,6 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full flex-col border-r bg-background">
-      {/* Logo */}
-      <div className="border-b">
-        <div className="flex h-16 items-center px-4">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 font-semibold tracking-tight"
-          >
-            <span className="text-xl">Startup AI</span>
-          </Link>
-        </div>
-      </div>
 
       {/* Main Navigation - Scrollable if needed */}
       <div className="flex-1 overflow-y-auto py-4">
