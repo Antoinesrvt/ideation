@@ -9,10 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { ExperimentsList } from "./ExperimentsList";
 import { ABTestsList } from "./ABTestsList";
 import { UserFeedbackList } from "./UserFeedbackList";

@@ -224,21 +224,7 @@ export function CompetitorTable({
                             <Edit className="h-3 w-3 mr-1" />
                             <span className="text-xs">Edit</span>
                           </Button>
-                          
-                          {onDelete && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="h-6 py-0 px-1.5 hover:bg-accent-50 text-accent-700 justify-start"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (onDelete) onDelete(competitor.id);
-                              }}
-                            >
-                              <Trash className="h-3 w-3 mr-1" />
-                              <span className="text-xs">Delete</span>
-                            </Button>
-                          )}
+
                         </div>
                       </TableCell>
                     )}
@@ -299,6 +285,7 @@ export function CompetitorTable({
                   competitor={selectedCompetitor}
                   onSave={handleSaveCompetitor}
                   onCancel={handleDialogClose}
+                  onDelete={dialogMode === 'edit' ? onDelete : undefined}
                   isNew={dialogMode === 'add'}
                 />
               )}

@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ValidationForm } from '../common/ValidationForm';
 import { X, Plus, HelpCircle, Info, CalendarIcon, ChevronDown } from 'lucide-react';
-import { Experiment } from '@/types';
+import { ValidationExperiment as Experiment, Insert, Update } from '@/store/types';
 import {
   Tooltip,
   TooltipContent,
@@ -35,7 +35,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 interface ExperimentFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (experiment: Experiment) => void;
+  onSubmit: (experiment: Insert<"validation_experiments"> | Update<"validation_experiments">) => void;
   initialData?: Experiment;
 }
 
@@ -44,17 +44,12 @@ interface ExperimentFormValues {
   description: string;
   hypothesis: string;
   status: 'planned' | 'in-progress' | 'completed' | 'cancelled';
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   results: string;
   learnings: string;
 }
 
-interface MetricInput {
-  key: string;
-  target: string;
-  actual: string;
-}
 
 export const ExperimentForm: React.FC<ExperimentFormProps> = ({
   open,
@@ -65,22 +60,30 @@ export const ExperimentForm: React.FC<ExperimentFormProps> = ({
   const isEditing = !!initialData;
   const [metrics, setMetrics] = useState<
     { key: string; target: string; actual: string }[]
-  >(
-    initialData?.metrics.map(m => ({
-      key: m.key,
-      target: m.target || '',
-      actual: m.actual || ''
-    })) || []
-  );
+  >(() => {
+    if (initialData?.metrics && Array.isArray(initialData.metrics)) {
+      return initialData.metrics.map(metric => {
+        if (metric && typeof metric === 'object' && 'key' in metric) {
+          return {
+            key: String(metric.key || ''),
+            target: String(metric.target || ''),
+            actual: String(metric.actual || '')
+          };
+        }
+        return { key: '', target: '', actual: '' };
+      });
+    }
+    return [];
+  });
 
   const form = useForm<ExperimentFormValues>({
     defaultValues: {
       title: initialData?.title || '',
       description: initialData?.description || '',
       hypothesis: initialData?.hypothesis || '',
-      status: initialData?.status || 'planned',
-      startDate: initialData?.startDate || '',
-      endDate: initialData?.endDate || '',
+      status: (initialData?.status || 'planned') as 'planned' | 'in-progress' | 'completed' | 'cancelled',
+      start_date: initialData?.start_date || '',
+      end_date: initialData?.end_date || '',
       results: initialData?.results || '',
       learnings: initialData?.learnings || ''
     }
@@ -93,9 +96,11 @@ export const ExperimentForm: React.FC<ExperimentFormProps> = ({
   const [showGuidance, setShowGuidance] = useState(true);
 
   const handleFormSubmit = (values: ExperimentFormValues) => {
-    const experiment: Experiment = {
+    const experiment: Insert<"validation_experiments"> | Update<"validation_experiments"> = {
       id: initialData?.id || uuidv4(),
       ...values,
+      start_date: values.start_date || null,
+      end_date: values.end_date || null,
       metrics: metrics.map(m => ({
         key: m.key,
         target: m.target,
@@ -344,12 +349,16 @@ export const ExperimentForm: React.FC<ExperimentFormProps> = ({
 
         <FormField
           control={form.control}
-          name="startDate"
+          name="start_date"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Start Date</FormLabel>
               <FormControl>
-                <Input type="date" {...field} />
+                <Input
+                  type="date"
+                  {...field}
+                  min={new Date().toISOString().split('T')[0]}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -359,12 +368,16 @@ export const ExperimentForm: React.FC<ExperimentFormProps> = ({
 
       <FormField
         control={form.control}
-        name="endDate"
+        name="end_date"
         render={({ field }) => (
           <FormItem>
             <FormLabel>End Date</FormLabel>
             <FormControl>
-              <Input type="date" {...field} />
+              <Input
+                type="date"
+                {...field}
+                min={form.getValues('start_date') || new Date().toISOString().split('T')[0]}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

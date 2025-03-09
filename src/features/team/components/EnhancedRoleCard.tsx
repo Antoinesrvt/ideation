@@ -144,7 +144,7 @@ const EnhancedRoleCard = ({ role, members, onUpdate, onDelete, readOnly = false 
                   {membersInRole.length} {membersInRole.length === 1 ? 'member' : 'members'}
                 </Badge>
               )}
-              {!readOnly && (
+              {!isEditing && !readOnly && (
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -153,15 +153,6 @@ const EnhancedRoleCard = ({ role, members, onUpdate, onDelete, readOnly = false 
                     title="Edit role"
                   >
                     <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:bg-destructive/10"
-                    onClick={() => setIsDeleting(true)}
-                    title="Delete role"
-                  >
-                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               )}
@@ -279,14 +270,26 @@ const EnhancedRoleCard = ({ role, members, onUpdate, onDelete, readOnly = false 
           
           {isEditing && (
             <CardFooter className="flex justify-between border-t pt-4">
-              <Button variant="ghost" onClick={handleCancel}>
+              <Button 
+                variant="ghost" 
+                onClick={handleCancel}
+              >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button onClick={handleSave}>
-                <Save className="h-4 w-4 mr-2" />
-                Save
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setIsDeleting(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+                <Button onClick={handleSave}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+              </div>
             </CardFooter>
           )}
         </Card>
@@ -295,16 +298,16 @@ const EnhancedRoleCard = ({ role, members, onUpdate, onDelete, readOnly = false 
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the "{role.title}" role. This action cannot be undone.
+              Are you sure you want to delete the {role.title} role? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground"
+              className="bg-red-600 hover:bg-red-700"
             >
               Delete
             </AlertDialogAction>

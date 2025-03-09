@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Save, X, Check, ExternalLink, Plus } from 'lucide-react';
+import { Save, X, Check, ExternalLink, Plus, Trash } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ export interface EnhancedCompetitorCardProps {
   competitor: ExtendedMarketCompetitor;
   onSave: (params: { id: string; data: Partial<Omit<ExtendedMarketCompetitor, 'id' | 'created_at' | 'updated_at' | 'status'>> }) => void;
   onCancel: () => void;
+  onDelete?: (id: string) => void;
   isNew?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function EnhancedCompetitorCard({
   competitor,
   onSave,
   onCancel,
+  onDelete,
   isNew = false
 }: EnhancedCompetitorCardProps) {
   // Form state
@@ -263,25 +265,41 @@ export function EnhancedCompetitorCard({
         </div>
       </div>
       
-      <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
-        <Button 
-          variant="outline" 
-          onClick={onCancel}
-          className="text-dark-700"
-          type="button"
-        >
-          Cancel
-        </Button>
-        <Button 
-          variant="default" 
-          onClick={handleSave}
-          className="bg-primary-600 hover:bg-primary-700"
-          type="button"
-          disabled={!formData.name.trim()}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isNew ? 'Create Competitor' : 'Save Changes'}
-        </Button>
+      <div className="flex justify-between gap-3 pt-3 border-t border-gray-100">
+        <div>
+          {!isNew && onDelete && (
+            <Button 
+              variant="ghost" 
+              onClick={() => onDelete(competitor.id)}
+              className="text-accent-700 hover:bg-accent-50"
+              type="button"
+            >
+              <Trash className="h-3.5 w-3.5 mr-1.5" />
+              Delete
+            </Button>
+          )}
+        </div>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            className="text-dark-700"
+            type="button"
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="default" 
+            onClick={handleSave}
+            className="bg-primary-600 hover:bg-primary-700"
+            type="button"
+            disabled={!formData.name.trim()}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isNew ? 'Create Competitor' : 'Save Changes'}
+          </Button>
+        </div>
       </div>
     </div>
   );

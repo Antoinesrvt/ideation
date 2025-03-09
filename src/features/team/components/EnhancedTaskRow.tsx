@@ -36,16 +36,17 @@ interface EnhancedTaskRowProps {
 }
 
 const statusOptions = [
-  { value: 'not_started', label: 'Not Started' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'blocked', label: 'Blocked' },
+  { value: 'not-started', label: 'Not Started' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'on-hold', label: 'On Hold' },
   { value: 'completed', label: 'Completed' }
 ];
 
 const priorityOptions = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' }
+  { value: 'high', label: 'High' },
+  { value: 'urgent', label: 'Urgent' }
 ];
 
 // Helper function to get task status badge
@@ -57,6 +58,25 @@ const getTaskStatusBadge = (status: string) => {
           Completed
         </Badge>
       );
+    case "in-progress":
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">
+          In Progress
+        </Badge>
+      );
+    case "on-hold":
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
+          On Hold
+        </Badge>
+      );
+    case "not-started":
+      return (
+        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 border-0">
+          Not Started
+        </Badge>
+      );
+    // Handle legacy status values for backward compatibility
     case "in_progress":
       return (
         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 border-0">
@@ -66,7 +86,7 @@ const getTaskStatusBadge = (status: string) => {
     case "blocked":
       return (
         <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
-          Blocked
+          On Hold
         </Badge>
       );
     case "not_started":
@@ -87,6 +107,12 @@ const getTaskStatusBadge = (status: string) => {
 // Helper function to get task priority badge
 const getTaskPriorityBadge = (priority: string) => {
   switch (priority) {
+    case "urgent":
+      return (
+        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200 border-0">
+          Urgent
+        </Badge>
+      );
     case "high":
       return (
         <Badge className="bg-red-100 text-red-800 hover:bg-red-200 border-0">
@@ -117,9 +143,9 @@ const getTaskPriorityBadge = (priority: string) => {
 // Calculate task progress
 const getTaskProgress = (task: TeamTask) => {
   if (task.status === 'completed') return 100;
-  if (task.status === 'in_progress') return 50;
-  if (task.status === 'blocked') return 25;
-  return 0;
+  if (task.status === 'in-progress' || task.status === 'in_progress') return 50;
+  if (task.status === 'on-hold' || task.status === 'blocked') return 25;
+  return 0; // not-started or not_started
 };
 
 const EnhancedTaskRow = ({ 
@@ -133,15 +159,27 @@ const EnhancedTaskRow = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state
+  // Initialize form state
   const [formData, setFormData] = useState({
     title: task.title,
     description: task.description || '',
-    team_member_id: task.team_member_id || '',
+    team_member_id: task.team_member_id || 'none',
     due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
-    status: task.status || 'not_started',
+    status: convertStatusToHyphenated(task.status) || 'not-started',
     priority: task.priority || 'medium'
   });
+
+  // Helper function to convert underscore status to hyphenated format
+  function convertStatusToHyphenated(status: string | null | undefined): string {
+    if (!status) return 'not-started';
+    
+    // Convert from legacy underscore format if needed
+    if (status === 'not_started') return 'not-started';
+    if (status === 'in_progress') return 'in-progress';
+    if (status === 'blocked') return 'on-hold';
+    
+    return status;
+  }
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -170,9 +208,9 @@ const EnhancedTaskRow = ({
     setFormData({
       title: task.title,
       description: task.description || '',
-      team_member_id: task.team_member_id || '',
+      team_member_id: task.team_member_id || 'none',
       due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
-      status: task.status || 'not_started',
+      status: convertStatusToHyphenated(task.status) || 'not-started',
       priority: task.priority || 'medium'
     });
     setIsEditing(true);
@@ -187,15 +225,44 @@ const EnhancedTaskRow = ({
   const handleSave = async () => {
     setIsSubmitting(true);
     try {
+      // Validate status to ensure it's one of the allowed values
+      const validStatuses = statusOptions.map(option => option.value);
+      let statusToSave = formData.status;
+      if (!validStatuses.includes(statusToSave)) {
+        console.error(`Invalid status: ${statusToSave}. Using default 'not-started'`);
+        statusToSave = 'not-started';
+      }
+      
+      // Validate priority
+      const validPriorities = priorityOptions.map(option => option.value);
+      let priorityToSave = formData.priority;
+      if (!validPriorities.includes(priorityToSave)) {
+        console.error(`Invalid priority: ${priorityToSave}. Using default 'medium'`);
+        priorityToSave = 'medium';
+      }
+
+      // Convert 'none' to null for team_member_id
+      const memberIdToSave = formData.team_member_id === 'none' ? null : formData.team_member_id;
+
+      // Log what we're sending to the server
+      console.log('Updating task with data:', {
+        title: formData.title,
+        description: formData.description || null,
+        team_member_id: memberIdToSave,
+        due_date: formData.due_date || null,
+        status: statusToSave,
+        priority: priorityToSave
+      });
+
       await updateTask({
         id: task.id,
         data: {
           title: formData.title,
           description: formData.description || null,
-          team_member_id: formData.team_member_id || null,
+          team_member_id: memberIdToSave,
           due_date: formData.due_date || null,
-          status: formData.status,
-          priority: formData.priority
+          status: statusToSave,
+          priority: priorityToSave
         }
       });
       setIsEditing(false);
@@ -245,14 +312,14 @@ const EnhancedTaskRow = ({
             </TableCell>
             <TableCell>
               <Select
-                value={formData.team_member_id}
-                onValueChange={(value) => handleSelectChange('team_member_id', value)}
+                value={formData.team_member_id || "none"}
+                onValueChange={(value) => handleSelectChange('team_member_id', value === "none" ? "" : value)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Assign to" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="none">Unassigned</SelectItem>
                   {members.map(member => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.name}
@@ -327,6 +394,15 @@ const EnhancedTaskRow = ({
                 >
                   <Save className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-red-500"
+                  onClick={() => setIsDeleting(true)}
+                  disabled={isSubmitting}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </TableCell>
           </>
@@ -396,24 +472,14 @@ const EnhancedTaskRow = ({
             <TableCell>
               <div className="flex justify-end">
                 {!readOnly && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={handleEdit}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => setIsDeleting(true)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={handleEdit}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
             </TableCell>

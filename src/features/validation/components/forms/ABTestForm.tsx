@@ -44,15 +44,15 @@ interface ABTestFormProps {
 interface ABTestFormValues {
   title: string;
   description: string;
-  variantA: string;
-  variantB: string;
+  variant_a: string;
+  variant_b: string;
   metric: string;
   status: 'planned' | 'running' | 'completed';
-  startDate: string;
-  endDate: string;
-  sampleSize: string;
-  conversionA: string;
-  conversionB: string;
+  start_date: string;
+  end_date: string;
+  sample_size: string;
+  conversion_a: string;
+  conversion_b: string;
   confidence: string;
   winner: 'A' | 'B' | 'inconclusive' | '';
   notes: string;
@@ -70,17 +70,17 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
     defaultValues: {
       title: initialData?.title || '',
       description: initialData?.description || '',
-      variantA: initialData?.variantA || '',
-      variantB: initialData?.variantB || '',
+      variant_a: initialData?.variant_a || '',
+      variant_b: initialData?.variant_b || '',
       metric: initialData?.metric || '',
-      status: initialData?.status || 'planned',
-      startDate: initialData?.startDate || '',
-      endDate: initialData?.endDate || '',
-      sampleSize: initialData?.sampleSize?.toString() || '',
-      conversionA: initialData?.conversionA?.toString() || '',
-      conversionB: initialData?.conversionB?.toString() || '',
+      status: initialData?.status as any || 'planned',
+      start_date: initialData?.start_date || '',
+      end_date: initialData?.end_date || '',
+      sample_size: initialData?.sample_size?.toString() || '',
+      conversion_a: initialData?.conversion_a?.toString() || '',
+      conversion_b: initialData?.conversion_b?.toString() || '',
       confidence: initialData?.confidence?.toString() || '',
-      winner: initialData?.winner || '',
+      winner: initialData?.winner as any || '',
       notes: initialData?.notes || ''
     }
   });
@@ -92,25 +92,25 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
   const [showGuidance, setShowGuidance] = useState(true);
 
   const handleFormSubmit = (values: ABTestFormValues) => {
-    const test: ABTest = {
+    const test = {
       id: initialData?.id || uuidv4(),
       title: values.title,
       description: values.description,
-      variantA: values.variantA,
-      variantB: values.variantB,
+      variant_a: values.variant_a,
+      variant_b: values.variant_b,
       metric: values.metric,
       status: values.status,
-      startDate: values.startDate || undefined,
-      endDate: values.endDate || undefined,
-      sampleSize: values.sampleSize ? parseInt(values.sampleSize) : undefined,
-      conversionA: values.conversionA ? parseFloat(values.conversionA) : undefined,
-      conversionB: values.conversionB ? parseFloat(values.conversionB) : undefined,
-      confidence: values.confidence ? parseFloat(values.confidence) : undefined,
-      winner: values.winner === '' ? undefined : values.winner as 'A' | 'B' | 'inconclusive' | undefined,
-      notes: values.notes || undefined
+      start_date: values.start_date || null,
+      end_date: values.end_date || null,
+      sample_size: values.sample_size ? parseInt(values.sample_size) : null,
+      conversion_a: values.conversion_a ? parseFloat(values.conversion_a) : null,
+      conversion_b: values.conversion_b ? parseFloat(values.conversion_b) : null,
+      confidence: values.confidence ? parseFloat(values.confidence) : null,
+      winner: values.winner === '' ? null : values.winner as 'A' | 'B' | 'inconclusive',
+      notes: values.notes || null,
     };
     
-    onSubmit(test);
+    onSubmit(test as any);
     onOpenChange(false);
   };
 
@@ -206,29 +206,16 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
         )}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <FormField
           control={form.control}
-          name="variantA"
+          name="variant_a"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="flex items-center">
-                Variant A (Control)
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-4 w-4 ml-1 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="w-80">The current version or baseline. This is what you're comparing against.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </FormLabel>
+              <FormLabel>Variant A</FormLabel>
               <FormControl>
-                <Input placeholder="Describe variant A..." {...field} />
+                <Input placeholder="Control variant" {...field} />
               </FormControl>
-              <FormDescription>The current version</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -236,26 +223,13 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
 
         <FormField
           control={form.control}
-          name="variantB"
+          name="variant_b"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="flex items-center">
-                Variant B (Test)
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-4 w-4 ml-1 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="w-80">The new version you're testing. This should differ from variant A in only one key aspect for clear results.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </FormLabel>
+              <FormLabel>Variant B</FormLabel>
               <FormControl>
-                <Input placeholder="Describe variant B..." {...field} />
+                <Input placeholder="Test variant" {...field} />
               </FormControl>
-              <FormDescription>The new version being tested</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -319,24 +293,12 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
 
         <FormField
           control={form.control}
-          name="sampleSize"
+          name="sample_size"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="flex items-center">
-                Sample Size
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-4 w-4 ml-1 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="w-80">The total number of users or sessions included in your test. Larger sample sizes provide more reliable results.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </FormLabel>
+              <FormLabel>Sample Size</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="e.g., 1000" {...field} />
+                <Input type="number" placeholder="e.g., 500" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -344,10 +306,10 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
         <FormField
           control={form.control}
-          name="startDate"
+          name="start_date"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Start Date</FormLabel>
@@ -361,7 +323,7 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
 
         <FormField
           control={form.control}
-          name="endDate"
+          name="end_date"
           render={({ field }) => (
             <FormItem>
               <FormLabel>End Date</FormLabel>
@@ -382,19 +344,13 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="conversionA"
+              name="conversion_a"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Variant A Conversion</FormLabel>
+                  <FormLabel>Conversion Rate A (%)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="e.g., 5.2" 
-                      {...field} 
-                    />
+                    <Input type="number" step="0.01" {...field} />
                   </FormControl>
-                  <FormDescription>Results for control variant (%)</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -402,19 +358,13 @@ export const ABTestForm: React.FC<ABTestFormProps> = ({
 
             <FormField
               control={form.control}
-              name="conversionB"
+              name="conversion_b"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Variant B Conversion</FormLabel>
+                  <FormLabel>Conversion Rate B (%)</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="e.g., 6.8" 
-                      {...field} 
-                    />
+                    <Input type="number" step="0.01" {...field} />
                   </FormControl>
-                  <FormDescription>Results for test variant (%)</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

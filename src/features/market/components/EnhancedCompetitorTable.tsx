@@ -33,6 +33,9 @@ export function EnhancedCompetitorTable({
   // Track which competitor is being edited
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Track submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   // Form state for the currently edited competitor
   const [formData, setFormData] = useState({
     name: '',
@@ -143,21 +146,60 @@ export function EnhancedCompetitorTable({
   };
   
   // Save changes
-  const saveChanges = () => {
+  const saveChanges = async () => {
     if (editingId && onUpdate) {
-      onUpdate({
-        id: editingId,
-        data: {
-          name: formData.name,
-          website: formData.website,
-          price: formData.price,
-          market_share: formData.market_share,
-          notes: formData.notes,
-          strengths: formData.strengths,
-          weaknesses: formData.weaknesses
+      setIsSubmitting(true);
+      try {
+        await onUpdate({
+          id: editingId,
+          data: {
+            name: formData.name,
+            website: formData.website,
+            price: formData.price,
+            market_share: formData.market_share,
+            notes: formData.notes,
+            strengths: formData.strengths,
+            weaknesses: formData.weaknesses
+          }
+        });
+        cancelEditing();
+      } catch (error) {
+        console.error("Failed to update competitor:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+  
+  // Handle delete with loading state
+  const handleDelete = async (id: string) => {
+    if (onDelete) {
+      setIsSubmitting(true);
+      try {
+        await onDelete(id);
+      } catch (error) {
+        console.error("Failed to delete competitor:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+  
+  // Edit mode delete button handler
+  const handleDeleteWithSubmitting = async (id: string) => {
+    if (onDelete) {
+      setIsSubmitting(true);
+      try {
+        await onDelete(id);
+        // If we were editing this competitor, cancel editing
+        if (editingId === id) {
+          cancelEditing();
         }
-      });
-      setEditingId(null);
+      } catch (error) {
+        console.error("Failed to delete competitor:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
   
@@ -289,25 +331,54 @@ export function EnhancedCompetitorTable({
                         {competitor.market_share || 'Unknown'}
                       </TableCell>
                       
-                      {!readOnly && (
-                        <TableCell className="text-right pr-5 align-top">
-                          <div className="flex flex-col gap-2">
+                      {!editingId ? (
+                        // View Mode
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            {!readOnly && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                className="h-6 py-0 px-1.5 hover:bg-primary-50 text-primary-700 justify-start"
+                                onClick={() => startEditing(competitor.id)}
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                <span className="text-xs">Edit</span>
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      ) : (
+                        // Edit Mode (When editing this competitor row)
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="h-6 py-0 px-1.5 hover:bg-gray-100 text-gray-700 justify-start"
+                              onClick={cancelEditing}
+                              disabled={isSubmitting}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Cancel</span>
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               className="h-6 py-0 px-1.5 hover:bg-primary-50 text-primary-700 justify-start"
-                              onClick={() => startEditing(competitor.id)}
+                              onClick={saveChanges}
+                              disabled={isSubmitting}
                             >
-                              <Edit className="h-3 w-3 mr-1" />
-                              <span className="text-xs">Edit</span>
+                              <Save className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Save</span>
                             </Button>
-                            
                             {onDelete && (
                               <Button 
                                 variant="ghost" 
                                 size="sm"
                                 className="h-6 py-0 px-1.5 hover:bg-accent-50 text-accent-700 justify-start"
-                                onClick={() => onDelete(competitor.id)}
+                                onClick={() => handleDeleteWithSubmitting(competitor.id)}
+                                disabled={isSubmitting}
                               >
                                 <Trash className="h-3 w-3 mr-1" />
                                 <span className="text-xs">Delete</span>

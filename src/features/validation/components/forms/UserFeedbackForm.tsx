@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { ValidationForm } from '../common/ValidationForm';
 import { Button } from '@/components/ui/button';
 import { X, Plus, HelpCircle, Info, ChevronDown } from 'lucide-react';
-import { UserFeedback } from '@/types';
+import { ValidationUserFeedback as UserFeedback, Insert, Update } from '@/store/types';
 import {
   Tooltip,
   TooltipContent,
@@ -36,7 +36,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 interface UserFeedbackFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (feedback: UserFeedback) => void;
+  onSubmit: (feedback: Insert<"validation_user_feedback"> | Update<"validation_user_feedback">) => void;
   initialData?: UserFeedback;
 }
 
@@ -66,19 +66,20 @@ export const UserFeedbackForm: React.FC<UserFeedbackFormProps> = ({
     defaultValues: {
       source: initialData?.source || '',
       date: initialData?.date || new Date().toISOString().split('T')[0],
-      type: initialData?.type || 'feature-request',
+      type: (initialData?.type || 'feature-request') as 'feature-request' | 'bug-report' | 'testimonial' | 'criticism' | 'suggestion',
       content: initialData?.content || '',
-      sentiment: initialData?.sentiment || 'neutral',
-      impact: initialData?.impact || 'medium',
-      status: initialData?.status || 'new',
+      sentiment: (initialData?.sentiment || 'neutral') as 'positive' | 'neutral' | 'negative',
+      impact: (initialData?.impact || 'medium') as 'high' | 'medium' | 'low',
+      status: (initialData?.status || 'new') as 'new' | 'in-review' | 'accepted' | 'rejected' | 'implemented',
       response: initialData?.response || ''
     }
   });
 
   const handleFormSubmit = (values: UserFeedbackFormValues) => {
-    const feedback: UserFeedback = {
+    const feedback: Insert<"validation_user_feedback"> | Update<"validation_user_feedback"> = {
       id: initialData?.id || uuidv4(),
       ...values,
+      date: values.date || null,
       tags
     };
     

@@ -21,7 +21,7 @@ import {
 import { ValidationForm } from '../common/ValidationForm';
 import { Button } from '@/components/ui/button';
 import { X, Plus, HelpCircle, Info, ChevronDown } from 'lucide-react';
-import { Hypothesis } from '@/types';
+import { ValidationHypothesis as Hypothesis, Insert, Update } from '@/store/types';
 import { Slider } from '@/components/ui/slider';
 import {
   Tooltip,
@@ -36,13 +36,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 interface HypothesisFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (hypothesis: Hypothesis) => void;
+  onSubmit: (hypothesis: Insert<"validation_hypotheses"> | Update<"validation_hypotheses">) => void;
   initialData?: Hypothesis;
 }
 
 interface HypothesisFormValues {
   statement: string;
-  validationMethod: string;
+  validation_method: string;
   status: 'unvalidated' | 'validated' | 'invalidated';
   confidence: number;
 }
@@ -65,8 +65,8 @@ export const HypothesisForm: React.FC<HypothesisFormProps> = ({
   const form = useForm<HypothesisFormValues>({
     defaultValues: {
       statement: initialData?.statement || '',
-      validationMethod: initialData?.validationMethod || '',
-      status: initialData?.status || 'unvalidated',
+      validation_method: initialData?.validation_method || '',
+      status: (initialData?.status || 'unvalidated') as 'validated' | 'invalidated' | 'unvalidated',
       confidence: initialData?.confidence || 0
     }
   });
@@ -76,13 +76,13 @@ export const HypothesisForm: React.FC<HypothesisFormProps> = ({
   const showEvidence = currentStatus !== 'unvalidated';
 
   const handleFormSubmit = (values: HypothesisFormValues) => {
-    const hypothesis: Hypothesis = {
+    const hypothesis: Insert<"validation_hypotheses"> | Update<"validation_hypotheses"> = {
       id: initialData?.id || uuidv4(),
       ...values,
       assumptions,
       evidence,
-      createdAt: initialData?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      created_at: initialData?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     
     onSubmit(hypothesis);
@@ -246,7 +246,7 @@ export const HypothesisForm: React.FC<HypothesisFormProps> = ({
 
       <FormField
         control={form.control}
-        name="validationMethod"
+        name="validation_method"
         render={({ field }) => (
           <FormItem>
             <FormLabel className="flex items-center">

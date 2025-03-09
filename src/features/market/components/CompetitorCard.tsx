@@ -118,18 +118,6 @@ export function CompetitorCard({
                 Edit Details
               </Button>
             )}
-            
-            {onDelete && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="text-accent-700 hover:bg-accent-50"
-                onClick={() => onDelete(competitor.id)}
-              >
-                <Trash className="h-3.5 w-3.5 mr-1.5" />
-                Delete
-              </Button>
-            )}
           </div>
         )}
       </CardContent>

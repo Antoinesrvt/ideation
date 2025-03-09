@@ -339,20 +339,26 @@ const EnhancedMemberCard = ({
   return (
     <>
       <motion.div variants={itemVariants}>
-        <Card className={`overflow-hidden transition-all ${isEditing ? 'shadow-md ring-2 ring-primary-200' : 'hover:shadow-md'}`}>
+        <Card
+          className={`overflow-hidden transition-all ${
+            isEditing ? "shadow-md ring-2 ring-primary-200" : "hover:shadow-md"
+          }`}
+        >
           <div className="p-6 flex items-start">
             <Avatar className="h-12 w-12 mr-4">
               <AvatarFallback className="bg-blue-100 text-blue-700">
                 {getInitials(member.name)}
               </AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1">
               {isEditing ? (
                 /* Editing mode content */
                 <div className="space-y-4">
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Name
+                    </label>
                     <Input
                       name="name"
                       value={formData.name}
@@ -362,7 +368,9 @@ const EnhancedMemberCard = ({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
                     <Input
                       name="email"
                       value={formData.email}
@@ -373,16 +381,20 @@ const EnhancedMemberCard = ({
                   </div>
 
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Role
+                    </label>
                     <Select
                       value={formData.role}
-                      onValueChange={(value) => handleSelectChange('role', value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("role", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent>
-                        {combinedRoles.map(role => (
+                        {combinedRoles.map((role) => (
                           <SelectItem key={role.id} value={role.title}>
                             {role.title}
                           </SelectItem>
@@ -393,8 +405,16 @@ const EnhancedMemberCard = ({
 
                   <div className="flex flex-col">
                     <div className="flex justify-between items-center mb-1">
-                      <label className="text-sm font-medium text-gray-700">Expertise/Skills</label>
-                      <Button type="button" size="sm" variant="ghost" onClick={addExpertise} className="h-7 w-7 p-0">
+                      <label className="text-sm font-medium text-gray-700">
+                        Expertise/Skills
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={addExpertise}
+                        className="h-7 w-7 p-0"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -403,7 +423,9 @@ const EnhancedMemberCard = ({
                         <div key={index} className="flex items-center gap-2">
                           <Input
                             value={skill}
-                            onChange={(e) => updateExpertise(index, e.target.value)}
+                            onChange={(e) =>
+                              updateExpertise(index, e.target.value)
+                            }
                             className="flex-1"
                             placeholder="Add a skill"
                           />
@@ -423,46 +445,62 @@ const EnhancedMemberCard = ({
 
                   <div className="flex flex-col">
                     <div className="flex justify-between items-center mb-1">
-                      <label className="text-sm font-medium text-gray-700">Responsibilities</label>
-                      <Button type="button" size="sm" variant="ghost" onClick={addResponsibility} className="h-7 w-7 p-0">
+                      <label className="text-sm font-medium text-gray-700">
+                        Responsibilities
+                      </label>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={addResponsibility}
+                        className="h-7 w-7 p-0"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="space-y-2">
-                      {formData.responsibilities.map((responsibility, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Input
-                            value={responsibility}
-                            onChange={(e) => updateResponsibility(index, e.target.value)}
-                            className="flex-1"
-                            placeholder="Add a responsibility"
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removeResponsibility(index)}
-                            className="h-7 w-7 p-0 text-red-500"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                      {formData.responsibilities.map(
+                        (responsibility, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Input
+                              value={responsibility}
+                              onChange={(e) =>
+                                updateResponsibility(index, e.target.value)
+                              }
+                              className="flex-1"
+                              placeholder="Add a responsibility"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => removeResponsibility(index)}
+                              className="h-7 w-7 p-0 text-red-500"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col">
-                      <label className="text-sm font-medium text-gray-700 mb-1">Availability</label>
+                      <label className="text-sm font-medium text-gray-700 mb-1">
+                        Availability
+                      </label>
                       <Select
                         value={formData.availability}
-                        onValueChange={(value) => handleSelectChange('availability', value)}
+                        onValueChange={(value) =>
+                          handleSelectChange("availability", value)
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select availability" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availabilityOptions.map(option => (
+                          {availabilityOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -472,16 +510,20 @@ const EnhancedMemberCard = ({
                     </div>
 
                     <div className="flex flex-col">
-                      <label className="text-sm font-medium text-gray-700 mb-1">Status</label>
+                      <label className="text-sm font-medium text-gray-700 mb-1">
+                        Status
+                      </label>
                       <Select
                         value={formData.status}
-                        onValueChange={(value) => handleSelectChange('status', value)}
+                        onValueChange={(value) =>
+                          handleSelectChange("status", value)
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
-                          {statusOptions.map(option => (
+                          {statusOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -491,28 +533,42 @@ const EnhancedMemberCard = ({
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-2 pt-2">
+                  {/* Edit mode footer */}
+                  <div className="space-x-2 pt-2 flex justify-between gap-2">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      onClick={handleCancel}
-                      className="h-8"
+                      className="h-8 text-red-500 hover:text-red-700"
+                      onClick={() => setIsDeleting(true)}
                       disabled={isSubmitting}
                     >
-                      <X className="h-3.5 w-3.5 mr-1" />
-                      Cancel
+                      <Trash2 className="h-3.5 w-3.5 mr-1" />
+                      Delete
                     </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleSave}
-                      className="h-8"
-                      disabled={isSubmitting}
-                    >
-                      <Save className="h-3.5 w-3.5 mr-1" />
-                      {isSubmitting ? "Saving..." : "Save"}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancel}
+                        className="h-8"
+                        disabled={isSubmitting}
+                      >
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSave}
+                        className="h-8"
+                        disabled={isSubmitting}
+                      >
+                        <Save className="h-3.5 w-3.5 mr-1" />
+                        {isSubmitting ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -521,44 +577,49 @@ const EnhancedMemberCard = ({
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-semibold text-lg">{member.name}</h3>
-                      {member.contact_info && typeof member.contact_info === 'object' && 'email' in member.contact_info && (
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <Mail className="h-3.5 w-3.5 mr-1" />
-                          {String(member.contact_info.email)}
-                        </div>
-                      )}
+                      {member.contact_info &&
+                        typeof member.contact_info === "object" &&
+                        "email" in member.contact_info && (
+                          <div className="flex items-center text-sm text-gray-500 mt-1">
+                            <Mail className="h-3.5 w-3.5 mr-1" />
+                            {String(member.contact_info.email)}
+                          </div>
+                        )}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-                              <Users className="h-3 w-3 mr-1" />
-                              {member.role}
-                            </Badge>
+                          <TooltipTrigger>
+                            <div>
+                              <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
+                                <Users className="h-3 w-3 mr-1" />
+                                {member.role}
+                              </Badge>
+                            </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="w-60">
-                              {getRoleDetails()?.description ||
-                                "No description available"}
-                            </p>
+                            <p className="text-sm">Team Role</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       {member.status && (
                         <div className="mt-1">
                           {getStatusBadge(member.status)}
                         </div>
                       )}
-                      
+
                       {member.availability && (
                         <Badge variant="outline" className="mt-1 text-xs">
-                          {member.availability === 'full-time' ? 'Full-time' : 
-                          member.availability === 'part-time' ? 'Part-time' : 
-                          member.availability === 'contract' ? 'Contract' : 
-                          member.availability === 'consultant' ? 'Consultant' : 
-                          member.availability}
+                          {member.availability === "full-time"
+                            ? "Full-time"
+                            : member.availability === "part-time"
+                            ? "Part-time"
+                            : member.availability === "contract"
+                            ? "Contract"
+                            : member.availability === "consultant"
+                            ? "Consultant"
+                            : member.availability}
                         </Badge>
                       )}
                     </div>
@@ -586,24 +647,25 @@ const EnhancedMemberCard = ({
                     </div>
                   </div>
 
-                  {member.responsibilities && member.responsibilities.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs font-medium text-gray-500 mb-1">
-                        RESPONSIBILITIES
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {member.responsibilities.map((resp, index) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {resp}
-                          </Badge>
-                        ))}
+                  {member.responsibilities &&
+                    member.responsibilities.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-gray-500 mb-1">
+                          RESPONSIBILITIES
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {member.responsibilities.map((resp, index) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {resp}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   <div className="mt-3">
                     <p className="text-xs font-medium text-gray-500 mb-1">
@@ -641,30 +703,20 @@ const EnhancedMemberCard = ({
               )}
             </div>
           </div>
-          
+
           {!isEditing && (
+            /* View mode footer */
             <div className="border-t border-gray-100 bg-gray-50 px-6 py-3 flex justify-end">
               {!readOnly && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-gray-500 hover:text-gray-700"
-                    onClick={handleEdit}
-                  >
-                    <Edit className="h-3.5 w-3.5 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-red-500 hover:text-red-700"
-                    onClick={() => setIsDeleting(true)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Remove
-                  </Button>
-                </>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-gray-500 hover:text-gray-700"
+                  onClick={handleEdit}
+                >
+                  <Edit className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
               )}
             </div>
           )}
@@ -676,12 +728,15 @@ const EnhancedMemberCard = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove {member.name} from the team? This action cannot be undone.
+              Are you sure you want to remove {member.name} from the team? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel disabled={isSubmitting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={isSubmitting}
               className="bg-red-600 hover:bg-red-700"

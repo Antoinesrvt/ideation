@@ -162,9 +162,9 @@
        {/* Main content or empty state */}
        <div className="min-h-[200px] pt-3">
          {hasItems ? (
-           <ScrollArea className="h-full max-h-[calc(100vh-300px)]">
+          <div className="h-full">
              {children}
-           </ScrollArea>
+          </div>
          ) : (
            <Card
              variant="outline"

@@ -255,7 +255,7 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     () => ({
       members: teamData.data.members,
       tasks: teamData.data.tasks,
-      roles: mapDBResponsibilitiesToRoles(teamData.data.responsibilities || []),
+    roles: mapDBResponsibilitiesToRoles(teamData.data.responsibilities || []),
       raci: teamData.data.responsibilities || [], // Use responsibilities data as RACI
       projectRoles: teamData.data.projectRoles || [] // Include project roles
     }),
@@ -265,16 +265,40 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
   // Use either provided data or hook data
   const safeData = useMemo(() => data || hookData, [data, hookData]);
 
+  // Compute statistics
+  const stats = useMemo(() => {
+    if (safeData.tasks.length === 0) return { completion: 0 };
+    
+    const completedTasks = safeData.tasks.filter(
+      (task) => task.status === "completed"
+    ).length;
+    const inProgressTasks = safeData.tasks.filter(
+      (task) => task.status === "in-progress" || task.status === "in_progress"
+    ).length;
+    const blockedTasks = safeData.tasks.filter(
+      (task) => task.status === "on-hold" || task.status === "blocked"
+    ).length;
+    
+    const completion = (completedTasks / safeData.tasks.length) * 100;
+    
+    return {
+      completion: Math.round(completion),
+      completedTasks,
+      inProgressTasks,
+      blockedTasks
+    };
+  }, [safeData.tasks]);
+
   // Calculate team statistics
   const teamStats = useMemo(() => {
     const completedTasks = safeData.tasks.filter(
       (task) => task.status === "completed"
     ).length;
     const inProgressTasks = safeData.tasks.filter(
-      (task) => task.status === "in_progress"
+      (task) => task.status === "in-progress" || task.status === "in_progress"
     ).length;
     const blockedTasks = safeData.tasks.filter(
-      (task) => task.status === "blocked"
+      (task) => task.status === "on-hold" || task.status === "blocked"
     ).length;
     
     // Get upcoming deadlines (tasks due in the next 7 days)
@@ -310,11 +334,74 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
     return Math.round((completedTasks / safeData.tasks.length) * 100);
   }, [safeData.tasks]);
 
+  // Helper stats for tasks
+  const taskStats = useMemo(() => {
+    if (!data?.tasks) return { total: 0, completed: 0, inProgress: 0, blocked: 0, notStarted: 0 };
+    
+    const total = data.tasks.length;
+    const completed = data.tasks.filter(
+      // Check both hyphenated and underscore formats for backward compatibility
+      (task) => task.status === "completed"
+    ).length;
+    const inProgress = data.tasks.filter(
+      (task) => task.status === "in-progress" || task.status === "in_progress"
+    ).length;
+    const blocked = data.tasks.filter(
+      (task) => task.status === "on-hold" || task.status === "blocked"
+    ).length;
+    const notStarted = data.tasks.filter(
+      (task) => task.status === "not-started" || task.status === "not_started"
+    ).length;
+    
+    return {
+      total,
+      completed,
+      inProgress,
+      blocked,
+      notStarted,
+      completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
+    };
+  }, [data?.tasks]);
+
+  // Calculate overdue tasks
+  const overdueTasks = useMemo(() => {
+    if (!data?.tasks) return [];
+    const now = new Date();
+    return data.tasks.filter(task => 
+      task.due_date && 
+      new Date(task.due_date) < now && 
+      // Don't count completed tasks as overdue
+      (task.status !== "completed")
+    );
+  }, [data?.tasks]);
+
+  // Sort tasks by status
+  const sortedTasks = useMemo(() => {
+    if (!data?.tasks) return [];
+    
+    // Define the priority order
+    const statusPriority = {
+      "completed": 4,
+      "on-hold": 3, "blocked": 3,
+      "in-progress": 2, "in_progress": 2,
+      "not-started": 1, "not_started": 1
+    };
+    
+    // Sort tasks by status priority
+    return [...data.tasks].sort((a, b) => {
+      const statusA = statusPriority[a.status as keyof typeof statusPriority] || 0;
+      const statusB = statusPriority[b.status as keyof typeof statusPriority] || 0;
+      return statusA - statusB;
+    });
+  }, [data?.tasks]);
+
+  // Task Status filters & filter state
   const taskStatusOptions = [
-    { value: "not_started", label: "Not Started" },
-    { value: "in_progress", label: "In Progress" },
-    { value: "blocked", label: "Blocked" },
-    { value: "completed", label: "Completed" },
+    { value: "all", label: "All Statuses" },
+    { value: "not-started", label: "Not Started" },
+    { value: "in-progress", label: "In Progress" },
+    { value: "on-hold", label: "On Hold" },
+    { value: "completed", label: "Completed" }
   ];
 
   const taskPriorityOptions = [
@@ -611,25 +698,51 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
           description: "New Task Description",
           team_member_id: null,
           due_date: null,
-          status: "not_started", // Valid status value
-          priority: "medium",    // Valid priority value
+          status: "not-started", // Must match the database constraint
+          priority: "medium",    // Must match the database constraint
           project_id: projectId, // Ensure project_id is set
         };
       } else {
         // Ensure task has valid status and priority if provided
-        if (!task.status) task.status = "not_started";
-        if (!task.priority) task.priority = "medium";
         if (!task.project_id) task.project_id = projectId;
+        
+        // Verify status is one of the allowed values (strict checking)
+        // Database constraint requires: 'not-started', 'in-progress', 'on-hold', 'completed'
+        const validStatuses = ['not-started', 'in-progress', 'on-hold', 'completed'];
+        
+        // Convert from legacy underscore format if needed
+        if (task.status === 'not_started') task.status = 'not-started';
+        if (task.status === 'in_progress') task.status = 'in-progress';
+        if (task.status === 'blocked') task.status = 'on-hold';
+        
+        if (!task.status || !validStatuses.includes(task.status)) {
+          console.error(`Invalid status: "${task.status}". Using default 'not-started'`);
+          task.status = "not-started";
+        }
+        
+        // Verify priority is one of the allowed values (strict checking)
+        const validPriorities = ['low', 'medium', 'high', 'urgent'];
+        if (!task.priority || !validPriorities.includes(task.priority)) {
+          console.error(`Invalid priority: "${task.priority}". Using default 'medium'`);
+          task.priority = "medium";
+        }
       }
 
+      // Log the task we're about to create for debugging
+      console.log("Creating task with data:", JSON.stringify(task));
+
       // Use the appropriate method from the teamData API
-      await teamData.addTask(task);
+      const result = await teamData.addTask(task);
 
       // If successful, show a toast notification
-      toast({
-        title: "Task added",
-        description: `${task.title} has been added successfully.`,
-      });
+      if (result) {
+        toast({
+          title: "Task added",
+          description: `${task.title} has been added successfully.`,
+        });
+      } else {
+        throw new Error("Failed to add task. No result returned.");
+      }
     } catch (error) {
       console.error("Failed to add task:", error);
 
@@ -639,8 +752,6 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
         description: "There was an error adding the task.",
         variant: "destructive",
       });
-
-      throw error;
     }
   };
 
@@ -1104,24 +1215,6 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                       description="Track and manage team tasks, assignments, and progress."
                       onCreate={() => handleAddTask()}
                       count={safeData.tasks.length}
-                      helper={{
-                        icon: <Info className="h-5 w-5" />,
-                        title: "Task Management Best Practices",
-                        content: (
-                          <div className="space-y-3">
-                            <p className="text-dark-700">
-                              Effective task management includes:
-                            </p>
-                            <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Clear task descriptions and objectives</li>
-                              <li>Realistic deadlines and priorities</li>
-                              <li>Balanced workload distribution</li>
-                              <li>Regular progress tracking</li>
-                              <li>Clear status communication</li>
-                  </ul>
-                </div>
-                        ),
-                      }}
                       hasItems={safeData.tasks.length > 0}
                       emptyState={{
                         description:
@@ -1174,8 +1267,8 @@ export const TeamManagement: React.FC<TeamManagementProps> = ({
                               <li>Reporting relationships</li>
                               <li>Growth and development paths</li>
                               <li>Performance metrics</li>
-                            </ul>
-                          </div>
+                  </ul>
+                </div>
                         ),
                       }}
                       hasItems={safeData.roles.length > 0}

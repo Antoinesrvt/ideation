@@ -230,18 +230,6 @@ export function EnhancedCustomerInterviewCard({
             <Edit className="h-3.5 w-3.5 mr-1.5" />
             Edit Interview
           </Button>
-          
-          {onDelete && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              className="text-accent-700 hover:bg-accent-50"
-              onClick={() => onDelete(interview.id)}
-            >
-              <Trash className="h-3.5 w-3.5 mr-1.5" />
-              Delete
-            </Button>
-          )}
         </div>
       )}
     </CardContent>
@@ -374,22 +362,36 @@ export function EnhancedCustomerInterviewCard({
         </div>
       </div>
       
-      <div className="flex justify-end gap-3 mt-6 pt-3 border-t border-gray-100">
-        <Button 
-          variant="outline" 
-          onClick={handleCancel}
-          className="text-dark-700"
-        >
-          Cancel
-        </Button>
-        <Button 
-          variant="default" 
-          onClick={handleSave}
-          className="bg-primary-600 hover:bg-primary-700"
-        >
-          <Save className="h-4 w-4 mr-2" />
-          Save Changes
-        </Button>
+      <div className="flex justify-between gap-3 mt-6 pt-3 border-t border-gray-100">
+        {onDelete && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-accent-700 hover:bg-accent-50"
+            onClick={() => onDelete(interview.id)}
+          >
+            <Trash className="h-3.5 w-3.5 mr-1.5" />
+            Delete
+          </Button>
+        )}
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleCancel}
+            className="text-dark-700"
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="default" 
+            onClick={handleSave}
+            className="bg-primary-600 hover:bg-primary-700"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Changes
+          </Button>
+        </div>
       </div>
     </CardContent>
   );
