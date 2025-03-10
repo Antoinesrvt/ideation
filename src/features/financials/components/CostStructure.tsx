@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import {
   ResponsiveContainer,
@@ -14,19 +14,17 @@ import {
   Tooltip as RechartsTooltip,
 } from "recharts";
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table'
-import { formatCurrency } from './FinancialProjections'
+import { formatCurrency } from "../utils/dataProcessing";
 import { FinancialCostStructure } from '@/store/types'
 import { parseJsonbField } from '@/lib/utils'
+import { v4 as uuidv4 } from 'uuid';
+import { EditableCostRow, CostItem, defaultCostItem } from './common/EditableCostRow';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { AnimatePresence } from 'framer-motion';
 
 // Interface for UI-friendly cost data structure
-interface CostItem {
-  id: string;
-  category: string;
-  description: string;
-  amount: number;
-  frequency: "monthly" | "quarterly" | "annually" | "one-time";
-}
-
 interface CostData {
   fixedCosts: CostItem[];
   variableCosts: CostItem[];
@@ -34,6 +32,9 @@ interface CostData {
 
 interface CostStructureProps {
   costs: CostData | FinancialCostStructure[];
+  onUpdateCost?: (cost: CostItem) => Promise<void>;
+  onDeleteCost?: (id: string) => Promise<void>;
+  readOnly?: boolean;
 }
 
 // Define chart color scheme
@@ -46,61 +47,164 @@ const COLORS = [
   "#8DD1E1",
 ];
 
-const CostStructure = ({ costs }: CostStructureProps) => {
+const CostStructure: React.FC<CostStructureProps> = ({ 
+  costs, 
+  onUpdateCost,
+  onDeleteCost,
+  readOnly = false 
+}) => {
+  const { toast } = useToast();
+  const [showNewFixedCostRow, setShowNewFixedCostRow] = useState(false);
+  const [showNewVariableCostRow, setShowNewVariableCostRow] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   // Determine if we're receiving the organized UI data or raw DB data
-  const isOrganizedData = Array.isArray(costs) ? false : true;
+  const isCostData = useCallback((data: any): data is CostData => {
+    return data.fixedCosts !== undefined && data.variableCosts !== undefined;
+  }, []);
   
-  // Organize costs into fixed and variable if needed
-  const fixedCosts = isOrganizedData 
-    ? (costs as CostData).fixedCosts
-    : (costs as FinancialCostStructure[])
-        .filter(cost => cost.type === 'fixed')
-        .map(cost => ({
-          id: cost.id,
-          category: cost.category || 'other',
-          description: cost.description || cost.name,
-          amount: cost.amount || 0,
-          frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || 'monthly'
-        }));
+  // Convert DB model to UI model
+  const convertToUIModel = useCallback((cost: FinancialCostStructure): CostItem => {
+    return {
+      id: cost.id,
+      category: cost.category || '',
+      description: cost.description || '',
+      amount: cost.amount || 0,
+      frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || 'monthly',
+      type: (cost.type as 'fixed' | 'variable') || 'fixed',
+    };
+  }, []);
   
-  const variableCosts = isOrganizedData 
-    ? (costs as CostData).variableCosts 
-    : (costs as FinancialCostStructure[])
-        .filter(cost => cost.type === 'variable' || cost.type === 'semi-variable')
-        .map(cost => ({
-          id: cost.id,
-          category: cost.category || 'other',
-          description: cost.description || cost.name,
-          amount: cost.amount || 0,
-          frequency: (cost.frequency as "monthly" | "quarterly" | "annually" | "one-time") || 'monthly'
-        }));
-
-  // Calculate sums for the pie chart
-  const totalFixed = fixedCosts.reduce((sum, cost) => sum + cost.amount, 0);
-  const totalVariable = variableCosts.reduce((sum, cost) => sum + cost.amount, 0);
-  const total = totalFixed + totalVariable;
-
+  // Convert raw DB data to UI-friendly format if needed
+  const costData = useMemo<CostData>(() => {
+    if (isCostData(costs)) {
+      return costs;
+    } else {
+      return {
+        fixedCosts: (costs as FinancialCostStructure[])
+          .filter((cost: FinancialCostStructure) => cost.type === 'fixed')
+          .map(convertToUIModel),
+        variableCosts: (costs as FinancialCostStructure[])
+          .filter((cost: FinancialCostStructure) => 
+            cost.type === 'variable' || cost.type === 'semi-variable')
+          .map(convertToUIModel),
+      };
+    }
+  }, [costs, convertToUIModel, isCostData]);
+  
+  // Destructure the costs
+  const { fixedCosts, variableCosts } = costData;
+  
+  // Calculate totals for fixed and variable costs
+  const totalFixedCosts = useMemo(() => 
+    fixedCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0),
+  [fixedCosts]);
+  
+  const totalVariableCosts = useMemo(() => 
+    variableCosts.reduce((sum, cost) => sum + (cost.amount || 0), 0),
+  [variableCosts]);
+  
   // Prepare data for the pie chart
-  const pieData = [
-    { name: "Fixed Costs", value: totalFixed },
-    { name: "Variable Costs", value: totalVariable },
-  ];
-
-  // Group costs by category for the bar chart
-  const categorizeAndSum = (costs: CostItem[]) => {
+  const pieData = useMemo(() => [
+    { name: "Fixed Costs", value: totalFixedCosts },
+    { name: "Variable Costs", value: totalVariableCosts },
+  ], [totalFixedCosts, totalVariableCosts]);
+  
+  // Function to categorize and sum costs for the bar chart
+  const categorizeAndSum = useCallback((costs: CostItem[]) => {
     const categoryMap = new Map<string, number>();
     
     costs.forEach(cost => {
       const category = cost.category || 'Other';
-      const current = categoryMap.get(category) || 0;
-      categoryMap.set(category, current + cost.amount);
+      const amount = cost.amount || 0;
+      const currentAmount = categoryMap.get(category) || 0;
+      categoryMap.set(category, currentAmount + amount);
     });
     
-    return Array.from(categoryMap.entries()).map(([name, value]) => ({ name, value }));
-  };
+    return Array.from(categoryMap).map(([name, value]) => ({ name, value }));
+  }, []);
 
-  const categoryData = categorizeAndSum([...fixedCosts, ...variableCosts]);
-
+  // Memoize category data to prevent recreation on each render
+  const categoryData = useMemo(() => 
+    categorizeAndSum([...fixedCosts, ...variableCosts]),
+  [categorizeAndSum, fixedCosts, variableCosts]);
+  
+  // Handle adding a new cost
+  const handleSaveCost = useCallback(async (cost: CostItem) => {
+    if (!onUpdateCost) return;
+    
+    setIsSubmitting(true);
+    try {
+      // If it's a new cost, generate an ID
+      if (!cost.id) {
+        cost.id = uuidv4();
+      }
+      
+      await onUpdateCost(cost);
+      
+      // Hide the new row form
+      if (cost.type === 'fixed') {
+        setShowNewFixedCostRow(false);
+      } else {
+        setShowNewVariableCostRow(false);
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Cost ${cost.id ? 'updated' : 'added'} successfully.`,
+        variant: 'default',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: `Failed to ${cost.id ? 'update' : 'add'} cost.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [onUpdateCost, toast]);
+  
+  // Handle deleting a cost
+  const handleDeleteCostInternal = useCallback(async (cost: CostItem) => {
+    if (!onDeleteCost) return;
+    
+    try {
+      await onDeleteCost(cost.id);
+      
+      toast({
+        title: 'Success',
+        description: 'Cost deleted successfully.',
+        variant: 'default',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete cost.',
+        variant: 'destructive',
+      });
+    }
+  }, [onDeleteCost, toast]);
+  
+  // Handlers for showing/hiding new cost rows
+  const handleShowNewFixedCost = useCallback(() => {
+    setShowNewFixedCostRow(true);
+    setShowNewVariableCostRow(false);
+  }, []);
+  
+  const handleShowNewVariableCost = useCallback(() => {
+    setShowNewVariableCostRow(true);
+    setShowNewFixedCostRow(false);
+  }, []);
+  
+  const handleCancelNewFixedCost = useCallback(() => {
+    setShowNewFixedCostRow(false);
+  }, []);
+  
+  const handleCancelNewVariableCost = useCallback(() => {
+    setShowNewVariableCostRow(false);
+  }, []);
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Cost Breakdown Chart */}
@@ -157,11 +261,25 @@ const CostStructure = ({ costs }: CostStructureProps) => {
 
       {/* Fixed Costs Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
           <CardTitle>Fixed Costs</CardTitle>
           <CardDescription>
             Costs that remain constant regardless of production volume
           </CardDescription>
+          </div>
+          
+          {!readOnly && onUpdateCost && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleShowNewFixedCost}
+              disabled={showNewFixedCostRow || isSubmitting}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Cost
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -171,25 +289,53 @@ const CostStructure = ({ costs }: CostStructureProps) => {
                 <TableHead>Description</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Frequency</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
+              <AnimatePresence>
               {fixedCosts.length > 0 ? (
                 fixedCosts.map((cost) => (
-                  <TableRow key={cost.id}>
-                    <TableCell className="font-medium">{cost.category}</TableCell>
-                    <TableCell>{cost.description}</TableCell>
-                    <TableCell>{formatCurrency(cost.amount)}</TableCell>
-                    <TableCell className="capitalize">{cost.frequency}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+                    <EditableCostRow
+                      key={cost.id}
+                      cost={cost}
+                      onSave={handleSaveCost}
+                      onDelete={handleDeleteCostInternal}
+                      readOnly={readOnly || !onUpdateCost}
+                    />
+                  ))
+                ) : !showNewFixedCostRow && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
                     No fixed costs defined
                   </TableCell>
                 </TableRow>
               )}
+                
+                {/* New cost row */}
+                {showNewFixedCostRow && !readOnly && onUpdateCost && (
+                  <EditableCostRow
+                    cost={{...defaultCostItem, type: 'fixed'}}
+                    isNewRow={true}
+                    onSave={handleSaveCost}
+                    onCancel={handleCancelNewFixedCost}
+                    readOnly={readOnly || !onUpdateCost}
+                  />
+                )}
+                
+                {/* Add new cost row button */}
+                {!showNewFixedCostRow && !readOnly && onUpdateCost && (
+                  <EditableCostRow
+                    cost={{...defaultCostItem, type: 'fixed'}}
+                    isEmptyRow={true}
+                    onSave={() => {
+                      setShowNewFixedCostRow(true);
+                      return Promise.resolve();
+                    }}
+                    readOnly={readOnly || !onUpdateCost}
+                  />
+                )}
+              </AnimatePresence>
             </TableBody>
           </Table>
         </CardContent>
@@ -197,11 +343,25 @@ const CostStructure = ({ costs }: CostStructureProps) => {
 
       {/* Variable Costs Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
           <CardTitle>Variable Costs</CardTitle>
           <CardDescription>
-            Costs that vary with production volume
+              Costs that change based on production volume
           </CardDescription>
+          </div>
+          
+          {!readOnly && onUpdateCost && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleShowNewVariableCost}
+              disabled={showNewVariableCostRow || isSubmitting}
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Cost
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -211,25 +371,53 @@ const CostStructure = ({ costs }: CostStructureProps) => {
                 <TableHead>Description</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Frequency</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
+              <AnimatePresence>
               {variableCosts.length > 0 ? (
                 variableCosts.map((cost) => (
-                  <TableRow key={cost.id}>
-                    <TableCell className="font-medium">{cost.category}</TableCell>
-                    <TableCell>{cost.description}</TableCell>
-                    <TableCell>{formatCurrency(cost.amount)}</TableCell>
-                    <TableCell className="capitalize">{cost.frequency}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+                    <EditableCostRow
+                      key={cost.id}
+                      cost={cost}
+                      onSave={handleSaveCost}
+                      onDelete={handleDeleteCostInternal}
+                      readOnly={readOnly || !onUpdateCost}
+                    />
+                  ))
+                ) : !showNewVariableCostRow && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
                     No variable costs defined
                   </TableCell>
                 </TableRow>
               )}
+                
+                {/* New cost row */}
+                {showNewVariableCostRow && !readOnly && onUpdateCost && (
+                  <EditableCostRow
+                    cost={{...defaultCostItem, type: 'variable'}}
+                    isNewRow={true}
+                    onSave={handleSaveCost}
+                    onCancel={handleCancelNewVariableCost}
+                    readOnly={readOnly || !onUpdateCost}
+                  />
+                )}
+                
+                {/* Add new cost row button */}
+                {!showNewVariableCostRow && !readOnly && onUpdateCost && (
+                  <EditableCostRow
+                    cost={{...defaultCostItem, type: 'variable'}}
+                    isEmptyRow={true}
+                    onSave={() => {
+                      setShowNewVariableCostRow(true);
+                      return Promise.resolve();
+                    }}
+                    readOnly={readOnly || !onUpdateCost}
+                  />
+                )}
+              </AnimatePresence>
             </TableBody>
           </Table>
         </CardContent>
@@ -238,4 +426,4 @@ const CostStructure = ({ costs }: CostStructureProps) => {
   );
 };
 
-export default CostStructure;
+export default React.memo(CostStructure);

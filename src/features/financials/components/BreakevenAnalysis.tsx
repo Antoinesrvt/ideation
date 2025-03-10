@@ -1,7 +1,17 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Legend, Tooltip as RechartsTooltip, CartesianGrid } from 'recharts'
-import { formatCurrency } from './FinancialProjections'
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ReferenceLine
+} from 'recharts'
+import { formatCurrency } from '../utils/dataProcessing'
 import { DollarSign } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
@@ -12,8 +22,12 @@ export interface BreakevenData {
   contributionMargin: number;
   breakEvenUnits: number;
   breakEvenRevenue: number;
+  data: Array<{
+    units: number;
+    revenue: number;
+    costs: number;
+  }>;
 }
-
 
 interface BreakevenAnalysisProps {
   data: {
@@ -21,234 +35,209 @@ interface BreakevenAnalysisProps {
   };
 }
 
-  // Calculate breakeven data based on the inputs
-  const calculateBreakeven = (data: BreakevenData): BreakevenData => {
-    const { unitSellingPrice, unitVariableCost, fixedCosts } = data;
-    const contributionMarginValue = unitSellingPrice - unitVariableCost;
-    
-    // Calculate breakeven units and revenue
-    const breakEvenUnits = contributionMarginValue > 0 ? fixedCosts / contributionMarginValue : 0;
-    const breakEvenRevenue = breakEvenUnits * unitSellingPrice;
-    
-    // Return updated breakeven data with all required fields
-    return {
-      unitSellingPrice,
-      unitVariableCost,
-      fixedCosts,
-      contributionMargin: unitSellingPrice > 0 
-        ? (contributionMarginValue / unitSellingPrice) * 100 
-        : 0,
-      breakEvenUnits,
-      breakEvenRevenue
+// Calculate breakeven data based on the inputs
+const calculateBreakeven = (data: BreakevenData): BreakevenData => {
+  const { unitSellingPrice, unitVariableCost, fixedCosts } = data;
+  const contributionMarginValue = unitSellingPrice - unitVariableCost;
+  
+  // Calculate breakeven units and revenue
+  const breakEvenUnits = contributionMarginValue > 0 ? fixedCosts / contributionMarginValue : 0;
+  const breakEvenRevenue = breakEvenUnits * unitSellingPrice;
+  
+  // Return updated breakeven data with all required fields
+  return {
+    unitSellingPrice,
+    unitVariableCost,
+    fixedCosts,
+    contributionMargin: unitSellingPrice > 0 
+      ? (contributionMarginValue / unitSellingPrice) * 100 
+      : 0,
+    breakEvenUnits,
+    breakEvenRevenue,
+    data: data.data
+  };
+};
+
+/**
+ * BreakevenAnalysis component displays break-even analysis data
+ * Memoized to prevent unnecessary re-renders
+ */
+const BreakevenAnalysis = memo(function BreakevenAnalysis({ data }: BreakevenAnalysisProps) {
+  const { 
+    unitSellingPrice, 
+    unitVariableCost, 
+    fixedCosts, 
+    contributionMargin,
+    breakEvenUnits,
+    breakEvenRevenue
+  } = data.breakeven;
+
+  const handleUpdateBreakeven = (
+    field: keyof any,
+    value: number
+  ) => {
+    const updatedBreakeven = {
+      ...data.breakeven,
+      [field]: value,
     };
+    
+    // Recalculate breakeven values
+    const calculatedBreakeven = calculateBreakeven(updatedBreakeven);
+
+    // Update the breakeven data
+    // updateBreakeven(calculatedBreakeven);
   };
 
-const BreakevenAnalysis = ({ data }: BreakevenAnalysisProps) => {
-
-    const handleUpdateBreakeven = (
-      field: keyof any,
-      value: number
-    ) => {
-      const updatedBreakeven = {
-        ...data.breakeven,
-        [field]: value,
-      };
-      
-      // Recalculate breakeven values
-      const calculatedBreakeven = calculateBreakeven(updatedBreakeven);
-
-      // Update the breakeven data
-      // updateBreakeven(calculatedBreakeven);
-    };
-  
+  // Custom tooltip formatter to display currency values
+  const formatTooltipValue = (value: number, name: string) => {
+    return formatCurrency(value);
+  };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="space-y-6">
+      {/* Break-even Metrics */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">Break-even Point</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Math.round(breakEvenUnits).toLocaleString()} units</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatCurrency(breakEvenRevenue)} in revenue
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">Contribution Margin</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(contributionMargin)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Per unit ({((contributionMargin / unitSellingPrice) * 100).toFixed(1)}% of price)
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">Fixed Costs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(fixedCosts)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total fixed costs to cover
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+      
       {/* Break-even Chart */}
-      <Card className="col-span-1 md:col-span-2">
+      <Card>
         <CardHeader>
           <CardTitle>Break-even Analysis</CardTitle>
-          <CardDescription>
-            Revenue vs. Costs based on sales volume
-          </CardDescription>
+          <CardDescription>Revenue and costs by sales volume</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <LineChart
+                data={data.breakeven.data}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  type="number"
-                  dataKey="units"
-                  domain={[
-                    0,
-                    data.breakeven.breakEvenUnits
-                      ? data.breakeven.breakEvenUnits * 2
-                      : 500,
-                  ]}
+                <XAxis 
+                  dataKey="units" 
+                  label={{ 
+                    value: 'Units Sold', 
+                    position: 'insideBottomRight', 
+                    offset: -10 
+                  }} 
+                />
+                <YAxis 
+                  tickFormatter={(value) => `$${value}`}
+                  label={{ 
+                    value: 'Amount ($)', 
+                    angle: -90, 
+                    position: 'insideLeft' 
+                  }} 
+                />
+                <Tooltip formatter={formatTooltipValue} />
+                <Legend />
+                <ReferenceLine
+                  x={breakEvenUnits}
+                  stroke="#ff7300"
+                  strokeDasharray="3 3"
                   label={{
-                    value: "Units Sold",
-                    position: "insideBottom",
-                    offset: -5,
+                    value: 'Break-even',
+                    position: 'top',
+                    fill: '#ff7300',
+                    fontSize: 12
                   }}
                 />
-                <YAxis />
-                <RechartsTooltip
-                  formatter={(value) => formatCurrency(Number(value))}
-                />
-                <Legend />
                 <Line
-                  name="Total Revenue"
-                  data={[
-                    { units: 0, value: 0 },
-                    {
-                      units: data.breakeven.breakEvenUnits
-                        ? data.breakeven.breakEvenUnits * 2
-                        : 500,
-                      value:
-                        (data.breakeven.breakEvenUnits
-                          ? data.breakeven.breakEvenUnits * 2
-                          : 500) * data.breakeven.unitSellingPrice,
-                    },
-                  ]}
-                  type="linear"
-                  dataKey="value"
-                  stroke="#0088FE"
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#22c55e"
                   strokeWidth={2}
-                  dot={false}
+                  name="Revenue"
                 />
                 <Line
-                  name="Total Cost"
-                  data={[
-                    { units: 0, value: data.breakeven.fixedCosts },
-                    {
-                      units: data.breakeven.breakEvenUnits
-                        ? data.breakeven.breakEvenUnits * 2
-                        : 500,
-                      value:
-                        data.breakeven.fixedCosts +
-                        (data.breakeven.breakEvenUnits
-                          ? data.breakeven.breakEvenUnits * 2
-                          : 500) *
-                          data.breakeven.unitVariableCost,
-                    },
-                  ]}
-                  type="linear"
-                  dataKey="value"
-                  stroke="#FF8042"
+                  type="monotone"
+                  dataKey="costs"
+                  stroke="#ef4444"
                   strokeWidth={2}
-                  dot={false}
+                  name="Costs"
                 />
-                {data.breakeven.breakEvenUnits && (
-                  <Line
-                    name="Break-even Point"
-                    data={[
-                      {
-                        units: data.breakeven.breakEvenUnits,
-                        value: 0,
-                      },
-                      {
-                        units: data.breakeven.breakEvenUnits,
-                        value: data.breakeven.breakEvenRevenue,
-                      },
-                    ]}
-                    type="linear"
-                    dataKey="value"
-                    stroke="#8884D8"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                  />
-                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
         </CardContent>
       </Card>
-
-      {/* Break-even Calculator */}
+      
+      {/* Break-even Details */}
       <Card>
         <CardHeader>
-          <CardTitle>Break-even Calculator</CardTitle>
-          <CardDescription>
-            Adjust values to calculate break-even point
-          </CardDescription>
+          <CardTitle>Break-even Details</CardTitle>
+          <CardDescription>Key metrics and calculations</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Unit Selling Price</label>
-            <div className="flex items-center">
-              <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
-              <Input
-                type="number"
-                value={data.breakeven.unitSellingPrice}
-                onChange={(e) =>
-                  handleUpdateBreakeven(
-                    "unitSellingPrice",
-                    parseFloat(e.target.value)
-                  )
-                }
-              />
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-medium">Unit Selling Price</h4>
+                <p className="text-lg">{formatCurrency(unitSellingPrice)}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium">Unit Variable Cost</h4>
+                <p className="text-lg">{formatCurrency(unitVariableCost)}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium">Contribution Margin</h4>
+                <p className="text-lg">{formatCurrency(contributionMargin)}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium">Contribution Margin Ratio</h4>
+                <p className="text-lg">{((contributionMargin / unitSellingPrice) * 100).toFixed(1)}%</p>
+              </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Unit Variable Cost</label>
-            <div className="flex items-center">
-              <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
-              <Input
-                type="number"
-                value={data.breakeven.unitVariableCost}
-                onChange={(e) =>
-                  handleUpdateBreakeven(
-                    "unitVariableCost",
-                    parseFloat(e.target.value)
-                  )
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Fixed Costs</label>
-            <div className="flex items-center">
-              <DollarSign className="h-4 w-4 text-gray-500 mr-2" />
-              <Input
-                type="number"
-                value={data.breakeven.fixedCosts}
-                onChange={(e) =>
-                  handleUpdateBreakeven(
-                    "fixedCosts",
-                    parseFloat(e.target.value)
-                  )
-                }
-              />
-            </div>
-          </div>
-
-          <div className="pt-4 border-t">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm">Contribution Margin:</span>
-              <span className="font-medium">
-                {formatCurrency(data.breakeven.contributionMargin || 0)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm">Break-even Units:</span>
-              <span className="font-medium">
-                {Math.ceil(data.breakeven.breakEvenUnits || 0).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Break-even Revenue:</span>
-              <span className="font-medium">
-                {formatCurrency(data.breakeven.breakEvenRevenue || 0)}
-              </span>
+            
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-medium mb-2">Break-even Calculation</h4>
+              <p className="text-sm text-muted-foreground">
+                Break-even Units = Fixed Costs ÷ Contribution Margin
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(fixedCosts)} ÷ {formatCurrency(contributionMargin)} = {Math.round(breakEvenUnits).toLocaleString()} units
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
   );
-}
+});
 
 export default BreakevenAnalysis

@@ -56,6 +56,8 @@ import {
 import { ValidationExperiment } from '@/store/types';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
+import { ViewToggle, ViewMode } from './common/ViewToggle';
+import { ExperimentCard } from './common/ExperimentCard';
 
 interface ExperimentsListProps {
   experiments: ValidationExperiment[];
@@ -82,10 +84,15 @@ interface MetricInput {
   actual: string;
 }
 
-export function ExperimentsList({ experiments, onUpdate, onDelete }: ExperimentsListProps) {
+export const ExperimentsList: React.FC<ExperimentsListProps> = ({ 
+  experiments, 
+  onUpdate,
+  onDelete
+}) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExperiment, setEditingExperiment] = useState<ValidationExperiment | null>(null);
   const [metrics, setMetrics] = useState<MetricInput[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   
   const form = useForm<ExperimentFormValues>({
     defaultValues: {
@@ -194,90 +201,124 @@ export function ExperimentsList({ experiments, onUpdate, onDelete }: Experiments
     return new Date(dateString).toLocaleDateString();
   };
 
+  // Render empty state
+  const renderEmptyState = () => (
+    <Card className="border-dashed border-2">
+      <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
+        <Beaker className="h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium mb-2">No Experiments Yet</h3>
+        <p className="text-sm text-gray-500 max-w-md mb-4">
+          Track and analyze experiments to validate your ideas
+        </p>
+      </CardContent>
+    </Card>
+  );
+  
+  // Render the table view
+  const renderTableView = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Experiment</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Timeline</TableHead>
+          <TableHead className="w-[100px]">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {experiments.map(experiment => (
+          <TableRow key={experiment.id}>
+            <TableCell>
+              <div className="flex flex-col">
+                <span className="font-medium">{experiment.title || "Unnamed Experiment"}</span>
+                {experiment.hypothesis && (
+                  <span className="text-sm text-gray-500 mt-1 flex items-center">
+                    <Lightbulb className="h-3 w-3 mr-1" />
+                    {experiment.hypothesis.length > 70 
+                      ? `${experiment.hypothesis.substring(0, 70)}...` 
+                      : experiment.hypothesis}
+                  </span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge className={getStatusColor(experiment.status)}>
+                {experiment.status}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-col text-sm">
+                {experiment.start_date && (
+                  <span className="flex items-center">
+                    <Calendar className="h-3 w-3 mr-1 text-gray-500" />
+                    {formatDate(experiment.start_date)}
+                  </span>
+                )}
+                {experiment.end_date && (
+                  <span className="flex items-center">
+                    <Clock className="h-3 w-3 mr-1 text-gray-500" />
+                    {formatDate(experiment.end_date)}
+                  </span>
+                )}
+              </div>
+            </TableCell>
+            <TableCell>
+              <div className="flex space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(experiment)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(experiment.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+  
+  // Render the card view
+  const renderCardView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {experiments.map((experiment) => (
+        <ExperimentCard 
+          key={experiment.id}
+          experiment={experiment}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
+      {/* View toggle control */}
+      <div className="flex justify-end mb-4">
+        <ViewToggle
+          viewMode={viewMode}
+          onChange={setViewMode}
+          className="ml-auto"
+        />
+      </div>
+
+      {/* Content based on available data and view mode */}
       {experiments.length === 0 ? (
-        <Card className="border-dashed border-2">
-          <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-            <Beaker className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Experiments Yet</h3>
-            <p className="text-sm text-gray-500 max-w-md mb-4">
-              Design experiments to test your business assumptions and reduce risk
-            </p>
-          </CardContent>
-        </Card>
+        renderEmptyState()
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Experiment</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Timeline</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {experiments.map(experiment => (
-              <TableRow key={experiment.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{experiment.title || "Unnamed Experiment"}</span>
-                    {experiment.hypothesis && (
-                      <span className="text-sm text-gray-500 mt-1 flex items-center">
-                        <Lightbulb className="h-3 w-3 mr-1" />
-                        {experiment.hypothesis.length > 70 
-                          ? `${experiment.hypothesis.substring(0, 70)}...` 
-                          : experiment.hypothesis}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(experiment.status)}>
-                    {experiment.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col text-sm">
-                    {experiment.start_date && (
-                      <span className="flex items-center">
-                        <Calendar className="h-3 w-3 mr-1 text-gray-500" />
-                        {formatDate(experiment.start_date)}
-                      </span>
-                    )}
-                    {experiment.end_date && (
-                      <span className="flex items-center">
-                        <Clock className="h-3 w-3 mr-1 text-gray-500" />
-                        {formatDate(experiment.end_date)}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(experiment)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(experiment.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        viewMode === 'table' ? renderTableView() : renderCardView()
       )}
 
-      {/* Edit Dialog */}
+      {/* Edit dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -503,4 +544,4 @@ export function ExperimentsList({ experiments, onUpdate, onDelete }: Experiments
       </Dialog>
     </div>
   );
-} 
+}; 

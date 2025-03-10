@@ -18,32 +18,29 @@ export interface UseFinancialsReturn {
   data: FinancialsData;
   isLoading: boolean;
   error: Error | null;
+  submitting: boolean;
 
-  // Revenue Streams
+  // Revenue Streams operations
   addRevenueStream: (stream: Insert<'financial_revenue_streams'>) => Promise<FinancialRevenueStream | null>;
   updateRevenueStream: (params: { id: string; data: Update<'financial_revenue_streams'> }) => Promise<FinancialRevenueStream | null>;
   deleteRevenueStream: (id: string) => Promise<boolean>;
 
-  // Cost Structure
+  // Cost Structure operations
   addCostStructure: (cost: Insert<'financial_cost_structure'>) => Promise<FinancialCostStructure | null>;
   updateCostStructure: (params: { id: string; data: Update<'financial_cost_structure'> }) => Promise<FinancialCostStructure | null>;
   deleteCostStructure: (id: string) => Promise<boolean>;
 
-  // Pricing Strategies
+  // Pricing Strategies operations
   addPricingStrategy: (strategy: Insert<'financial_pricing_strategies'>) => Promise<FinancialPricingStrategy | null>;
   updatePricingStrategy: (params: { id: string; data: Update<'financial_pricing_strategies'> }) => Promise<FinancialPricingStrategy | null>;
   deletePricingStrategy: (id: string) => Promise<boolean>;
 
-  // Financial Projections
+  // Financial Projections operations
   addProjection: (projection: Insert<'financial_projections'>) => Promise<FinancialProjection | null>;
   updateProjection: (params: { id: string; data: Update<'financial_projections'> }) => Promise<FinancialProjection | null>;
   deleteProjection: (id: string) => Promise<boolean>;
   
-  // Diff helpers
-  getRevenueStreamChangeType: (id: string) => ChangeType;
-  getCostStructureChangeType: (id: string) => ChangeType;
-  getPricingStrategyChangeType: (id: string) => ChangeType;
-  getProjectionChangeType: (id: string) => ChangeType;
+  // Diff mode flag
   isDiffMode: boolean;
 }
 
@@ -135,40 +132,45 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
     if (revenueStreamsData) {
       store.setFinancialRevenueStreams(revenueStreamsData);
     }
-  }, [revenueStreamsData, store]);
+  }, [revenueStreamsData]);
 
   useEffect(() => {
     if (costStructureData) {
       store.setFinancialCostStructure(costStructureData);
     }
-  }, [costStructureData, store]);
+  }, [costStructureData]);
 
   useEffect(() => {
     if (pricingStrategiesData) {
       store.setFinancialPricingStrategies(pricingStrategiesData);
     }
-  }, [pricingStrategiesData, store]);
+  }, [pricingStrategiesData]);
 
   useEffect(() => {
     if (projectionsData) {
       store.setFinancialProjections(projectionsData);
     }
-  }, [projectionsData, store]);
+  }, [projectionsData]);
+
+  // Extract values from store to avoid depending on the entire store object
+  const comparisonMode = store.comparisonMode;
+  const currentData = store.currentData;
+  const stagedData = store.stagedData;
 
   // Get data from the store for comparison mode
   const storeData = useMemo(() => {
-    const source = store.comparisonMode && store.stagedData ? store.stagedData : store.currentData;
+    const source = comparisonMode && stagedData ? stagedData : currentData;
     return {
       financialRevenueStreams: source.financialRevenueStreams || [],
       financialCostStructure: source.financialCostStructure || [],
       financialPricingStrategies: source.financialPricingStrategies || [],
       financialProjections: source.financialProjections || []
     };
-  }, [store.currentData, store.stagedData, store.comparisonMode]);
+  }, [comparisonMode, currentData, stagedData]);
 
   // Use either store data or query data based on comparison mode
   const data = useMemo((): FinancialsData => {
-    if (store.comparisonMode) {
+    if (comparisonMode) {
       return {
         revenueStreams: storeData.financialRevenueStreams,
         costStructure: storeData.financialCostStructure,
@@ -184,7 +186,7 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
       };
     }
   }, [
-    store.comparisonMode, 
+    comparisonMode, 
     storeData,
     revenueStreamsData,
     costStructureData,
@@ -404,49 +406,37 @@ export function useFinancials(projectId: string | undefined): UseFinancialsRetur
     return deleteProjectionOptimistic(id);
   }, [deleteProjectionOptimistic]);
   
-  // Diff helpers
-  const getRevenueStreamChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('financialRevenueStreams', id), [store]);
-  
-  const getCostStructureChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('financialCostStructure', id), [store]);
-  
-  const getPricingStrategyChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('financialPricingStrategies', id), [store]);
-  
-  const getProjectionChangeType = useCallback((id: string): ChangeType => 
-    store.getItemChangeType('financialProjections', id), [store]);
+  // Diff mode
+  const isDiffMode = comparisonMode;
 
+  // Return the final data and operations
   return {
     data,
     isLoading,
     error: error || queryError,
-
-    // Revenue Streams
+    submitting,
+    
+    // Revenue Streams operations
     addRevenueStream,
     updateRevenueStream,
     deleteRevenueStream,
-
-    // Cost Structure
+    
+    // Cost Structure operations
     addCostStructure,
     updateCostStructure,
     deleteCostStructure,
-
-    // Pricing Strategies
+    
+    // Pricing Strategies operations
     addPricingStrategy,
     updatePricingStrategy,
     deletePricingStrategy,
-
-    // Financial Projections
+    
+    // Financial Projections operations
     addProjection,
     updateProjection,
     deleteProjection,
     
-    // Diff helpers
-    getRevenueStreamChangeType,
-    getCostStructureChangeType,
-    getPricingStrategyChangeType,
-    getProjectionChangeType,
-    isDiffMode: store.comparisonMode,
+    // Diff mode
+    isDiffMode
   };
 } 

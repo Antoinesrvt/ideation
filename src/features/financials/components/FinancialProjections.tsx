@@ -1,117 +1,37 @@
-import React, { useState, useMemo } from "react";
-import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import React, { useState, useMemo, useCallback } from "react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import TabList from "@/features/common/components/TabList";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-  Sector,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip as RechartsTooltip,
-} from "recharts";
-import {
-  DollarSign,
-  Percent,
-  TrendingUp,
-  Calculator,
-  CreditCard,
-  Target,
-  Activity,
-  Plus,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
-import RevenueCharts from "./RevenueChart";
-import { Badge } from "@/components/ui/badge";
-import { useProjectStore } from "@/store";
-import { useParams } from "next/navigation";
-import { useToast } from "@/components/ui/use-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DollarSign, Wallet, Target, TrendingUp, Loader2, AlertCircle, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { useProjectStore } from "@/store/project-store";
 import { useFinancials } from "@/hooks/features/useFinancials";
+import { financialTabs } from "../data/tabs";
+import { CostItem } from "./common/EditableCostRow";
+
+// Import the tab components
+import RevenueCharts from "./RevenueCharts";
 import CostStructure from "./CostStructure";
-import BreakevenAnalysis from "./BreakevenAnalysis";
 import PricingStrategy from "./PricingStrategy";
-import { BreakevenData } from "./BreakevenAnalysis";
-import {
-  Tables,
-  TablesInsert,
-  TablesUpdate
-} from "@/types/database";
+import BreakevenAnalysis from "./BreakevenAnalysis";
+import ProjectionChart from "./ProjectionChart";
 
-// Tabs configuration
-const financialTabs = [
-  {
-    id: "revenue",
-    label: "Revenue Streams",
-    icon: <TrendingUp className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "costs",
-    label: "Cost Structure",
-    icon: <DollarSign className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "pricing",
-    label: "Pricing Strategy",
-    icon: <Percent className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "breakeven",
-    label: "Break-even Analysis",
-    icon: <Target className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "projections",
-    label: "Financial Projections",
-    icon: <Activity className="h-4 w-4 mr-2" />,
-  },
-];
-
-// Helper function to format currency
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
-
-// Calculate profit margin
-const calculateProfitMargin = (data: any): number => {
-  const totalRevenue = data.revenue.forecasts.reduce(
-    (sum: number, forecast: any) => sum + forecast.amount,
-    0
-  );
-  
-  const totalCosts = 
-    data.costs.fixedCosts.reduce((sum: number, cost: any) => sum + cost.amount, 0) +
-    data.costs.variableCosts.reduce((sum: number, cost: any) => sum + cost.amount, 0);
-  
-  if (totalRevenue === 0) return 0;
-  
-  return Math.round(((totalRevenue - totalCosts) / totalRevenue) * 100);
-};
+// Import utilities
+import { 
+  formatCurrency, 
+  calculateProfitMargin, 
+  processFinancialData 
+} from "../utils/dataProcessing";
 
 // Main component
 export const FinancialProjections: React.FC = () => {
   const [activeTab, setActiveTab] = useState("revenue");
   const { currentData } = useProjectStore();
-  const projectId = currentData.project?.id;
+  
+  // Memoize the project ID to ensure it doesn't change on every render
+  const projectId = useMemo(() => currentData?.project?.id, [currentData?.project?.id]);
+  
   const { toast } = useToast();
   
   // Use the useFinancials hook
@@ -139,27 +59,19 @@ export const FinancialProjections: React.FC = () => {
     addProjection,
     updateProjection,
     deleteProjection,
-    
-    // Diff mode
-    isDiffMode
   } = useFinancials(projectId);
-  
-  // Track which item is being edited for each section
-  const [editingItem, setEditingItem] = useState<{
-    type: 'revenue' | 'cost' | 'pricing' | 'projection' | null;
-    id: string | null;
-  }>({ type: null, id: null });
-  
-  // Track modal states
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Handle adding a new revenue stream
-  const handleAddRevenueStream = async (formData: any): Promise<void> => {
+
+  // Process financial data using memoization
+  const processedData = useMemo(() => 
+    processFinancialData(data, isLoading),
+  [data, isLoading]);
+
+  // Handler functions with proper memoization
+  const handleAddRevenueStream = useCallback(async (formData: any): Promise<void> => {
     try {
       // Create a deep copy to avoid mutation issues
       const formDataCopy = JSON.parse(JSON.stringify(formData));
       
-      // Add the revenue stream
       await addRevenueStream(formDataCopy);
       
       toast({
@@ -172,100 +84,16 @@ export const FinancialProjections: React.FC = () => {
         description: "Failed to create new revenue stream.",
         variant: "destructive"
       });
-      // Re-throw to let the component handle the error
       throw error;
     }
-  };
+  }, [addRevenueStream, toast]);
   
-  // Handle adding a new cost structure item
-  const handleAddCost = async () => {
-    try {
-      const newCost = await addCostStructure({
-        name: "New Cost",
-        project_id: projectId,
-        type: "fixed",
-        category: "operations",
-        amount: 500,
-        frequency: "monthly",
-      });
-      
-      if (newCost) {
-        toast({
-          title: "Cost added",
-          description: "New cost has been created successfully.",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error adding cost",
-        description: "Failed to create new cost.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Handle adding a new pricing strategy
-  const handleAddPricingStrategy = async () => {
-    try {
-      const newStrategy = await addPricingStrategy({
-        name: "New Pricing Strategy",
-        project_id: projectId,
-        strategy_type: "value-based",
-        target_market: "General",
-      });
-      
-      if (newStrategy) {
-        toast({
-          title: "Pricing strategy added",
-          description: "New pricing strategy has been created successfully.",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error adding pricing strategy",
-        description: "Failed to create new pricing strategy.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Handle adding a new financial projection
-  const handleAddProjection = async () => {
-    try {
-      const newProjection = await addProjection({
-        title: "New Financial Projection",
-        project_id: projectId,
-        scenario: "base",
-        timeframe: "yearly",
-        data: { periods: [], totals: { revenue: 0, costs: 0, profit: 0 } },
-      });
-      
-      if (newProjection) {
-        toast({
-          title: "Projection added",
-          description: "New financial projection has been created successfully.",
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error adding projection",
-        description: "Failed to create new financial projection.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Handle updating a revenue stream
-  const handleUpdateRevenueStream = async (id: string, formData: any): Promise<void> => {
+  const handleUpdateRevenueStream = useCallback(async (id: string, formData: any): Promise<void> => {
     try {
       // Create a deep copy to avoid mutation issues
       const formDataCopy = JSON.parse(JSON.stringify(formData));
       
-      // Update the revenue stream
-      await updateRevenueStream({ 
-        id, 
-        data: formDataCopy
-      });
+      await updateRevenueStream({ id, data: formDataCopy });
       
       toast({
         title: "Revenue stream updated",
@@ -277,127 +105,151 @@ export const FinancialProjections: React.FC = () => {
         description: "Failed to update the revenue stream.",
         variant: "destructive"
       });
-      // Re-throw to let the component handle the error
       throw error;
     }
-  };
+  }, [updateRevenueStream, toast]);
   
-  // Process data for UI
-  const processedData = useMemo(() => {
-    // Process revenue streams
-    const revenueForecasts = data.revenueStreams.map((stream) => ({
-      id: stream.id,
-      name: stream.name,
-      amount: (stream.unit_price || 0) * (stream.volume || 0),
-      period: stream.frequency || 'monthly',
-      growthRate: stream.growth_rate || 0,
-    }));
-    
-    // Process costs
-    const fixedCosts = data.costStructure.filter(cost => 
-      cost.type === 'fixed').map(cost => ({
-        id: cost.id,
-        category: cost.category || 'other',
-        description: cost.description || cost.name,
-        amount: cost.amount || 0,
-        frequency: cost.frequency || 'monthly',
-      }));
+  const handleDeleteRevenueStream = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      await deleteRevenueStream(id);
       
-    const variableCosts = data.costStructure.filter(cost => 
-      cost.type === 'variable' || cost.type === 'semi-variable').map(cost => ({
-        id: cost.id,
-        category: cost.category || 'other',
-        description: cost.description || cost.name,
-        amount: cost.amount || 0,
-        frequency: cost.frequency || 'monthly',
-      }));
+      toast({
+        title: "Revenue stream deleted",
+        description: "The revenue stream has been deleted successfully.",
+      });
       
-    // Calculate break-even
-    const totalRevenue = revenueForecasts.reduce((sum, forecast) => sum + forecast.amount, 0);
-    const totalFixedCosts = fixedCosts.reduce((sum, cost) => sum + cost.amount, 0);
-    const totalVariableCosts = variableCosts.reduce((sum, cost) => sum + cost.amount, 0);
-    
-    let breakEvenUnits = 0;
-    if (totalRevenue > 0) {
-      // Simple break-even calculation
-      const averageUnitPrice = totalRevenue / 
-        Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1);
-        
-      const averageVariableCostPerUnit = totalVariableCosts / 
-        Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1);
-        
-      if (averageUnitPrice > averageVariableCostPerUnit) {
-        breakEvenUnits = totalFixedCosts / (averageUnitPrice - averageVariableCostPerUnit);
-      }
+      return true;
+    } catch (error) {
+      toast({
+        title: "Error deleting revenue stream",
+        description: "Failed to delete the revenue stream.",
+        variant: "destructive"
+      });
+      return false;
     }
+  }, [deleteRevenueStream, toast]);
+
+  const handleUpdateCost = useCallback(async (costData: CostItem): Promise<void> => {
+    if (!costData) return;
     
-    // Safely handle the JSON type for projections data
-    const projectionChartData = data.projections.length > 0 && data.projections[0].data 
-      ? typeof data.projections[0].data === 'object' && data.projections[0].data !== null
-        ? (() => {
-            try {
-              // Try to access periods property or parse JSON if needed
-              const dataObj = data.projections[0].data as any;
-              if (dataObj.periods && Array.isArray(dataObj.periods)) {
-                return dataObj.periods;
-              }
-              return [];
-            } catch (error) {
-              console.error("Error parsing projection data:", error);
-              return [];
-            }
-          })()
-        : []
-      : Array.from({length: 12}, (_, i) => ({
-          period: `Month ${i+1}`,
-          revenue: 0,
-          costs: 0,
-          profit: 0
-        }));
-    
-    // Return processed data structure
-    return {
-      revenue: {
-        forecasts: revenueForecasts,
-        total: totalRevenue,
-      },
-      costs: {
-        fixedCosts,
-        variableCosts,
-        totalFixed: totalFixedCosts,
-        totalVariable: totalVariableCosts,
-        total: totalFixedCosts + totalVariableCosts,
-      },
-      breakeven: {
-        units: breakEvenUnits,
-        revenue: breakEvenUnits * (totalRevenue / 
-          Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1)),
-        data: [
-          { units: Math.max(0, breakEvenUnits - 100), revenue: 0, costs: totalFixedCosts },
-          { units: breakEvenUnits, revenue: breakEvenUnits * (totalRevenue / 
-            Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1)), 
-            costs: totalFixedCosts + (breakEvenUnits * (totalVariableCosts / 
-            Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1))) },
-          { units: breakEvenUnits + 100, revenue: (breakEvenUnits + 100) * (totalRevenue / 
-            Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1)), 
-            costs: totalFixedCosts + ((breakEvenUnits + 100) * (totalVariableCosts / 
-            Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1))) },
-        ]
-      },
-      pricing: {
-        strategies: data.pricingStrategies,
-      },
-      projections: {
-        data: projectionChartData,
-        scenarios: data.projections.map(p => ({
-          id: p.id,
-          title: p.title,
-          scenario: p.scenario || 'base',
-          timeframe: p.timeframe || 'monthly',
-        }))
+    try {
+      if (costData.id) {
+        // It's an update
+        const updateData = {
+          category: costData.category,
+          description: costData.description,
+          amount: costData.amount,
+          frequency: costData.frequency,
+          type: costData.type,
+        };
+        
+        await updateCostStructure({
+          id: costData.id,
+          data: updateData
+        });
+        
+        toast({
+          title: "Success",
+          description: "Cost updated successfully",
+        });
+      } else {
+        // It's a new cost
+        const newCost = {
+          name: costData.description, // Name is required for database model
+          category: costData.category,
+          description: costData.description,
+          amount: costData.amount,
+          frequency: costData.frequency,
+          type: costData.type,
+          project_id: projectId,
+        };
+        
+        await addCostStructure(newCost);
+        
+        toast({
+          title: "Success",
+          description: "Cost added successfully",
+        });
       }
-    };
-  }, [data]);
+    } catch (error) {
+      console.error("Error updating cost:", error);
+      toast({
+        title: "Error",
+        description: `Failed to ${costData.id ? 'update' : 'add'} cost. Please try again.`,
+        variant: "destructive",
+      });
+    }
+  }, [addCostStructure, projectId, toast, updateCostStructure]);
+  
+  const handleDeleteCost = useCallback(async (id: string): Promise<void> => {
+    if (!id) return;
+    
+    try {
+      await deleteCostStructure(id);
+      
+      toast({
+        title: "Success",
+        description: "Cost deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting cost:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete cost. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [deleteCostStructure, toast]);
+  
+  const handleAddPricingStrategy = useCallback(async (): Promise<void> => {
+    try {
+      await addPricingStrategy({
+        name: "New Pricing Strategy",
+        project_id: projectId,
+        strategy_type: "value-based",
+        target_market: "General",
+      });
+      
+      toast({
+        title: "Pricing strategy added",
+        description: "New pricing strategy has been created successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding pricing strategy",
+        description: "Failed to create new pricing strategy.",
+        variant: "destructive",
+      });
+    }
+  }, [addPricingStrategy, projectId, toast]);
+  
+  const handleAddProjection = useCallback(async (): Promise<void> => {
+    try {
+      await addProjection({
+        title: "New Financial Projection",
+        project_id: projectId,
+        scenario: "base",
+        timeframe: "yearly",
+        data: { periods: [], totals: { revenue: 0, costs: 0, profit: 0 } },
+      });
+      
+      toast({
+        title: "Projection added",
+        description: "New projection has been created successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error adding projection",
+        description: "Failed to create new projection.",
+        variant: "destructive",
+      });
+    }
+  }, [addProjection, projectId, toast]);
+
+  // Error handler
+  const handleReloadPage = useCallback(() => {
+    window.location.reload();
+  }, []);
   
   // Show loading state
   if (isLoading) {
@@ -422,7 +274,8 @@ export const FinancialProjections: React.FC = () => {
           <Button 
             className="mt-4" 
             variant="outline"
-            onClick={() => window.location.reload()}
+            onClick={handleReloadPage}
+            type="button"
           >
             Try Again
           </Button>
@@ -431,36 +284,31 @@ export const FinancialProjections: React.FC = () => {
     );
   }
 
+  // Calculate metrics for summary cards
+  const totalRevenue = processedData.revenue.total;
+  const totalCosts = processedData.costs.total;
+  const profitMargin = calculateProfitMargin(totalRevenue, totalCosts);
+  const profit = totalRevenue - totalCosts;
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="space-y-8">
+      {/* Summary cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-1">
               <CardTitle className="text-sm font-medium">
-                Projected Revenue
+                Total Revenue
               </CardTitle>
-              <CardDescription>Current forecast</CardDescription>
+              <CardDescription>Projected annual revenue</CardDescription>
             </div>
-            <TrendingUp className="w-5 h-5 text-green-500" />
+            <DollarSign className="w-5 h-5 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(processedData.revenue.total)}
-            </div>
-            <div className="h-[60px] mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={processedData.revenue.forecasts.slice(0, 6)}>
-                  <Line
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="#22c55e"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              From {processedData.revenue.forecasts.length} revenue streams
+            </p>
           </CardContent>
         </Card>
 
@@ -470,35 +318,15 @@ export const FinancialProjections: React.FC = () => {
               <CardTitle className="text-sm font-medium">
                 Total Costs
               </CardTitle>
-              <CardDescription>Fixed + Variable</CardDescription>
+              <CardDescription>Fixed and variable costs</CardDescription>
             </div>
-            <DollarSign className="w-5 h-5 text-blue-500" />
+            <Wallet className="w-5 h-5 text-rose-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(processedData.costs.total)}
-            </div>
-            <div className="h-[60px] mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: "Fixed", value: processedData.costs.totalFixed },
-                      { name: "Variable", value: processedData.costs.totalVariable },
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={18}
-                    outerRadius={30}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#3b82f6" />
-                    <Cell fill="#8b5cf6" />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(totalCosts)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatCurrency(processedData.costs.totalFixed)} fixed / {formatCurrency(processedData.costs.totalVariable)} variable
+            </p>
           </CardContent>
         </Card>
 
@@ -508,42 +336,15 @@ export const FinancialProjections: React.FC = () => {
               <CardTitle className="text-sm font-medium">
                 Profit Margin
               </CardTitle>
-              <CardDescription>Based on current data</CardDescription>
+              <CardDescription>Percentage of revenue</CardDescription>
             </div>
-            <Percent className="w-5 h-5 text-purple-500" />
+            <TrendingUp className="w-5 h-5 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.max(0, Math.round((processedData.revenue.total - processedData.costs.total) / 
-                Math.max(processedData.revenue.total, 1) * 100))}%
-              </div>
-            <div className="h-[60px] mt-2">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { 
-                        name: "Profit", 
-                        value: Math.max(0, processedData.revenue.total - processedData.costs.total)
-                      },
-                      { 
-                        name: "Costs", 
-                        value: processedData.costs.total
-                      },
-                    ]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={18}
-                    outerRadius={30}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    <Cell fill="#22c55e" />
-                    <Cell fill="#ef4444" />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            <div className="text-2xl font-bold">{profitMargin}%</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatCurrency(profit)} projected profit
+            </p>
           </CardContent>
         </Card>
 
@@ -575,50 +376,37 @@ export const FinancialProjections: React.FC = () => {
         className="w-full"
       >
         <div className="flex justify-between items-center mb-4">
-        <TabList
-          tabs={financialTabs}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
+          <TabList
+            tabs={financialTabs}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
         </div>
 
         <TabsContent value="revenue" className="mt-0 border-none shadow-none">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Revenue Streams</h2>
-          </div>
           {projectId && (
-            <RevenueCharts 
+            <RevenueCharts
               streams={data.revenueStreams}
-              onEdit={(id: string) => setEditingItem({ type: 'revenue', id })}
-              onDelete={async (id: string) => {
-                try {
-                  await deleteRevenueStream(id);
-                  return true;
-                } catch (error) {
-                  return false;
-                }
-              }}
+              projectId={projectId}
               onAdd={handleAddRevenueStream}
               onUpdate={handleUpdateRevenueStream}
-              projectId={projectId}
+              onDelete={handleDeleteRevenueStream}
             />
           )}
         </TabsContent>
 
         <TabsContent value="costs" className="mt-0 border-none shadow-none">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Cost Structure</h2>
-            <Button onClick={handleAddCost}>
-              <Plus className="h-4 w-4 mr-2" /> Add Cost
-            </Button>
-          </div>
-          <CostStructure costs={data.costStructure} />
-          </TabsContent>
+          <CostStructure 
+            costs={data.costStructure} 
+            onUpdateCost={handleUpdateCost}
+            onDeleteCost={handleDeleteCost}
+          />
+        </TabsContent>
 
         <TabsContent value="pricing" className="mt-0 border-none shadow-none">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Pricing Strategies</h2>
-            <Button onClick={handleAddPricingStrategy}>
+            <Button onClick={handleAddPricingStrategy} type="button">
               <Plus className="h-4 w-4 mr-2" /> Add Strategy
             </Button>
           </div>
@@ -630,7 +418,7 @@ export const FinancialProjections: React.FC = () => {
               }
             }}
           />
-          </TabsContent>
+        </TabsContent>
 
         <TabsContent value="breakeven" className="mt-0 border-none shadow-none">
           <div className="flex justify-between items-center mb-4">
@@ -645,67 +433,35 @@ export const FinancialProjections: React.FC = () => {
                 contributionMargin: (processedData.revenue.total / Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1)) - 
                   (processedData.costs.totalVariable / Math.max(data.revenueStreams.reduce((sum, stream) => sum + (stream.volume || 0), 0), 1)),
                 breakEvenUnits: processedData.breakeven.units,
-                breakEvenRevenue: processedData.breakeven.revenue
+                breakEvenRevenue: processedData.breakeven.revenue,
+                data: processedData.breakeven.data
               }
             }}
           />
-          </TabsContent>
+        </TabsContent>
 
         <TabsContent value="projections" className="mt-0 border-none shadow-none">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Financial Projections</h2>
-            <Button onClick={handleAddProjection}>
+            <Button onClick={handleAddProjection} type="button">
               <Plus className="h-4 w-4 mr-2" /> Add Projection
             </Button>
           </div>
           <Card>
             <CardHeader>
-              <CardTitle>Cash Flow Projection</CardTitle>
+              <CardTitle>Monthly Projections</CardTitle>
               <CardDescription>
-                Based on current revenue streams and cost structure
+                Revenue, costs, and profit over the next 12 months
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={processedData.projections.data}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="period" />
-                    <YAxis 
-                      tickFormatter={(value) => formatCurrency(value).replace("$", "")}
-                    />
-                    <RechartsTooltip formatter={(value: number) => formatCurrency(value)} />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke="#22c55e"
-                      strokeWidth={2}
-                      name="Revenue"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="costs"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      name="Costs"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="profit"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      name="Profit"
-                    />
-                    <Legend />
-                  </LineChart>
-                </ResponsiveContainer>
-        </div>
+              <div className="h-80">
+                <ProjectionChart data={processedData.projections.data} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* TODO: Implement modals for adding and editing entries */}
     </div>
   );
 };

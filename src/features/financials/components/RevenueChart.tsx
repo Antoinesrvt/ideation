@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { PlusCircle, Table as TableIcon, Pencil, Trash2, DollarSign, BarChart as BarChartIcon, LineChart as LineChartIcon, Loader2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts'
-import { formatCurrency } from './FinancialProjections'
+import { formatCurrency } from "../utils/dataProcessing";
 import { TableHeader, TableBody, TableRow, TableCell, TableHead, Table } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'

@@ -1,10 +1,10 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Info } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableHead } from '@/components/ui/table'
 import { BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Bar, Tooltip as RechartsTooltip } from 'recharts'
-import { formatCurrency } from './FinancialProjections'
+import { formatCurrency } from '../utils/dataProcessing'
 import { FinancialPricingStrategy } from '@/store/types'
 import { parseJsonbField } from '@/lib/utils'
 
@@ -34,15 +34,21 @@ function getAveragePrice(strategy: FinancialPricingStrategy): number {
   return (priceRange.min + priceRange.max) / 2;
 }
 
-const PricingStrategy = ({ data }: PricingStrategyProps) => {
+/**
+ * PricingStrategy component displays pricing strategies
+ * Memoized to prevent unnecessary re-renders
+ */
+const PricingStrategy = memo(function PricingStrategy({ data }: PricingStrategyProps) {
+  const { strategies, competitorPrices } = data.pricing;
+
   // Transform data for the chart
   const chartData = [
-    ...data.pricing.strategies.map((s) => ({
+    ...strategies.map((s) => ({
       name: s.name,
       price: getAveragePrice(s),
       type: "Your Strategies",
     })),
-    ...data.pricing.competitorPrices.map((c) => ({
+    ...competitorPrices.map((c) => ({
       name: c.competitor,
       price: c.price,
       type: "Competitors",
@@ -50,7 +56,7 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="space-y-6">
       <Alert
         variant="default"
         className="bg-blue-50 text-blue-800 border-blue-200"
@@ -113,36 +119,87 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
       <Card>
         <CardHeader>
           <CardTitle>Pricing Strategies</CardTitle>
-          <CardDescription>
-            Different pricing tiers for different markets
-          </CardDescription>
+          <CardDescription>Define your pricing models and strategies</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Strategy</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Target Market</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.pricing.strategies.map((strategy) => (
-                <TableRow key={strategy.id}>
-                  <TableCell>
+          {strategies.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No pricing strategies added yet. Click "Add Strategy" to get started.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {strategies.map((strategy) => (
+                <div key={strategy.id} className="border rounded-lg p-4">
+                  <h3 className="text-lg font-medium mb-2">{strategy.name}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <div className="font-medium">{strategy.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {strategy.description}
-                      </div>
+                      <p className="text-sm text-muted-foreground">Target Market</p>
+                      <p>{strategy.target_market || 'Not specified'}</p>
                     </div>
-                  </TableCell>
-                  <TableCell>{formatCurrency(getAveragePrice(strategy))}</TableCell>
-                  <TableCell>{strategy.target_market || strategy.considerations || 'General'}</TableCell>
-                </TableRow>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Strategy Type</p>
+                      <p className="capitalize">{strategy.strategy_type || 'Not specified'}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-muted-foreground">Description</p>
+                      <p>{strategy.description || 'No description provided.'}</p>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Pricing Considerations */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Pricing Considerations</CardTitle>
+          <CardDescription>Factors to consider when setting prices</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-md font-medium mb-2">Value-Based Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Set prices based on the perceived value to customers rather than costs.
+                Consider what customers are willing to pay for the benefits your product provides.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-medium mb-2">Competitive Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Set prices based on what competitors are charging. This works well in markets
+                with similar products and price-sensitive customers.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-medium mb-2">Cost-Plus Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Calculate your costs and add a markup percentage. Simple but may not reflect
+                market conditions or customer value perception.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-medium mb-2">Penetration Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Start with a low price to gain market share quickly, then potentially
+                increase prices once established.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-medium mb-2">Premium Pricing</h3>
+              <p className="text-sm text-muted-foreground">
+                Set prices higher than competitors to create a perception of higher quality
+                or exclusivity.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -164,7 +221,7 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.pricing.competitorPrices.map((competitor) => (
+              {competitorPrices.map((competitor) => (
                 <TableRow key={competitor.id}>
                   <TableCell className="font-medium">
                     {competitor.competitor}
@@ -179,6 +236,6 @@ const PricingStrategy = ({ data }: PricingStrategyProps) => {
       </Card>
     </div>
   );
-};
+});
 
 export default PricingStrategy;

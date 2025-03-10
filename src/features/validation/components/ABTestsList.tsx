@@ -49,6 +49,8 @@ import {
 } from 'lucide-react';
 import { ValidationABTest } from '@/store/types';
 import { useForm } from 'react-hook-form';
+import { ViewToggle, ViewMode } from './common/ViewToggle';
+import { ABTestCard } from './common/ABTestCard';
 
 interface ABTestsListProps {
   tests: ValidationABTest[];
@@ -76,6 +78,7 @@ interface ABTestFormValues {
 export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTest, setEditingTest] = useState<ValidationABTest | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   
   const form = useForm<ABTestFormValues>({
     defaultValues: {
@@ -183,127 +186,134 @@ export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
     return improvement.toFixed(1);
   };
 
+  // Render empty state
+  const renderEmptyState = () => (
+    <Card className="border-dashed border-2">
+      <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
+        <LineChart className="h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-lg font-medium mb-2">No A/B Tests Yet</h3>
+        <p className="text-sm text-gray-500 max-w-md mb-4">
+          Create and track A/B tests to optimize your product
+        </p>
+      </CardContent>
+    </Card>
+  );
+  
+  // Render the table view
+  const renderTableView = () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Title</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Metrics</TableHead>
+          <TableHead>Results</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {tests.map((test) => (
+          <TableRow key={test.id}>
+            <TableCell>
+              <div>
+                <div className="font-medium">{test.title}</div>
+                <span className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {formatDate(test.start_date ?? undefined) || "Not scheduled"}
+                </span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge className={getStatusColor(test.status)}>
+                {test.status}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              <div>
+                <span className="text-sm">{test.metric || "-"}</span>
+                <div className="text-xs text-gray-500 mt-1 flex items-start gap-2">
+                  <span className="flex-1">A: {test.variant_a || "Variant A"}</span>
+                  <span className="flex-1">B: {test.variant_b || "Variant B"}</span>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell>
+              {test.status === 'completed' ? (
+                <div>
+                  <Badge className={getWinnerColor(test.winner)}>
+                    {test.winner === 'A' ? 'Variant A Wins' :
+                     test.winner === 'B' ? 'Variant B Wins' :
+                     test.winner === 'inconclusive' ? 'Inconclusive' : 'No Result'}
+                  </Badge>
+                  {test.confidence && test.confidence > 0 && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {test.confidence}% confidence
+                    </div>
+                  )}
+                  {getImprovement(test) && (
+                    <div className="text-xs text-gray-500">
+                      {getImprovement(test)}% improvement
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <span className="text-sm text-gray-500">-</span>
+              )}
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEdit(test)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(test.id)}
+                >
+                  <Trash className="h-4 w-4 text-red-500" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+  
+  // Render the card view
+  const renderCardView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {tests.map((test) => (
+        <ABTestCard 
+          key={test.id}
+          abTest={test}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="mb-4">
-        <Button onClick={() => handleEdit({
-          id: '',
-          title: '',
-          description: '',
-          variant_a: '',
-          variant_b: '',
-          metric: '',
-          status: 'planned',
-          start_date: '',
-          end_date: '',
-          sample_size: 0,
-          conversion_a: 0,
-          conversion_b: 0,
-          confidence: 0,
-          winner: null,
-          notes: '',
-          project_id: '',
-          created_at: null,
-          updated_at: null,
-          created_by: null
-        })}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add A/B Test
-        </Button>
+      {/* View toggle control */}
+      <div className="flex justify-end mb-4">
+        <ViewToggle
+          viewMode={viewMode}
+          onChange={setViewMode}
+          className="ml-auto"
+        />
       </div>
 
+      {/* Content based on available data and view mode */}
       {tests.length === 0 ? (
-        <Card className="border-dashed border-2">
-          <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-            <LineChart className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No A/B Tests Yet</h3>
-            <p className="text-sm text-gray-500 max-w-md mb-4">
-              Compare alternative solutions with real users to optimize your product
-            </p>
-          </CardContent>
-        </Card>
+        renderEmptyState()
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Metrics</TableHead>
-              <TableHead>Results</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tests.map((test) => (
-              <TableRow key={test.id}>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{test.title}</div>
-                    <span className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {formatDate(test.start_date ?? undefined) || "Not scheduled"}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(test.status)}>
-                    {test.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <span className="text-sm">{test.metric || "-"}</span>
-                    <div className="text-xs text-gray-500 mt-1 flex items-start gap-2">
-                      <span className="flex-1">A: {test.variant_a || "Variant A"}</span>
-                      <span className="flex-1">B: {test.variant_b || "Variant B"}</span>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {test.status === 'completed' ? (
-                    <div>
-                      <Badge className={getWinnerColor(test.winner)}>
-                        {test.winner === 'A' ? 'Variant A Wins' :
-                         test.winner === 'B' ? 'Variant B Wins' :
-                         test.winner === 'inconclusive' ? 'Inconclusive' : 'No Result'}
-                      </Badge>
-                      {test.confidence && test.confidence > 0 && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {test.confidence}% confidence
-                        </div>
-                      )}
-                      {getImprovement(test) && (
-                        <div className="text-xs text-gray-500">
-                          {getImprovement(test)}% improvement
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-500">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(test)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(test.id)}
-                    >
-                      <Trash className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        viewMode === 'table' ? renderTableView() : renderCardView()
       )}
 
       {/* Edit Dialog */}
