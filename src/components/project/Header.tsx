@@ -38,17 +38,17 @@ interface HeaderProps {
 
 // Map section IDs to human-readable titles
 const sectionTitles: Record<ActiveSection, string> = {
-  'overview': 'Project Overview',
-  'canvas': 'Business Model Canvas',
-  'grp': 'Business Model GRP',
+  'overview': 'Dashboard',
+  'business-model': 'Business Model',
   'market': 'Market Research',
-  'product-design': 'Product Design',
+  'product-design': 'Product Definition',
   'validation': 'Validation',
-  'financials': 'Financial Projections',
-  'team': 'Team',
+  'financials': 'Financials',
+  'team': 'Team Structure',
   'documents': 'Documents',
   'external-tools': 'External Tools',
-  'ai': 'AI Dashboard'
+  'ai': 'AI Assistant',
+  'brand': 'Brand Identity'
 };
 
 export function Header({ 

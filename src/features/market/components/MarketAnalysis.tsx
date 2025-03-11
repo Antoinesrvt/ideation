@@ -21,8 +21,15 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
 import { SectionTab } from '@/components/ui/section-tab';
+import { MarketOverviewData } from '../types';
+import { MarketOverview } from './MarketOverview';
 
 const marketTabs = [
+  {
+    id: "overview",
+    label: "Market Overview",
+    icon: <BarChart2 className="h-4 w-4 mr-2" />,
+  },
   {
     id: "personas",
     label: "Customer Personas",
@@ -84,6 +91,40 @@ const itemVariants = {
     y: -10,
     transition: { duration: 0.1 }
   }
+};
+
+// Replace the mockMarketOverviewData with a properly typed version
+const mockMarketOverviewData: MarketOverviewData = {
+  marketDefinition: {
+    industry: 'Software as a Service',
+    geography: 'global',
+    maturity: 'growing'
+  },
+  marketSize: {
+    tam: 150000000000, // $150B
+    sam: 45000000000, // $45B
+    som: 4500000000, // $4.5B
+    tamMethod: 'top-down',
+    samPercentage: 30,
+    somPercentage: 10
+  },
+  segments: [
+    {
+      name: 'Enterprise',
+      size: 60,
+      growth: 15
+    },
+    {
+      name: 'Mid-market',
+      size: 30,
+      growth: 22
+    },
+    {
+      name: 'Small Business',
+      size: 10,
+      growth: 18
+    }
+  ]
 };
 
 export function MarketAnalysis() {
@@ -544,6 +585,23 @@ export function MarketAnalysis() {
 
             {/* Add AnimatePresence to handle the exit animations properly */}
             <AnimatePresence mode="wait">
+              {
+                activeTab === "overview" && (
+                  <motion.div
+                    key="overview"
+                    variants={tabContentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="w-full"
+                    layoutId="tab-content"
+                  >
+                    <TabsContent value="overview" className="mt-0 border-none shadow-none" forceMount>
+                      <MarketOverview data={mockMarketOverviewData} />
+                    </TabsContent>
+                  </motion.div>
+                )
+              }
               {activeTab === "personas" && (
                 <motion.div
                   key="personas"

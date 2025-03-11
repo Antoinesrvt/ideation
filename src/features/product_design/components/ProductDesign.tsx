@@ -29,10 +29,19 @@ import {
   MapPin,
   Map,
   AlertCircle,
+  Lightbulb,
+  Puzzle,
+  ArrowRight,
+  Play
 } from "lucide-react";
 import { WireframeGallery } from "./WireframeGallery";
 import { FeatureMap } from "./FeatureMap";
 import { UserJourneyMap } from "./UserJourneyMap";
+import { ProblemSolutionFit } from "./ProblemSolutionFit";
+import { MVPScopeDefinition } from "./MVPScopeDefinition";
+import { StepperDialog } from "./StepperDialog";
+import { Problem, Solution, Evidence } from "./ProblemSolutionFit";
+import { SuccessCriterion, TimelinePhase } from "./MVPScopeDefinition";
 
 import { useProjectStore } from "@/store";
 import { useAIStore } from "@/hooks/useAIStore";
@@ -48,6 +57,11 @@ import { useProductDesign } from "@/hooks/features/useProductDesign";
 import { useToast } from "@/components/ui/use-toast";
 
 const tabs = [
+  {
+    id: "problems",
+    label: "Problem-Solution Fit",
+    icon: <Lightbulb className="h-4 w-4 mr-2" />,
+  },
   {
     id: "wireframes",
     label: "Wireframes",
@@ -100,49 +114,170 @@ export const ProductDesign: React.FC = () => {
       wireframes: false,
       features: false,
       journey: false,
-    });
-  
-  // Track which help sections are expanded
-  const [expandedHelp, setExpandedHelp] = useState<{
-    wireframes: boolean;
-    features: boolean;
-    journey: boolean;
-  }>({
-    wireframes: false,
-    features: false,
-    journey: false,
+    problems: false,
   });
 
-  // Track which journey stage is currently selected
-  const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
-  
-  // Use the hook with proper error handling
   const {
     data,
     isLoading,
     error,
-
-    // Wireframes
     addWireframe,
     updateWireframe,
     deleteWireframe,
-
-    // Features
     addFeature,
     updateFeature,
     deleteFeature,
-
-    // Journey Stages
     addJourneyStage,
     updateJourneyStage,
     deleteJourneyStage,
+    addJourneyAction,
+    updateJourneyAction,
+    deleteJourneyAction,
+    addJourneyPainPoint,
+    updateJourneyPainPoint,
+    deleteJourneyPainPoint,
+  } = useProductDesign(currentData?.project?.id);
 
-    // Diff helpers
-    getWireframeChangeType,
-    getFeatureChangeType,
-    getJourneyStageChangeType,
-    isDiffMode,
-  } = useProductDesign(currentData.project?.id);
+  // Mock data for Problem-Solution Fit
+  const [mockProblems] = useState<Problem[]>([
+    { 
+      id: "prob-1",
+      title: "Data access in remote areas",
+      description: "Field researchers struggle to access and update data when working in remote areas with limited connectivity.",
+      status: "critical",
+      significance: 85, 
+      customerSegments: ["Field Researchers", "Remote Teams"],
+      evidenceCount: 2
+    },
+    { 
+      id: "prob-2",
+      title: "Complex data visualization",
+      description: "Researchers find it difficult to create meaningful visualizations from complex datasets without technical help.",
+      status: "validated",
+      significance: 70,
+      customerSegments: ["Data Analysts", "Researchers"],
+      evidenceCount: 1
+    },
+    {
+      id: "prob-3",
+      title: "Collaboration on findings",
+      description: "Teams struggle to effectively collaborate on research findings across different locations and time zones.",
+      status: "discovered",
+      significance: 65,
+      customerSegments: ["Research Teams", "Project Managers"],
+      evidenceCount: 0
+    }
+  ]);
+  
+  const [mockSolutions] = useState<Solution[]>([
+    {
+      id: "sol-1",
+      title: "Offline data synchronization",
+      description: "A mobile app with offline capabilities that synchronizes data when connectivity is restored.",
+      problemId: "prob-1",
+      effectiveness: 80,
+      feasibility: 70,
+      hypothesisStatement: "We believe that offline data synchronization will solve the data access issues for field researchers by allowing them to continue working without internet connection."
+    },
+    {
+      id: "sol-2",
+      title: "Automated visualization tools",
+      description: "AI-powered tools that automatically generate appropriate visualizations based on data type and research questions.",
+      problemId: "prob-2",
+      effectiveness: 75,
+      feasibility: 60,
+      hypothesisStatement: "We believe that automated visualization tools will help researchers easily create meaningful visualizations by removing the technical barriers."
+    }
+  ]);
+  
+  const [mockEvidence] = useState<Evidence[]>([
+    {
+      id: "evid-1",
+      title: "Field researcher interviews",
+      description: "5 interviews with field researchers revealed consistent frustration with data access in remote areas.",
+      source: "User Interviews",
+      type: "interview",
+      status: "verified",
+      relatedIds: ["prob-1"]
+    },
+    {
+      id: "evid-2",
+      title: "Usage data analysis",
+      description: "Analysis of current system usage shows 68% of users struggle with creating visualizations.",
+      source: "Analytics",
+      type: "research",
+      status: "partial",
+      relatedIds: ["prob-2"]
+    }
+  ]);
+  
+  // Mock data for MVP Scope Definition
+  const [mockSelectedMVPFeatures] = useState([
+    "feat-1", "feat-3", "feat-5"
+  ]);
+  
+  const [mockSuccessCriteria] = useState<SuccessCriterion[]>([
+    {
+      id: "crit-1",
+      title: "Offline data collection",
+      description: "Users can collect and store data while offline and successfully sync when back online.",
+      metricType: "qualitative",
+      isAchieved: false
+    },
+    {
+      id: "crit-2",
+      title: "User adoption rate",
+      description: "Percentage of target users who adopt the solution within the first month of release.",
+      metricType: "quantitative",
+      targetValue: "30%",
+      currentValue: "0%",
+      isAchieved: false
+    }
+  ]);
+  
+  const [mockTimeline] = useState<TimelinePhase[]>([
+    {
+      id: "phase-1",
+      title: "MVP Phase",
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      features: ["feat-1", "feat-3", "feat-5"],
+      milestones: [
+        {
+          id: "mile-1",
+          title: "MVP Launch",
+          date: new Date(Date.now() + 58 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          isCompleted: false
+        }
+      ]
+    },
+    {
+      id: "phase-2",
+      title: "Version 1.0",
+      startDate: new Date(Date.now() + 61 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      features: ["feat-2", "feat-4"],
+      milestones: [
+        {
+          id: "mile-2",
+          title: "Full Release",
+          date: new Date(Date.now() + 118 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          isCompleted: false
+        }
+      ]
+    }
+  ]);
+
+  // Extend the data object with our mock data
+  const enhancedData = {
+    ...data,
+    problems: mockProblems,
+    solutions: mockSolutions,
+    evidence: mockEvidence,
+    selectedMVPFeatures: mockSelectedMVPFeatures,
+    successCriteria: mockSuccessCriteria,
+    timeline: mockTimeline
+  };
 
   // Get current data from the hook
   const uiData = useMemo(
@@ -153,37 +288,6 @@ export const ProductDesign: React.FC = () => {
     }),
     [data]
   );
-  
-  // Helper function to determine if an item is new/modified in comparison mode
-  const getItemStatus = (
-    section: "wireframes" | "features" | "journeyStages",
-    itemId: string
-  ): "new" | "modified" | "unchanged" | "removed" => {
-    if (!isDiffMode) return "unchanged";
-
-    if (section === "wireframes") {
-      return getWireframeChangeType(itemId) as
-        | "new"
-        | "modified"
-        | "unchanged"
-        | "removed";
-    } else if (section === "features") {
-      return getFeatureChangeType(itemId) as
-        | "new"
-        | "modified"
-        | "unchanged"
-        | "removed";
-    } else if (section === "journeyStages") {
-      return getJourneyStageChangeType(itemId) as
-        | "new"
-        | "modified"
-        | "unchanged"
-        | "removed";
-    }
-
-    return "unchanged";
-  };
-
 
   // Handle adding a new wireframe
   const handleAddWireframe = async () => {
@@ -277,7 +381,15 @@ export const ProductDesign: React.FC = () => {
     }
   };
 
-  console.log("Wireframes data:", data.wireframes);
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <ErrorState error={error} onRetry={() => window.location.reload()} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Render tabs and content
   return (
@@ -285,7 +397,7 @@ export const ProductDesign: React.FC = () => {
       <div className="">
         {/* Dashboard Overview */}
         <div className="mb-6">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center">
@@ -313,9 +425,7 @@ export const ProductDesign: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold">
-                    {data.wireframes.length}
-                  </p>
+                  <p className="text-2xl font-bold">{data.wireframes.length}</p>
                   <p className="text-xs text-gray-500 ml-2">Total wireframes</p>
                 </div>
               </CardContent>
@@ -349,7 +459,12 @@ export const ProductDesign: React.FC = () => {
               <CardContent>
                 <div className="flex items-center">
                   <p className="text-2xl font-bold">
-                    {data.features.filter((feature) => feature.priority === "must").length} / {data.features.length}
+                    {
+                      data.features.filter(
+                        (feature) => feature.priority === "must"
+                      ).length
+                    }{" "}
+                    / {data.features.length}
                   </p>
                   <p className="text-xs text-gray-500 ml-2">
                     MVP / Total features
@@ -392,13 +507,33 @@ export const ProductDesign: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <StepperDialog
+              trigger={
+                <Card className="shadow-sm relative overflow-hidden cursor-pointer border-primary/50 hover:bg-primary/5 transition-colors group">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center">
+                      <Play className="h-4 w-4 mr-2 text-primary" />
+                      Product Development
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center">
+                      <p className="text-sm font-medium text-muted-foreground">Start guided product development</p>
+                      <ArrowRight className="h-4 w-4 ml-2 text-primary group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </CardContent>
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary" />
+                </Card>
+              }
+            />
           </div>
         </div>
         
         <LayoutGroup id="product-design-tabs">
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Tabs
-              defaultValue="wireframes"
+              defaultValue={activeTab}
               value={activeTab}
               onValueChange={setActiveTab}
               className="w-full"
@@ -412,6 +547,83 @@ export const ProductDesign: React.FC = () => {
                   </div>
 
               <AnimatePresence mode="wait">
+                
+                {/* Problem-Solution Fit Tab */}
+                {activeTab === "problems" && (
+                  <motion.div
+                    key="problems"
+                    variants={tabContentVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    className="w-full"
+                    layoutId="tab-content"
+                  >
+                    <TabsContent
+                      value="problems"
+                      className="mt-0 border-none shadow-none"
+                      forceMount
+                    >
+                      <SectionTab
+                        icon={
+                          <Lightbulb className="h-5 w-5 text-primary-700" />
+                        }
+                        title="Problem-Solution Fit"
+                        description="Define and validate the problems you're solving and your proposed solutions"
+                        count={enhancedData.problems ? enhancedData.problems.length : 0}
+                        hasItems={
+                          enhancedData.problems ? enhancedData.problems.length > 0 : false
+                        }
+                        emptyState={{
+                          description:
+                            "Define the problems your customers are facing and how your solution addresses them.",
+                        }}
+                        helper={{
+                          icon: <Info className="h-5 w-5" />,
+                          title: "Problem-Solution Fit",
+                          content: (
+                            <div className="space-y-3">
+                              <p className="text-dark-700">
+                                Problem-Solution Fit is the foundation of
+                                product success:
+                              </p>
+                              <ul className="list-disc list-inside text-dark-600 space-y-1">
+                                <li>
+                                  Identify real customer problems through
+                                  research
+                                </li>
+                                <li>
+                                  Validate problems before building solutions
+                                </li>
+                                <li>Create hypotheses that can be tested</li>
+                                <li>
+                                  Gather evidence to support your assumptions
+                                </li>
+                              </ul>
+                            </div>
+                          ),
+                        }}
+                      >
+                        <ProblemSolutionFit 
+                          problems={enhancedData.problems || []}
+                          solutions={enhancedData.solutions || []}
+                          evidence={enhancedData.evidence || []}
+                          onAddProblem={() => {}}
+                          onUpdateProblem={() => {}}
+                          onDeleteProblem={() => {}}
+                          onAddSolution={() => {}}
+                          onUpdateSolution={() => {}}
+                          onDeleteSolution={() => {}}
+                          onAddEvidence={() => {}}
+                          onUpdateEvidence={() => {}}
+                          onDeleteEvidence={() => {}}
+                        />
+                      </SectionTab>
+                    </TabsContent>
+                  </motion.div>
+                )}
+                
+                {/* Wireframes Tab - Existing */}
                 {activeTab === "wireframes" && (
                   <motion.div
                     key="wireframes"
@@ -472,6 +684,7 @@ export const ProductDesign: React.FC = () => {
                   </motion.div>
                 )}
 
+                {/* Features Tab - Enhanced with MVP Scope Definition */}
                 {activeTab === "features" && (
                   <motion.div
                     key="features"
@@ -490,12 +703,12 @@ export const ProductDesign: React.FC = () => {
                       <SectionTab
                         icon={<MapPin className="h-5 w-5 text-primary-700" />}
                         title="Feature Map"
-                        description="Prioritize features for your product roadmap"
-                        onCreate={() => handleAddFeature()}
+                        description="Define and prioritize your product features using the MoSCoW method"
+                        onCreate={() => handleAddFeature("must")}
                         count={data.features.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
-                          title: "MoSCoW Prioritization Method",
+                          title: "MoSCoW Prioritization",
                           content: (
                             <div className="space-y-3">
                               <p className="text-dark-700">
@@ -544,16 +757,58 @@ export const ProductDesign: React.FC = () => {
                             "Define and prioritize your product features using the MoSCoW method.",
                         }}
                       >
+                        <div className="space-y-8">
+                          {/* Feature Map */}
                         <FeatureMap
                           features={data.features}
                           onAddFeature={handleAddFeature}
                           onEditFeature={(id) => console.log(id)}
                         />
+
+                          {/* MVP Scope Definition */}
+                          <Card>
+                            <CardHeader>
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center">
+                                  <Puzzle className="h-5 w-5 mr-2 text-primary" />
+                                  MVP Scope Definition
+                                </CardTitle>
+                                <StepperDialog
+                                  trigger={
+                                    <Button size="sm" variant="outline" className="gap-2">
+                                      <Play className="h-4 w-4" />
+                                      <span>Start Guided Flow</span>
+                                    </Button>
+                                  }
+                                />
+                              </div>
+                              <CardDescription>
+                                Define the minimal viable product scope and plan
+                                your product roadmap
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <MVPScopeDefinition
+                                features={data.features}
+                                onUpdateFeature={() => {}}
+                                onUpdateMVPScope={() => {}}
+                                selectedMVPFeatures={
+                                  enhancedData.selectedMVPFeatures || []
+                                }
+                                onSaveSuccessCriteria={() => {}}
+                                successCriteria={enhancedData.successCriteria || []}
+                                onSaveTimeline={() => {}}
+                                timeline={enhancedData.timeline || []}
+                              />
+                            </CardContent>
+                          </Card>
+                        </div>
                       </SectionTab>
           </TabsContent>
                   </motion.div>
                 )}
 
+                {/* User Journey Tab - Existing */}
                 {activeTab === "journey" && (
                   <motion.div
                     key="journey"
@@ -572,7 +827,7 @@ export const ProductDesign: React.FC = () => {
                       <SectionTab
                         icon={<Map className="h-5 w-5 text-primary-700" />}
                         title="User Journey"
-                        description="Map out your user's experience with your product"
+                        description="Map out the complete user experience with your product"
                         onCreate={() => handleAddJourneyStage()}
                         count={data.journey.stages.length}
                         helper={{
@@ -605,8 +860,6 @@ export const ProductDesign: React.FC = () => {
                       >
                 <UserJourneyMap 
                           stages={data.journey.stages}
-                          selectedStage={selectedStageId || undefined}
-                  onSelectStage={setSelectedStageId} 
                   onAddStage={handleAddJourneyStage} 
                   onEditStage={(id) => console.log(id)} 
                 />

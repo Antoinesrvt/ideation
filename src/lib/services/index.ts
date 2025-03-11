@@ -10,6 +10,7 @@ import { TeamService } from './features/team-service';
 import { DocumentService } from './document/document-service';
 import { apiClient } from '@/services/api/client';
 import { DocumentService as ApiDocumentService } from '@/services/api/document.service';
+import { ProductDevelopmentService } from './features/product-development.service';
 
 // Create a single Supabase client to be shared across all services
 const supabaseClient = createClient();
@@ -26,4 +27,10 @@ export const teamService = new TeamService(supabaseClient);
 export const documentService = new DocumentService(supabaseClient);
 
 // For API-based services
-export const apiDocumentService = new ApiDocumentService(); 
+export const apiDocumentService = new ApiDocumentService();
+
+// Initialize Supabase client for services
+const supabase = createClient();
+
+// Create and export service instances
+export const productDevelopmentService = new ProductDevelopmentService(supabase); 

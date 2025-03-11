@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { ValidationService, ValidationData } from '@/lib/services/features/validation-service';
 import { useProjectStore } from '@/store';
 import type { 
@@ -14,8 +13,6 @@ import type {
 } from '@/store/types';
 import { validationService } from '@/lib/services';
 import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
-
-
 
 export interface UseValidationReturn {
   data: ValidationData;
@@ -42,6 +39,23 @@ export interface UseValidationReturn {
   updateHypothesis: (params: { id: string; data: Update<'validation_hypotheses'> }) => Promise<ValidationHypothesis | null>;
   deleteHypothesis: (id: string) => Promise<boolean>;
 
+  // New methods for product development integration
+  linkHypothesisToEntity: (params: { 
+    hypothesisId: string; 
+    entityType: 'problem' | 'solution' | 'feature' | 'journey_pain_point'; 
+    entityId: string;
+  }) => Promise<boolean>;
+  
+  linkExperimentToEntities: (params: { 
+    experimentId: string; 
+    problemId?: string;
+    solutionId?: string;
+    featureId?: string;
+  }) => Promise<boolean>;
+  
+  getHypothesesForEntity: (entityType: string, entityId: string) => ValidationHypothesis[];
+  getExperimentsForEntity: (entityType: string, entityId: string) => ValidationExperiment[];
+  
   // Diff helpers
   getExperimentChangeType: (id: string) => ChangeType;
   getABTestChangeType: (id: string) => ChangeType;
@@ -452,6 +466,45 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
   const getHypothesisChangeType = useCallback((id: string): ChangeType => 
     store.getItemChangeType('validationHypotheses', id), [store]);
 
+  // Link a hypothesis to a product entity
+  const linkHypothesisToEntity = useCallback(async (params: { 
+    hypothesisId: string; 
+    entityType: 'problem' | 'solution' | 'feature' | 'journey_pain_point'; 
+    entityId: string;
+  }): Promise<boolean> => {
+    try {
+      return await validationService.linkHypothesisToEntity(params);
+    } catch (error) {
+      console.error('Error linking hypothesis to entity:', error);
+      return false;
+    }
+  }, []);
+
+  // Link an experiment to product entities
+  const linkExperimentToEntities = useCallback(async (params: { 
+    experimentId: string; 
+    problemId?: string;
+    solutionId?: string;
+    featureId?: string;
+  }): Promise<boolean> => {
+    try {
+      return await validationService.linkExperimentToEntities(params);
+    } catch (error) {
+      console.error('Error linking experiment to entities:', error);
+      return false;
+    }
+  }, []);
+  
+  // Get hypotheses for a specific entity
+  const getHypothesesForEntity = useCallback((entityType: string, entityId: string): ValidationHypothesis[] => {
+    return validationService.getHypothesesForEntity(data.hypotheses, entityType, entityId);
+  }, [data.hypotheses]);
+  
+  // Get experiments for a specific entity
+  const getExperimentsForEntity = useCallback((entityType: string, entityId: string): ValidationExperiment[] => {
+    return validationService.getExperimentsForEntity(data.experiments, entityType, entityId);
+  }, [data.experiments]);
+
   return {
     // Data queries
     data,
@@ -483,6 +536,12 @@ export function useValidation(projectId: string | undefined): UseValidationRetur
     getABTestChangeType,
     getUserFeedbackChangeType,
     getHypothesisChangeType,
-    isDiffMode: store.comparisonMode
+    isDiffMode: store.comparisonMode,
+
+    // Add new methods
+    linkHypothesisToEntity,
+    linkExperimentToEntities,
+    getHypothesesForEntity,
+    getExperimentsForEntity,
   };
 } 

@@ -16,7 +16,8 @@ import {
   Clock,
   ArrowRight,
   Bot,
-  CheckCircle
+  CheckCircle,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -79,34 +80,34 @@ export function Sidebar({
   // Organize navigation items into categories
   const navCategories: NavCategory[] = [
     {
-      title: 'Analytics',
+      title: 'Project Hub',
       items: [
         { id: 'overview', icon: Layout, label: 'Dashboard' },
-        { id: 'ai', icon: Bot, label: 'AI Dashboard' },
-        { id: 'financials', icon: BarChart2, label: 'Financials' },
-        { id: 'validation', icon: CheckCircle, label: 'Validation' },
+      ]
+    },
+    {
+      title: 'Strategy & Discovery',
+      items: [
+        { id: 'business-model', icon: Grid, label: 'Business Model' },
         { id: 'market', icon: PieChart, label: 'Market Research' },
+        { id: 'validation', icon: CheckCircle, label: 'Validation' },
       ]
     },
     {
-      title: 'Project Setup',
+      title: 'Design & Definition',
       items: [
-        { id: 'canvas', icon: Grid, label: 'Business Model Canvas' },
-        { id: 'grp', icon: Activity, label: 'Business Model GRP' },
+        { id: 'product-design', icon: FileCode, label: 'Product Definition' },
+        { id: 'brand', icon: Palette, label: 'Brand Identity' },
+        { id: 'team', icon: UserPlus, label: 'Team Structure' },
+        { id: 'financials', icon: BarChart2, label: 'Financials' },
       ]
     },
     {
-      title: 'Development',
-      items: [
-        { id: 'product-design', icon: FileCode, label: 'Product Design' },
-        { id: 'team', icon: UserPlus, label: 'Team' },
-      ]
-    },
-    {
-      title: 'Resources',
+      title: 'Resources & Tools',
       items: [
         { id: 'documents', icon: FileText, label: 'Documents' },
         { id: 'external-tools', icon: ExternalLink, label: 'External Tools' },
+        { id: 'ai', icon: Bot, label: 'AI Assistant' },
       ]
     },
   ];

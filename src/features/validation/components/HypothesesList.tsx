@@ -210,107 +210,107 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
 
   // Render empty state for no hypotheses
   const renderEmptyState = () => (
-    <Card className="border-dashed border-2">
-      <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-        <Lightbulb className="h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium mb-2">No Hypotheses Yet</h3>
-        <p className="text-sm text-gray-500 max-w-md mb-4">
-          Formulate and track your key business hypotheses and their validation status
-        </p>
-      </CardContent>
-    </Card>
+        <Card className="border-dashed border-2">
+          <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
+            <Lightbulb className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Hypotheses Yet</h3>
+            <p className="text-sm text-gray-500 max-w-md mb-4">
+              Formulate and track your key business hypotheses and their validation status
+            </p>
+          </CardContent>
+        </Card>
   );
 
   // Render the table view
   const renderTableView = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[40%]">Hypothesis</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Confidence</TableHead>
-          <TableHead>Validation Method</TableHead>
-          <TableHead className="w-[100px]">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {hypotheses.map((hypothesis: Hypothesis) => (
-          <TableRow key={hypothesis.id}>
-            <TableCell>
-              <div className="flex flex-col">
-                <span className="font-medium">{hypothesis.statement || "Unnamed hypothesis"}</span>
-                {hypothesis.assumptions && hypothesis.assumptions.length > 0 && (
-                  <div className="mt-1">
-                    <span className="text-xs text-gray-500 mb-1">Key assumptions:</span>
-                    <ul className="list-disc list-inside text-xs text-gray-600 ml-1 space-y-0.5">
-                      {hypothesis.assumptions.slice(0, 2).map((assumption: string, i: number) => (
-                        <li key={i} className="line-clamp-1">{assumption}</li>
-                      ))}
-                      {hypothesis.assumptions.length > 2 && (
-                        <li className="text-gray-500">
-                          +{hypothesis.assumptions.length - 2} more
-                        </li>
-                      )}
-                    </ul>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[40%]">Hypothesis</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Confidence</TableHead>
+              <TableHead>Validation Method</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {hypotheses.map((hypothesis: Hypothesis) => (
+              <TableRow key={hypothesis.id}>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{hypothesis.statement || "Unnamed hypothesis"}</span>
+                    {hypothesis.assumptions && hypothesis.assumptions.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-xs text-gray-500 mb-1">Key assumptions:</span>
+                        <ul className="list-disc list-inside text-xs text-gray-600 ml-1 space-y-0.5">
+                          {hypothesis.assumptions.slice(0, 2).map((assumption: string, i: number) => (
+                            <li key={i} className="line-clamp-1">{assumption}</li>
+                          ))}
+                          {hypothesis.assumptions.length > 2 && (
+                            <li className="text-gray-500">
+                              +{hypothesis.assumptions.length - 2} more
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                    <span className="text-xs text-gray-500 mt-1">
+                      Updated {formatDate(hypothesis.updated_at ?? undefined)}
+                    </span>
                   </div>
-                )}
-                <span className="text-xs text-gray-500 mt-1">
-                  Updated {formatDate(hypothesis.updated_at ?? undefined)}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <Badge className={getStatusColor(hypothesis.status)}>
-                <span className="flex items-center gap-1">
-                  {getStatusIcon(hypothesis.status)}
-                  {hypothesis.status}
-                </span>
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-col">
-                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${
-                      (hypothesis.confidence ?? 0) < 30 ? 'bg-red-500' :
-                      (hypothesis.confidence ?? 0) < 70 ? 'bg-yellow-500' :
-                      'bg-green-500'
-                    }`}
-                    style={{ width: `${hypothesis.confidence}%` }}
-                  ></div>
-                </div>
-                <span className={`text-xs mt-1 ${getConfidenceColor(hypothesis.confidence ?? 0)}`}>
-                  {hypothesis.confidence}% - {getConfidenceLevel(hypothesis.confidence ?? 0)}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="text-sm">
-                {hypothesis.validation_method || "Not specified"}
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEdit(hypothesis)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(hypothesis.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                </TableCell>
+                <TableCell>
+                  <Badge className={getStatusColor(hypothesis.status)}>
+                    <span className="flex items-center gap-1">
+                      {getStatusIcon(hypothesis.status)}
+                      {hypothesis.status}
+                    </span>
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${
+                          (hypothesis.confidence ?? 0) < 30 ? 'bg-red-500' :
+                          (hypothesis.confidence ?? 0) < 70 ? 'bg-yellow-500' :
+                          'bg-green-500'
+                        }`}
+                        style={{ width: `${hypothesis.confidence}%` }}
+                      ></div>
+                    </div>
+                    <span className={`text-xs mt-1 ${getConfidenceColor(hypothesis.confidence ?? 0)}`}>
+                      {hypothesis.confidence}% - {getConfidenceLevel(hypothesis.confidence ?? 0)}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    {hypothesis.validation_method || "Not specified"}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(hypothesis)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(hypothesis.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
   );
 
   // Render the card view
@@ -486,7 +486,7 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
                   <FormLabel>Supporting Evidence</FormLabel>
                   <div className="flex space-x-2">
                     <Input 
-                      placeholder="Add evidence" 
+                      placeholder="Add evidence"
                       value={newEvidence}
                       onChange={(e) => setNewEvidence(e.target.value)}
                       className="flex-1"

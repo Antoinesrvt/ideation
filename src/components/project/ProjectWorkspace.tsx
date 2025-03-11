@@ -6,8 +6,8 @@ import { useAIStore } from '@/hooks/useAIStore';
 import { useProject } from '@/hooks/useProject';
 import { Header } from '@/components/project/Header';
 import { Sidebar } from '@/components/project/Sidebar';
-import { BusinessModelCanvas } from '@/features/canvas/components/BusinessModelCanvas';
-import { GRPModel } from '@/features/grp/components/GRPModel';
+import { BusinessModelCanvas } from '@/features/business_model/components/canvas/components/BusinessModelCanvas';
+import { GRPModel } from '@/features/business_model/components/grp/components/GRPModel';
 import { MarketAnalysis } from '@/features/market/components/MarketAnalysis';
 import { ProductDesign } from '@/features/product_design/components/ProductDesign';
 import { ProjectOverview } from '@/features/overview';
@@ -23,12 +23,14 @@ import { AIProjectWrapper } from '@/components/project/AIProjectWrapper';
 import { ProjectState } from '@/store/types';
 import { AIDashboard } from '@/features/ai/components/AIDashboard';
 import { FloatingAIChat } from "@/features/ai/components/FloatingAIChat";
+import { BrandIdentity } from '@/features/brand/components/BrandIdentity';
+import { BusinessModelWrapper } from '@/features/business_model/components/BusinessModelWrapper';
 
 interface ProjectWorkspaceProps {
   projectId: string;
 }
 
-export type ActiveSection = 'overview' | 'canvas' | 'grp' | 'market' | 'product-design' | 'validation' | 'financials' | 'team' | 'documents' | 'external-tools' | 'ai';
+export type ActiveSection = 'overview' | 'business-model' | 'market' | 'product-design' | 'validation' | 'financials' | 'team' | 'documents' | 'external-tools' | 'ai' | 'brand';
 
 export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   // Get project data from API (will be used for initial loading and syncing)
@@ -181,13 +183,13 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
                   {activeSection === "ai" && <AIDashboard />}
 
-                  {activeSection === "canvas" && <BusinessModelCanvas />}
-
-                  {activeSection === "grp" && <GRPModel />}
+                  {activeSection === "business-model" && <BusinessModelWrapper />}
 
                   {activeSection === "market" && <MarketAnalysis />}
 
                   {activeSection === "product-design" && <ProductDesign />}
+
+                  {activeSection === "brand" && <BrandIdentity />}
 
                   {activeSection === "validation" && <Validation />}
 

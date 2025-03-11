@@ -32,6 +32,14 @@ export type ProductJourneyStage = TablesRow<'product_journey_stages'>;
 export type ProductJourneyAction = TablesRow<'product_journey_actions'>;
 export type ProductJourneyPainPoint = TablesRow<'product_journey_pain_points'>;
 
+// Product Development types
+export type ProductProblem = TablesRow<'product_problems'>;
+export type ProductSolution = TablesRow<'product_solutions'>;
+export type ProductEvidence = TablesRow<'product_evidence'>;
+export type ProductEvidenceLink = TablesRow<'product_evidence_links'>;
+export type ProductMVP = TablesRow<'product_mvps'>;
+export type ProductMVPFeature = TablesRow<'product_mvp_features'>;
+
 // Financial types
 export type FinancialRevenueStream = TablesRow<'financial_revenue_streams'>;
 export type FinancialCostStructure = TablesRow<'financial_cost_structure'>;
@@ -96,6 +104,13 @@ export interface ProjectState {
     productJourneyStages: ProductJourneyStage[];
     productJourneyActions: ProductJourneyAction[];
     productJourneyPainPoints: ProductJourneyPainPoint[];
+    // Product Development
+    productProblems: ProductProblem[];
+    productSolutions: ProductSolution[];
+    productEvidence: ProductEvidence[];
+    productEvidenceLinks: ProductEvidenceLink[];
+    productMVPs: ProductMVP[];
+    productMVPFeatures: ProductMVPFeature[];
     // Financial
     financialRevenueStreams: FinancialRevenueStream[];
     financialCostStructure: FinancialCostStructure[];
@@ -140,6 +155,13 @@ export interface ProjectState {
     productJourneyStages: ProductJourneyStage[];
     productJourneyActions: ProductJourneyAction[];
     productJourneyPainPoints: ProductJourneyPainPoint[];
+    // Product Development
+    productProblems: ProductProblem[];
+    productSolutions: ProductSolution[];
+    productEvidence: ProductEvidence[];
+    productEvidenceLinks: ProductEvidenceLink[];
+    productMVPs: ProductMVP[];
+    productMVPFeatures: ProductMVPFeature[];
     // Financial
     financialRevenueStreams: FinancialRevenueStream[];
     financialCostStructure: FinancialCostStructure[];
@@ -255,6 +277,37 @@ export interface ProjectActions {
   addProductJourneyPainPoint: (painPoint: ProductJourneyPainPoint) => void;
   updateProductJourneyPainPoint: (id: string, updates: Partial<ProductJourneyPainPoint>) => void;
   deleteProductJourneyPainPoint: (id: string) => void;
+  
+  // Product Development actions
+  setProductProblems: (problems: ProductProblem[]) => void;
+  addProductProblem: (problem: ProductProblem) => void;
+  updateProductProblem: (id: string, updates: Partial<ProductProblem>) => void;
+  deleteProductProblem: (id: string) => void;
+  
+  setProductSolutions: (solutions: ProductSolution[]) => void;
+  addProductSolution: (solution: ProductSolution) => void;
+  updateProductSolution: (id: string, updates: Partial<ProductSolution>) => void;
+  deleteProductSolution: (id: string) => void;
+  
+  setProductEvidence: (evidence: ProductEvidence[]) => void;
+  addProductEvidence: (evidence: ProductEvidence) => void;
+  updateProductEvidence: (id: string, updates: Partial<ProductEvidence>) => void;
+  deleteProductEvidence: (id: string) => void;
+  
+  setProductEvidenceLinks: (links: ProductEvidenceLink[]) => void;
+  addProductEvidenceLink: (link: ProductEvidenceLink) => void;
+  updateProductEvidenceLink: (id: string, updates: Partial<ProductEvidenceLink>) => void;
+  deleteProductEvidenceLink: (id: string) => void;
+  
+  setProductMVPs: (mvps: ProductMVP[]) => void;
+  addProductMVP: (mvp: ProductMVP) => void;
+  updateProductMVP: (id: string, updates: Partial<ProductMVP>) => void;
+  deleteProductMVP: (id: string) => void;
+  
+  setProductMVPFeatures: (features: ProductMVPFeature[]) => void;
+  addProductMVPFeature: (feature: ProductMVPFeature) => void;
+  updateProductMVPFeature: (id: string, updates: Partial<ProductMVPFeature>) => void;
+  deleteProductMVPFeature: (id: string) => void;
   
   // Financial actions
   setFinancialRevenueStreams: (streams: FinancialRevenueStream[]) => void;
@@ -400,6 +453,13 @@ export interface DiffMetadata {
   productJourneyStages?: FeatureDiff;
   productJourneyActions?: FeatureDiff;
   productJourneyPainPoints?: FeatureDiff;
+  // Product Development
+  productProblems?: FeatureDiff;
+  productSolutions?: FeatureDiff;
+  productEvidence?: FeatureDiff;
+  productEvidenceLinks?: FeatureDiff;
+  productMVPs?: FeatureDiff;
+  productMVPFeatures?: FeatureDiff;
   // Financial
   financialRevenueStreams?: FeatureDiff;
   financialCostStructure?: FeatureDiff;

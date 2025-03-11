@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { MarketAnalysisService, MarketAnalysisData } from '@/lib/services/features/market-analysis-service';
 import { useProjectStore } from '@/store';
 import type { 

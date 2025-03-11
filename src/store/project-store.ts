@@ -23,6 +23,13 @@ import {
   ProductJourneyStage,
   ProductJourneyAction,
   ProductJourneyPainPoint,
+  // Product Development
+  ProductProblem,
+  ProductSolution,
+  ProductEvidence,
+  ProductEvidenceLink,
+  ProductMVP,
+  ProductMVPFeature,
   // Financial
   FinancialRevenueStream,
   FinancialCostStructure,
@@ -80,6 +87,13 @@ const initialState: ProjectState = {
     productJourneyStages: [],
     productJourneyActions: [],
     productJourneyPainPoints: [],
+    // Product Development
+    productProblems: [],
+    productSolutions: [],
+    productEvidence: [],
+    productEvidenceLinks: [],
+    productMVPs: [],
+    productMVPFeatures: [],
     // Financial
     financialRevenueStreams: [],
     financialCostStructure: [],
@@ -112,39 +126,54 @@ const initialState: ProjectState = {
 
 // Initial diff metadata
 const initialDiffMetadata: DiffMetadata = {
-  project: { additions: [], modifications: [], deletions: [] },
+  // Business Model Canvas
   canvasSections: { additions: [], modifications: [], deletions: [] },
   canvasItems: { additions: [], modifications: [], deletions: [] },
+  // GRP Model
   grpCategories: { additions: [], modifications: [], deletions: [] },
   grpSections: { additions: [], modifications: [], deletions: [] },
   grpItems: { additions: [], modifications: [], deletions: [] },
+  // Market Analysis
   marketPersonas: { additions: [], modifications: [], deletions: [] },
   marketInterviews: { additions: [], modifications: [], deletions: [] },
   marketCompetitors: { additions: [], modifications: [], deletions: [] },
   marketTrends: { additions: [], modifications: [], deletions: [] },
+  // Product Design
   productWireframes: { additions: [], modifications: [], deletions: [] },
   productFeatures: { additions: [], modifications: [], deletions: [] },
   productJourneyStages: { additions: [], modifications: [], deletions: [] },
   productJourneyActions: { additions: [], modifications: [], deletions: [] },
   productJourneyPainPoints: { additions: [], modifications: [], deletions: [] },
+  // Product Development
+  productProblems: { additions: [], modifications: [], deletions: [] },
+  productSolutions: { additions: [], modifications: [], deletions: [] },
+  productEvidence: { additions: [], modifications: [], deletions: [] },
+  productEvidenceLinks: { additions: [], modifications: [], deletions: [] },
+  productMVPs: { additions: [], modifications: [], deletions: [] },
+  productMVPFeatures: { additions: [], modifications: [], deletions: [] },
+  // Financial
   financialRevenueStreams: { additions: [], modifications: [], deletions: [] },
   financialCostStructure: { additions: [], modifications: [], deletions: [] },
   financialPricingStrategies: { additions: [], modifications: [], deletions: [] },
   financialProjections: { additions: [], modifications: [], deletions: [] },
+  // Validation
   validationExperiments: { additions: [], modifications: [], deletions: [] },
   validationABTests: { additions: [], modifications: [], deletions: [] },
   validationUserFeedback: { additions: [], modifications: [], deletions: [] },
   validationHypotheses: { additions: [], modifications: [], deletions: [] },
+  // Team
   teamMembers: { additions: [], modifications: [], deletions: [] },
   teamTasks: { additions: [], modifications: [], deletions: [] },
   teamResponsibilityMatrix: { additions: [], modifications: [], deletions: [] },
-  documents: { additions: [], modifications: [], deletions: [] },
+  projectRoles: { additions: [], modifications: [], deletions: [] },
+  // Documents
+  documents: { additions: [], modifications: [], deletions: [] }, 
   documentCollaborators: { additions: [], modifications: [], deletions: [] },
+  // Cross-feature
   notifications: { additions: [], modifications: [], deletions: [] },
   relatedItems: { additions: [], modifications: [], deletions: [] },
   projectTags: { additions: [], modifications: [], deletions: [] },
   featureItemTags: { additions: [], modifications: [], deletions: [] },
-  projectRoles: { additions: [], modifications: [], deletions: [] },
 };
 
 // Create the base atom
@@ -228,6 +257,12 @@ const getFeatureKeyFromTable = (tableName: string): keyof ProjectState['currentD
     'product_journey_stages': 'productJourneyStages',
     'product_journey_actions': 'productJourneyActions',
     'product_journey_pain_points': 'productJourneyPainPoints',
+    'product_problems': 'productProblems',
+    'product_solutions': 'productSolutions',
+    'product_evidence': 'productEvidence',
+    'product_evidence_links': 'productEvidenceLinks',
+    'product_mvps': 'productMVPs',
+    'product_mvp_features': 'productMVPFeatures',
     'financial_revenue_streams': 'financialRevenueStreams',
     'financial_cost_structure': 'financialCostStructure',
     'financial_pricing_strategies': 'financialPricingStrategies',
@@ -260,12 +295,58 @@ export function useProjectStore(): ProjectStore {
 
   // Calculate diff between current and staged data
   const calculateDiff = useCallback(() => {
-    if (!state.stagedData) {
-      setDiffMetadata(initialDiffMetadata);
-      return;
-    }
+    if (!state.stagedData) return;
     
-    const newDiffMetadata: DiffMetadata = { ...initialDiffMetadata };
+    const newDiffMetadata: DiffMetadata = {
+      // Business Model Canvas
+      canvasSections: undefined,
+      canvasItems: undefined,
+      // GRP Model
+      grpCategories: undefined,
+      grpSections: undefined, 
+      grpItems: undefined,
+      // Market Analysis
+      marketPersonas: undefined,
+      marketInterviews: undefined,
+      marketCompetitors: undefined,
+      marketTrends: undefined,
+      // Product Design
+      productWireframes: undefined,
+      productFeatures: undefined,
+      productJourneyStages: undefined,
+      productJourneyActions: undefined,
+      productJourneyPainPoints: undefined,
+      // Product Development
+      productProblems: undefined,
+      productSolutions: undefined,
+      productEvidence: undefined,
+      productEvidenceLinks: undefined,
+      productMVPs: undefined,
+      productMVPFeatures: undefined,
+      // Financial
+      financialRevenueStreams: undefined,
+      financialCostStructure: undefined,
+      financialPricingStrategies: undefined,
+      financialProjections: undefined,
+      // Validation
+      validationExperiments: undefined,
+      validationABTests: undefined,
+      validationUserFeedback: undefined,
+      validationHypotheses: undefined,
+      // Team
+      teamMembers: undefined,
+      teamTasks: undefined,
+      teamResponsibilityMatrix: undefined,
+      projectRoles: undefined,
+      // Documents
+      documents: undefined, 
+      documentCollaborators: undefined,
+      // Cross-feature
+      notifications: undefined,
+      relatedItems: undefined,
+      projectTags: undefined,
+      featureItemTags: undefined,
+    };
     
     // Calculate diff for each feature
     Object.keys(state.currentData).forEach(featureKey => {
@@ -440,11 +521,17 @@ export function useProjectStore(): ProjectStore {
 
   // Discard staged changes
   const discardStagedChanges = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      stagedData: null,
-      comparisonMode: false
-    }));
+    setState(prev => {
+      if (prev.stagedData) {
+        return {
+          ...prev,
+          currentData: { ...prev.stagedData },
+          stagedData: null,
+          comparisonMode: false,
+        };
+      }
+      return prev;
+    });
     
     // Reset diff metadata after discarding
     setDiffMetadata(initialDiffMetadata);
@@ -2043,6 +2130,259 @@ export function useProjectStore(): ProjectStore {
           ...prev.currentData,
           projectRoles: prev.currentData.projectRoles.filter(r => r.id !== id)
         }
+      }));
+    }, [setState]),
+
+    // Product Development actions
+    setProductProblems: useCallback((problems: ProductProblem[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productProblems: problems,
+        },
+      }));
+    }, [setState]),
+
+    addProductProblem: useCallback((problem: ProductProblem) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productProblems: [...prev.currentData.productProblems, problem],
+        },
+      }));
+    }, [setState]),
+
+    updateProductProblem: useCallback((id: string, updates: Partial<ProductProblem>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productProblems: updateArray(prev.currentData.productProblems, id, updates),
+        },
+      }));
+    }, [setState]),
+
+    deleteProductProblem: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productProblems: prev.currentData.productProblems.filter(
+            (problem) => problem.id !== id
+          ),
+        },
+      }));
+    }, [setState]),
+
+    setProductSolutions: useCallback((solutions: ProductSolution[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productSolutions: solutions,
+        },
+      }));
+    }, [setState]),
+
+    addProductSolution: useCallback((solution: ProductSolution) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productSolutions: [...prev.currentData.productSolutions, solution],
+        },
+      }));
+    }, [setState]),
+
+    updateProductSolution: useCallback((id: string, updates: Partial<ProductSolution>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productSolutions: updateArray(prev.currentData.productSolutions, id, updates),
+        },
+      }));
+    }, [setState]),
+
+    deleteProductSolution: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productSolutions: prev.currentData.productSolutions.filter(
+            (solution) => solution.id !== id
+          ),
+        },
+      }));
+    }, [setState]),
+
+    setProductEvidence: useCallback((evidence: ProductEvidence[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidence: evidence,
+        },
+      }));
+    }, [setState]),
+
+    addProductEvidence: useCallback((evidence: ProductEvidence) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidence: [...prev.currentData.productEvidence, evidence],
+        },
+      }));
+    }, [setState]),
+
+    updateProductEvidence: useCallback((id: string, updates: Partial<ProductEvidence>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidence: updateArray(prev.currentData.productEvidence, id, updates),
+        },
+      }));
+    }, [setState]),
+
+    deleteProductEvidence: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidence: prev.currentData.productEvidence.filter(
+            (evidence) => evidence.id !== id
+          ),
+        },
+      }));
+    }, [setState]),
+
+    setProductEvidenceLinks: useCallback((links: ProductEvidenceLink[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidenceLinks: links,
+        },
+      }));
+    }, [setState]),
+
+    addProductEvidenceLink: useCallback((link: ProductEvidenceLink) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidenceLinks: [...prev.currentData.productEvidenceLinks, link],
+        },
+      }));
+    }, [setState]),
+
+    updateProductEvidenceLink: useCallback((id: string, updates: Partial<ProductEvidenceLink>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidenceLinks: updateArray(prev.currentData.productEvidenceLinks, id, updates),
+        },
+      }));
+    }, [setState]),
+
+    deleteProductEvidenceLink: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productEvidenceLinks: prev.currentData.productEvidenceLinks.filter(
+            (link) => link.id !== id
+          ),
+        },
+      }));
+    }, [setState]),
+
+    setProductMVPs: useCallback((mvps: ProductMVP[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPs: mvps,
+        },
+      }));
+    }, [setState]),
+
+    addProductMVP: useCallback((mvp: ProductMVP) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPs: [...prev.currentData.productMVPs, mvp],
+        },
+      }));
+    }, [setState]),
+
+    updateProductMVP: useCallback((id: string, updates: Partial<ProductMVP>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPs: updateArray(prev.currentData.productMVPs, id, updates),
+        },
+      }));
+    }, [setState]),
+
+    deleteProductMVP: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPs: prev.currentData.productMVPs.filter(
+            (mvp) => mvp.id !== id
+          ),
+        },
+      }));
+    }, [setState]),
+
+    setProductMVPFeatures: useCallback((features: ProductMVPFeature[]) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPFeatures: features,
+        },
+      }));
+    }, [setState]),
+
+    addProductMVPFeature: useCallback((feature: ProductMVPFeature) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPFeatures: [...prev.currentData.productMVPFeatures, feature],
+        },
+      }));
+    }, [setState]),
+
+    updateProductMVPFeature: useCallback((id: string, updates: Partial<ProductMVPFeature>) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPFeatures: updateArray(prev.currentData.productMVPFeatures, id, updates),
+        },
+      }));
+    }, [setState]),
+
+    deleteProductMVPFeature: useCallback((id: string) => {
+      setState((prev) => ({
+        ...prev,
+        currentData: {
+          ...prev.currentData,
+          productMVPFeatures: prev.currentData.productMVPFeatures.filter(
+            (feature) => feature.id !== id
+          ),
+        },
       }));
     }, [setState]),
 

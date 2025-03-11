@@ -18,11 +18,55 @@ import BreakevenAnalysis from "./BreakevenAnalysis";
 import ProjectionChart from "./ProjectionChart";
 
 // Import utilities
-import { 
+import {
   formatCurrency, 
   calculateProfitMargin, 
   processFinancialData 
 } from "../utils/dataProcessing";
+
+// Import the useMarketAnalysis hook
+import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
+// Import the CompetitorPrice type
+import { CompetitorPrice } from './common/EditableCompetitorPriceRow';
+// Import the PricingStrategy type
+import { PricingStrategy as IPricingStrategy } from './common/EditablePricingRow';
+// Add import for ExtendedPricingStrategy
+import { ExtendedPricingStrategy } from './common/PricingStrategyCard';
+
+// Use more generic type definitions without specific database types
+// Define or import the types for Cost and Revenue
+interface Cost {
+  id: string;
+  name: string;
+  amount: number;
+  category: string;
+  [key: string]: any;
+}
+
+interface Revenue {
+  id: string;
+  name: string;
+  amount: number;
+  category: string;
+  [key: string]: any;
+}
+
+// Update the FinancialsData interface to use the correct PricingStrategy type
+interface FinancialsData {
+  costs: Cost[];
+  revenue: Revenue[];
+  pricingStrategies: IPricingStrategy[];
+  marketAnalysis?: {
+    competitors?: Array<{
+      id: string;
+      name?: string | null;
+      price?: number | null;
+      notes?: string | null;
+      [key: string]: any;
+    }>;
+    // Add other marketAnalysis properties as needed
+  };
+}
 
 // Main component
 export const FinancialProjections: React.FC = () => {
@@ -60,7 +104,7 @@ export const FinancialProjections: React.FC = () => {
     updateProjection,
     deleteProjection,
   } = useFinancials(projectId);
-
+  
   // Process financial data using memoization
   const processedData = useMemo(() => 
     processFinancialData(data, isLoading),
@@ -187,10 +231,10 @@ export const FinancialProjections: React.FC = () => {
     try {
       await deleteCostStructure(id);
       
-      toast({
+        toast({
         title: "Success",
         description: "Cost deleted successfully",
-      });
+        });
     } catch (error) {
       console.error("Error deleting cost:", error);
       toast({
@@ -201,50 +245,108 @@ export const FinancialProjections: React.FC = () => {
     }
   }, [deleteCostStructure, toast]);
   
-  const handleAddPricingStrategy = useCallback(async (): Promise<void> => {
+  const handleAddPricingStrategy = async (strategyData: ExtendedPricingStrategy): Promise<void> => {
     try {
-      await addPricingStrategy({
-        name: "New Pricing Strategy",
+      // Transform UI model to database model
+      const dbStrategy = {
+        name: strategyData.name,
+        description: strategyData.description,
+        target_market: strategyData.target_market,
+        // Ensure target_price_range is stored as a JSON string
+        target_price_range: typeof strategyData.target_price_range === 'string'
+          ? strategyData.target_price_range
+          : JSON.stringify(strategyData.target_price_range),
+        considerations: strategyData.considerations,
         project_id: projectId,
-        strategy_type: "value-based",
-        target_market: "General",
-      });
+        strategy_type: strategyData.strategy_type
+      };
+      
+      await addPricingStrategy(dbStrategy);
       
       toast({
-        title: "Pricing strategy added",
-        description: "New pricing strategy has been created successfully.",
+        title: "Success",
+        description: "Pricing strategy added successfully",
       });
-    } catch (err) {
+      
+      // Reload data if no refetch method exists
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error("Error adding pricing strategy:", error);
       toast({
-        title: "Error adding pricing strategy",
-        description: "Failed to create new pricing strategy.",
+        title: "Error",
+        description: "Failed to add pricing strategy.",
         variant: "destructive",
       });
     }
-  }, [addPricingStrategy, projectId, toast]);
+  };
   
-  const handleAddProjection = useCallback(async (): Promise<void> => {
+  const handleUpdatePricingStrategy = async (strategyData: ExtendedPricingStrategy): Promise<void> => {
+    if (!strategyData || !strategyData.id) return;
+    
     try {
-      await addProjection({
-        title: "New Financial Projection",
-        project_id: projectId,
-        scenario: "base",
-        timeframe: "yearly",
-        data: { periods: [], totals: { revenue: 0, costs: 0, profit: 0 } },
+      // Transform UI model to database model
+      const updateData = {
+        name: strategyData.name,
+        description: strategyData.description,
+        target_market: strategyData.target_market,
+        // Ensure target_price_range is stored as a JSON string
+        target_price_range: typeof strategyData.target_price_range === 'string'
+          ? strategyData.target_price_range
+          : JSON.stringify(strategyData.target_price_range),
+        considerations: strategyData.considerations,
+        strategy_type: strategyData.strategy_type
+      };
+      
+      await updatePricingStrategy({
+        id: strategyData.id,
+        data: updateData
       });
       
       toast({
-        title: "Projection added",
-        description: "New projection has been created successfully.",
+        title: "Success",
+        description: "Pricing strategy updated successfully",
       });
-    } catch (err) {
+      
+      // Reload data if no refetch method exists
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error("Error updating pricing strategy:", error);
       toast({
-        title: "Error adding projection",
-        description: "Failed to create new projection.",
+        title: "Error",
+        description: "Failed to update pricing strategy.",
         variant: "destructive",
       });
     }
-  }, [addProjection, projectId, toast]);
+  };
+
+  const handleDeletePricingStrategy = async (id: string): Promise<void> => {
+    if (!id) return;
+    
+    try {
+      await deletePricingStrategy(id);
+      
+      toast({
+        title: "Success",
+        description: "Pricing strategy deleted successfully",
+      });
+      
+      // Reload data if no refetch method exists
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error("Error deleting pricing strategy:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete pricing strategy.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Error handler
   const handleReloadPage = useCallback(() => {
@@ -289,6 +391,116 @@ export const FinancialProjections: React.FC = () => {
   const totalCosts = processedData.costs.total;
   const profitMargin = calculateProfitMargin(totalRevenue, totalCosts);
   const profit = totalRevenue - totalCosts;
+
+  // Add handlers for competitor prices using the market analysis hook
+  // We can get the hooks from useMarketAnalysis
+  const { 
+    addCompetitor, 
+    updateCompetitor, 
+    deleteCompetitor 
+  } = useMarketAnalysis(projectId);
+
+  const handleAddCompetitorPrice = async (competitorData: CompetitorPrice): Promise<void> => {
+    try {
+      // Only include properties that are expected by the API
+      await addCompetitor({
+        name: competitorData.competitor,
+        price: String(competitorData.price), 
+        notes: competitorData.notes,
+        project_id: projectId
+        // Remove properties that don't exist in the API schema
+      });
+      
+      toast({
+        title: "Success",
+        description: "Competitor price added successfully",
+      });
+      
+      // Reload data if no refetch method exists
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (error) {
+      console.error("Error adding competitor price:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add competitor price.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateCompetitorPrice = async (competitorData: CompetitorPrice): Promise<void> => {
+    if (!competitorData || !competitorData.id) return;
+    
+    try {
+      // Map from the UI model to the market competitor model
+      await updateCompetitor({
+        id: competitorData.id,
+        data: {
+          name: competitorData.competitor,
+          price: String(competitorData.price), // Convert to string if the API expects a string
+          notes: competitorData.notes
+        }
+      });
+      
+      toast({
+        title: "Success",
+        description: "Competitor price updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating competitor price:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update competitor price.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCompetitorPrice = async (id: string): Promise<void> => {
+    if (!id) return;
+    
+    try {
+      await deleteCompetitor(id);
+      
+      toast({
+        title: "Success",
+        description: "Competitor price deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting competitor price:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete competitor price.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Restore the handleAddProjection function
+  const handleAddProjection = useCallback(async (): Promise<void> => {
+    try {
+      await addProjection({
+        title: "New Financial Projection",
+        project_id: projectId,
+        scenario: "base",
+        timeframe: "yearly",
+        data: { periods: [], totals: { revenue: 0, costs: 0, profit: 0 } },
+      });
+      
+      toast({
+        title: "Projection added",
+        description: "New projection has been created successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error adding projection",
+        description: "Failed to create new projection.",
+        variant: "destructive",
+      });
+    }
+  }, [addProjection, projectId, toast]);
 
   return (
     <div className="space-y-8">
@@ -376,16 +588,16 @@ export const FinancialProjections: React.FC = () => {
         className="w-full"
       >
         <div className="flex justify-between items-center mb-4">
-          <TabList
-            tabs={financialTabs}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
+        <TabList
+          tabs={financialTabs}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
         </div>
 
         <TabsContent value="revenue" className="mt-0 border-none shadow-none">
           {projectId && (
-            <RevenueCharts
+            <RevenueCharts 
               streams={data.revenueStreams}
               projectId={projectId}
               onAdd={handleAddRevenueStream}
@@ -401,24 +613,36 @@ export const FinancialProjections: React.FC = () => {
             onUpdateCost={handleUpdateCost}
             onDeleteCost={handleDeleteCost}
           />
-        </TabsContent>
+          </TabsContent>
 
         <TabsContent value="pricing" className="mt-0 border-none shadow-none">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Pricing Strategies</h2>
-            <Button onClick={handleAddPricingStrategy} type="button">
-              <Plus className="h-4 w-4 mr-2" /> Add Strategy
-            </Button>
           </div>
           <PricingStrategy 
             data={{
               pricing: {
-                strategies: data.pricingStrategies,
-                competitorPrices: []
+                strategies: data.pricingStrategies || [],
+                competitorPrices: (data as any).marketAnalysis?.competitors?.map((comp: { 
+                  id: string; 
+                  name?: string | null; 
+                  price?: number | null;
+                  notes?: string | null;
+                }) => ({
+                  id: comp.id,
+                  competitor: comp.name || '',
+                  price: comp.price || 0,
+                  notes: comp.notes || ''
+                })) || []
               }
             }}
+            onAddStrategy={handleAddPricingStrategy}
+            onUpdateStrategy={handleUpdatePricingStrategy}
+            onDeleteStrategy={handleDeletePricingStrategy}
+            onUpdateCompetitor={handleUpdateCompetitorPrice}
+            onDeleteCompetitor={handleDeleteCompetitorPrice}
+            readOnly={false}
           />
-        </TabsContent>
+          </TabsContent>
 
         <TabsContent value="breakeven" className="mt-0 border-none shadow-none">
           <div className="flex justify-between items-center mb-4">
@@ -438,7 +662,7 @@ export const FinancialProjections: React.FC = () => {
               }
             }}
           />
-        </TabsContent>
+          </TabsContent>
 
         <TabsContent value="projections" className="mt-0 border-none shadow-none">
           <div className="flex justify-between items-center mb-4">
@@ -457,7 +681,7 @@ export const FinancialProjections: React.FC = () => {
             <CardContent>
               <div className="h-80">
                 <ProjectionChart data={processedData.projections.data} />
-              </div>
+        </div>
             </CardContent>
           </Card>
         </TabsContent>

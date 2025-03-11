@@ -100,61 +100,61 @@ export function CompetitorTable({
           <div>
             <h3 className="text-base font-medium flex items-center">
               Competitor Analysis
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
                     <span><Info className="h-3.5 w-3.5 ml-1 text-primary-400" /></span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs">
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
                     <p className="text-xs">Track your competitors, their features, strengths, and weaknesses</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
             </h3>
             <p className="text-sm text-dark-500">Compare your product against competitors</p>
-          </div>
+        </div>
           
-          {!readOnly && onAdd && (
-            <Button 
+        {!readOnly && onAdd && (
+          <Button 
               variant="default" 
-              size="sm"
+            size="sm" 
               className="bg-primary-600 hover:bg-primary-700"
               onClick={handleAddCompetitor}
-            >
+          >
               <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-              Add Competitor
-            </Button>
-          )}
+            Add Competitor
+          </Button>
+        )}
         </CardHeader>
         
         <CardContent className="px-0 pb-1">
           <div className="overflow-auto">
-            <Table>
-              <TableHeader>
+        <Table>
+          <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="pl-5 w-60">Competitor</TableHead>
                   <TableHead className="w-40">
-                    <div className="flex items-center">
+                <div className="flex items-center">
                       Price Point
                       <ArrowUpDown className="h-3 w-3 ml-1 text-primary-400" />
-                    </div>
-                  </TableHead>
+                </div>
+              </TableHead>
                   <TableHead className="w-48">Strengths</TableHead>
                   <TableHead className="w-48">Weaknesses</TableHead>
                   <TableHead className="w-28">Market Share</TableHead>
                   {!readOnly && <TableHead className="text-right pr-5 w-24">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
                 {competitors.map(competitor => (
-                  <TableRow 
-                    key={competitor.id}
+                <TableRow 
+                  key={competitor.id}
                     className={`hover:bg-slate-50 cursor-pointer ${
                       competitor.status === 'new' ? 'bg-green-50/30' :
                       competitor.status === 'modified' ? 'bg-yellow-50/30' :
                       competitor.status === 'removed' ? 'bg-red-50/30' :
-                      ''
-                    }`}
+                    ''
+                  }`}
                     onClick={() => handleViewCompetitor(competitor.id)}
                   >
                     <TableCell className="pl-5 align-top">
@@ -177,10 +177,10 @@ export function CompetitorTable({
                       <Badge variant={hasPricingAdvantage(competitor.price) ? 'success' : 'outline'} className="capitalize">
                         {competitor.price || 'Unknown'}
                       </Badge>
-                    </TableCell>
+                  </TableCell>
                     
                     <TableCell className="align-top">
-                      <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
                         {competitor.strengths && competitor.strengths.length > 0 ? 
                           competitor.strengths.map((strength, index) => (
                             <Badge key={index} variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -189,11 +189,11 @@ export function CompetitorTable({
                           )) : 
                           <span className="text-xs text-dark-400 italic">None specified</span>
                         }
-                      </div>
-                    </TableCell>
+                        </div>
+                  </TableCell>
                     
                     <TableCell className="align-top">
-                      <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
                         {competitor.weaknesses && competitor.weaknesses.length > 0 ? 
                           competitor.weaknesses.map((weakness, index) => (
                             <Badge key={index} variant="outline" className="bg-red-50 text-red-700 border-red-200">
@@ -207,9 +207,9 @@ export function CompetitorTable({
                     
                     <TableCell className="align-top">
                       {competitor.market_share || 'Unknown'}
-                    </TableCell>
+                  </TableCell>
                     
-                    {!readOnly && (
+                  {!readOnly && (
                       <TableCell className="text-right pr-5 align-top">
                         <div className="flex flex-col gap-2">
                           <Button 
@@ -248,11 +248,11 @@ export function CompetitorTable({
                         )}
                       </div>
                     </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
         </CardContent>
       </Card>
       
@@ -277,7 +277,7 @@ export function CompetitorTable({
                     onDelete={onDelete}
                     readOnly={readOnly}
                   />
-                </div>
+      </div>
               )}
               
               {(dialogMode === 'edit' || dialogMode === 'add') && (

@@ -20,7 +20,6 @@ import {
   HypothesisForm,
 } from "@/features/validation/components/forms";
 import { 
-  Check, 
   HelpCircle, 
   ChevronDown,
   ChevronRight, 
@@ -28,29 +27,14 @@ import {
   Lightbulb,
   LineChart,
   MessageSquare, 
-  ClipboardCheck, 
   Beaker,
-  AlertCircle,
-  ArrowRight,
-  Plus,
   MessageCircle,
   Split,
-  PlusCircle, 
-  CheckCircle2, 
-  Clock, 
-  XCircle,
-  PanelTop,
   FileText,
 } from "lucide-react";
 import { 
-  ValidationHypothesis,
+  Update,
 } from "@/store/types";
-
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
 import { useValidation } from "@/hooks/features/useValidation";
 import { useProjectStore } from "@/store";
 import { Progress } from "@/components/ui/progress";
@@ -406,18 +390,11 @@ export const Validation: React.FC = () => {
   };
 
   // Handle updating hypotheses
-  const handleUpdateHypothesis = async (hypothesis: ValidationHypothesis) => {
+  const handleUpdateHypothesis = async ({ id, data }: { id: string; data: Update<"validation_hypotheses"> }) => {
     try {
       await updateHypothesis({
-        id: hypothesis.id,
-        data: {
-          statement: hypothesis.statement,
-          assumptions: hypothesis.assumptions,
-          validation_method: hypothesis.validation_method,
-          status: hypothesis.status,
-          confidence: hypothesis.confidence,
-          evidence: hypothesis.evidence
-        }
+        id: id,
+        data: data
       });
       toast({
         title: "Hypothesis updated",

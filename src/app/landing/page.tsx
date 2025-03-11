@@ -46,7 +46,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="landing-page">
+    <div className="landing-page scroll-smooth">
       {/* Floating Elements - Moved to top level as in original HTML */}
       <div className="floating-elements">
         <div className="floating-element float-1"></div>

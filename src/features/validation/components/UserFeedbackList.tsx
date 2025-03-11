@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Edit, 
   Trash2, 
-  Calendar, 
+  Calendar,
   MessageSquare,
   ThumbsUp,
   ThumbsDown,
@@ -57,12 +57,12 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     if (editingFeedback) {
       // Extract only the data fields from the feedback object (exclude id, created_at, updated_at)
       const { id, created_at, updated_at, ...data } = feedback;
-      
-      onUpdate({
-        id: editingFeedback.id,
+
+    onUpdate({
+      id: editingFeedback.id,
         data
       });
-    }
+      }
     setIsDialogOpen(false);
     setEditingFeedback(null);
   };
@@ -143,36 +143,36 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
   
   // Render empty state
   const renderEmptyState = () => (
-    <Card className="border-dashed border-2">
-      <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-        <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium mb-2">No User Feedback Yet</h3>
-        <p className="text-sm text-gray-500 max-w-md mb-4">
+        <Card className="border-dashed border-2">
+          <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
+            <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium mb-2">No User Feedback Yet</h3>
+            <p className="text-sm text-gray-500 max-w-md mb-4">
           Track and analyze feedback from your users to improve your product
-        </p>
-      </CardContent>
-    </Card>
+            </p>
+          </CardContent>
+        </Card>
   );
   
   // Render the table view
   const renderTableView = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
+        <Table>
+          <TableHeader>
+            <TableRow>
           <TableHead className="w-[30%]">Feedback</TableHead>
           <TableHead>Source</TableHead>
-          <TableHead>Type</TableHead>
+              <TableHead>Type</TableHead>
           <TableHead>Sentiment</TableHead>
           <TableHead>Impact</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="w-[100px]">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
         {feedback.map((item: ValidationUserFeedback) => (
-          <TableRow key={item.id}>
-            <TableCell>
-              <div className="flex flex-col">
+              <TableRow key={item.id}>
+                <TableCell>
+                  <div className="flex flex-col">
                 <span className="font-medium line-clamp-2">{item.content}</span>
                 {item.date && (
                   <span className="text-xs text-gray-500 mt-1">
@@ -184,45 +184,45 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
             <TableCell>{item.source}</TableCell>
             <TableCell>{item.type || '—'}</TableCell>
             <TableCell>
-              <Badge className={getSentimentColor(item.sentiment)}>
-                <span className="flex items-center gap-1">
-                  {getSentimentIcon(item.sentiment)}
+                      <Badge className={getSentimentColor(item.sentiment)}>
+                        <span className="flex items-center gap-1">
+                          {getSentimentIcon(item.sentiment)}
                   {item.sentiment || 'Neutral'}
-                </span>
-              </Badge>
-            </TableCell>
-            <TableCell>
+                        </span>
+                      </Badge>
+                </TableCell>
+                <TableCell>
               <Badge className={getImpactColor(item.impact)}>
                 {item.impact || 'Unknown'}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <Badge className={getStatusColor(item.status)}>
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge className={getStatusColor(item.status)}>
                 {item.status?.replace('_', ' ') || 'New'}
-              </Badge>
-            </TableCell>
-            <TableCell>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEdit(item)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(item.id)}
-                >
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(item.id)}
+                    >
                   <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
   );
   
   // Render the card view

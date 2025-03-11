@@ -319,4 +319,93 @@ export class ValidationService {
       this.handleError(error as Error, "getAllValidationData");
     }
   }
+
+  // === Entity Linking Methods ===
+  
+  /**
+   * Links a hypothesis to a product entity
+   */
+  async linkHypothesisToEntity(params: { 
+    hypothesisId: string; 
+    entityType: 'problem' | 'solution' | 'feature' | 'journey_pain_point'; 
+    entityId: string;
+  }): Promise<boolean> {
+    try {
+      const { hypothesisId, entityType, entityId } = params;
+      
+      const { error } = await this.supabase
+        .from('validation_hypotheses')
+        .update({
+          entity_type: entityType,
+          entity_id: entityId
+        })
+        .eq('id', hypothesisId);
+        
+      if (error) this.handleError(error, "linkHypothesisToEntity");
+      return true;
+    } catch (error) {
+      console.error('Error linking hypothesis to entity:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Links an experiment to product entities
+   */
+  async linkExperimentToEntities(params: { 
+    experimentId: string; 
+    problemId?: string;
+    solutionId?: string;
+    featureId?: string;
+  }): Promise<boolean> {
+    try {
+      const { experimentId, problemId, solutionId, featureId } = params;
+      
+      const updates: any = {};
+      if (problemId) updates.problem_id = problemId;
+      if (solutionId) updates.solution_id = solutionId;
+      if (featureId) updates.feature_id = featureId;
+      
+      if (Object.keys(updates).length === 0) return true; // Nothing to update
+      
+      const { error } = await this.supabase
+        .from('validation_experiments')
+        .update(updates)
+        .eq('id', experimentId);
+        
+      if (error) this.handleError(error, "linkExperimentToEntities");
+      return true;
+    } catch (error) {
+      console.error('Error linking experiment to entities:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Gets hypotheses for a specific entity
+   */
+  getHypothesesForEntity(hypotheses: ValidationHypothesis[], entityType: string, entityId: string): ValidationHypothesis[] {
+    if (!hypotheses || !hypotheses.length) return [];
+    return hypotheses.filter(h => 
+      h.entity_type === entityType && h.entity_id === entityId
+    );
+  }
+  
+  /**
+   * Gets experiments for a specific entity
+   */
+  getExperimentsForEntity(experiments: ValidationExperiment[], entityType: string, entityId: string): ValidationExperiment[] {
+    if (!experiments || !experiments.length) return [];
+    
+    switch (entityType) {
+      case 'problem':
+        return experiments.filter(e => e.problem_id === entityId);
+      case 'solution':
+        return experiments.filter(e => e.solution_id === entityId);
+      case 'feature':
+        return experiments.filter(e => e.feature_id === entityId);
+      default:
+        return [];
+    }
+  }
 } 

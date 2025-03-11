@@ -1,5 +1,31 @@
 import { MarketPersona, MarketInterview, MarketCompetitor, MarketTrend } from '@/store/types';
 
+// Market Overview and TAM/SAM/SOM types
+export interface MarketSize {
+  tam: number;
+  sam: number;
+  som: number;
+  tamMethod: 'top-down' | 'bottom-up' | 'value-theory';
+  samPercentage: number;
+  somPercentage: number;
+}
+
+export interface MarketDefinition {
+  industry: string;
+  geography: string;
+  maturity: 'emerging' | 'growing' | 'mature' | 'declining';
+}
+
+export interface MarketOverviewData {
+  marketSize: MarketSize;
+  marketDefinition: MarketDefinition;
+  segments?: Array<{
+    name: string;
+    size: number;
+    growth: number;
+  }>;
+}
+
 // Extended types for UI that add status for comparison mode
 export interface ExtendedMarketPersona extends MarketPersona {
   status?: 'new' | 'modified' | 'unchanged' | 'removed';
@@ -23,6 +49,7 @@ export interface MarketAnalysisUIData {
   interviews: ExtendedMarketInterview[];
   competitors: ExtendedMarketCompetitor[];
   trends: ExtendedMarketTrend[];
+  overview?: MarketOverviewData; // Add overview to the data structure
 }
 
 // Component Props Types

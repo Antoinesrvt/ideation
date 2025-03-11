@@ -143,7 +143,6 @@ export const BusinessModelCanvas: React.FC = () => {
     addItem,
     updateItem,
     deleteItem,
-    moveItem,
     getItemChangeType,
     isDiffMode
   } = useBusinessModel(projectId);
