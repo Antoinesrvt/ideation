@@ -51,6 +51,10 @@ export type ValidationExperiment = TablesRow<'validation_experiments'>;
 export type ValidationABTest = TablesRow<'validation_ab_tests'>;
 export type ValidationUserFeedback = TablesRow<'validation_user_feedback'>;
 export type ValidationHypothesis = TablesRow<'validation_hypotheses'>;
+export type ValidationRelationship = TablesRow<'validation_relationships'>;
+export type ValidationInsight = TablesRow<'validation_insights'>;
+export type ValidationDecision = TablesRow<'validation_decisions'>;
+export type ValidationMilestone = TablesRow<'validation_milestones'>;
 
 // Team types
 export type TeamMember = TablesRow<'team_members'>;
@@ -121,6 +125,10 @@ export interface ProjectState {
     validationABTests: ValidationABTest[];
     validationUserFeedback: ValidationUserFeedback[];
     validationHypotheses: ValidationHypothesis[];
+    validationRelationships: ValidationRelationship[];
+    validationInsights: ValidationInsight[];
+    validationDecisions: ValidationDecision[];
+    validationMilestones: ValidationMilestone[];
     // Team
     teamMembers: TeamMember[];
     teamTasks: TeamTask[];
@@ -172,6 +180,10 @@ export interface ProjectState {
     validationABTests: ValidationABTest[];
     validationUserFeedback: ValidationUserFeedback[];
     validationHypotheses: ValidationHypothesis[];
+    validationRelationships: ValidationRelationship[];
+    validationInsights: ValidationInsight[];
+    validationDecisions: ValidationDecision[];
+    validationMilestones: ValidationMilestone[];
     // Team
     teamMembers: TeamMember[];
     teamTasks: TeamTask[];
@@ -192,229 +204,296 @@ export interface ProjectState {
 }
 
 export interface ProjectActions {
-
   // Core actions
-  setCurrentData: (data: ProjectState['currentData']) => void;
-  setStagedData: (data: ProjectState['currentData'] | null) => void;
+  setCurrentData: (data: ProjectState["currentData"]) => void;
+  setStagedData: (data: ProjectState["currentData"] | null) => void;
   setComparisonMode: (enabled: boolean) => void;
   commitStagedChanges: () => void;
   discardStagedChanges: () => void;
-  
+
   // Project actions
   setProject: (project: Project | null) => void;
   updateProject: (updates: Partial<Project>) => void;
-  
+
   // Business Model Canvas actions
   setCanvasSections: (sections: CanvasSection[]) => void;
   addCanvasSection: (section: CanvasSection) => void;
   updateCanvasSection: (id: string, updates: Partial<CanvasSection>) => void;
   deleteCanvasSection: (id: string) => void;
-  
+
   setCanvasItems: (items: CanvasItem[]) => void;
   addCanvasItem: (item: CanvasItem) => void;
   updateCanvasItem: (id: string, updates: Partial<CanvasItem>) => void;
   deleteCanvasItem: (id: string) => void;
-  
+
   // GRP Model actions
   setGrpCategories: (categories: GrpCategory[]) => void;
   addGrpCategory: (category: GrpCategory) => void;
   updateGrpCategory: (id: string, updates: Partial<GrpCategory>) => void;
   deleteGrpCategory: (id: string) => void;
-  
+
   setGrpSections: (sections: GrpSection[]) => void;
   addGrpSection: (section: GrpSection) => void;
   updateGrpSection: (id: string, updates: Partial<GrpSection>) => void;
   deleteGrpSection: (id: string) => void;
-  
+
   setGrpItems: (items: GrpItem[]) => void;
   addGrpItem: (item: GrpItem) => void;
   updateGrpItem: (id: string, updates: Partial<GrpItem>) => void;
   deleteGrpItem: (id: string) => void;
-  
+
   // Market Analysis actions
   setMarketPersonas: (personas: MarketPersona[]) => void;
   addMarketPersona: (persona: MarketPersona) => void;
   updateMarketPersona: (id: string, updates: Partial<MarketPersona>) => void;
   deleteMarketPersona: (id: string) => void;
-  
+
   setMarketInterviews: (interviews: MarketInterview[]) => void;
   addMarketInterview: (interview: MarketInterview) => void;
-  updateMarketInterview: (id: string, updates: Partial<MarketInterview>) => void;
+  updateMarketInterview: (
+    id: string,
+    updates: Partial<MarketInterview>
+  ) => void;
   deleteMarketInterview: (id: string) => void;
-  
+
   setMarketCompetitors: (competitors: MarketCompetitor[]) => void;
   addMarketCompetitor: (competitor: MarketCompetitor) => void;
-  updateMarketCompetitor: (id: string, updates: Partial<MarketCompetitor>) => void;
+  updateMarketCompetitor: (
+    id: string,
+    updates: Partial<MarketCompetitor>
+  ) => void;
   deleteMarketCompetitor: (id: string) => void;
-  
+
   setMarketTrends: (trends: MarketTrend[]) => void;
   addMarketTrend: (trend: MarketTrend) => void;
   updateMarketTrend: (id: string, updates: Partial<MarketTrend>) => void;
   deleteMarketTrend: (id: string) => void;
-  
+
   // Product Design actions
   setProductWireframes: (wireframes: ProductWireframe[]) => void;
   addProductWireframe: (wireframe: ProductWireframe) => void;
-  updateProductWireframe: (id: string, updates: Partial<ProductWireframe>) => void;
+  updateProductWireframe: (
+    id: string,
+    updates: Partial<ProductWireframe>
+  ) => void;
   deleteProductWireframe: (id: string) => void;
-  
+
   setProductFeatures: (features: ProductFeature[]) => void;
   addProductFeature: (feature: ProductFeature) => void;
   updateProductFeature: (id: string, updates: Partial<ProductFeature>) => void;
   deleteProductFeature: (id: string) => void;
-  
+
   setProductJourneyStages: (stages: ProductJourneyStage[]) => void;
   addProductJourneyStage: (stage: ProductJourneyStage) => void;
-  updateProductJourneyStage: (id: string, updates: Partial<ProductJourneyStage>) => void;
+  updateProductJourneyStage: (
+    id: string,
+    updates: Partial<ProductJourneyStage>
+  ) => void;
   deleteProductJourneyStage: (id: string) => void;
-  
+
   setProductJourneyActions: (actions: ProductJourneyAction[]) => void;
   addProductJourneyAction: (action: ProductJourneyAction) => void;
-  updateProductJourneyAction: (id: string, updates: Partial<ProductJourneyAction>) => void;
+  updateProductJourneyAction: (
+    id: string,
+    updates: Partial<ProductJourneyAction>
+  ) => void;
   deleteProductJourneyAction: (id: string) => void;
-  
+
   setProductJourneyPainPoints: (painPoints: ProductJourneyPainPoint[]) => void;
   addProductJourneyPainPoint: (painPoint: ProductJourneyPainPoint) => void;
-  updateProductJourneyPainPoint: (id: string, updates: Partial<ProductJourneyPainPoint>) => void;
+  updateProductJourneyPainPoint: (
+    id: string,
+    updates: Partial<ProductJourneyPainPoint>
+  ) => void;
   deleteProductJourneyPainPoint: (id: string) => void;
-  
+
   // Product Development actions
   setProductProblems: (problems: ProductProblem[]) => void;
   addProductProblem: (problem: ProductProblem) => void;
   updateProductProblem: (id: string, updates: Partial<ProductProblem>) => void;
   deleteProductProblem: (id: string) => void;
-  
+
   setProductSolutions: (solutions: ProductSolution[]) => void;
   addProductSolution: (solution: ProductSolution) => void;
-  updateProductSolution: (id: string, updates: Partial<ProductSolution>) => void;
+  updateProductSolution: (
+    id: string,
+    updates: Partial<ProductSolution>
+  ) => void;
   deleteProductSolution: (id: string) => void;
-  
+
   setProductEvidence: (evidence: ProductEvidence[]) => void;
   addProductEvidence: (evidence: ProductEvidence) => void;
-  updateProductEvidence: (id: string, updates: Partial<ProductEvidence>) => void;
+  updateProductEvidence: (
+    id: string,
+    updates: Partial<ProductEvidence>
+  ) => void;
   deleteProductEvidence: (id: string) => void;
-  
+
   setProductEvidenceLinks: (links: ProductEvidenceLink[]) => void;
   addProductEvidenceLink: (link: ProductEvidenceLink) => void;
-  updateProductEvidenceLink: (id: string, updates: Partial<ProductEvidenceLink>) => void;
+  updateProductEvidenceLink: (
+    id: string,
+    updates: Partial<ProductEvidenceLink>
+  ) => void;
   deleteProductEvidenceLink: (id: string) => void;
-  
+
   setProductMVPs: (mvps: ProductMVP[]) => void;
   addProductMVP: (mvp: ProductMVP) => void;
   updateProductMVP: (id: string, updates: Partial<ProductMVP>) => void;
   deleteProductMVP: (id: string) => void;
-  
+
   setProductMVPFeatures: (features: ProductMVPFeature[]) => void;
   addProductMVPFeature: (feature: ProductMVPFeature) => void;
-  updateProductMVPFeature: (id: string, updates: Partial<ProductMVPFeature>) => void;
+  updateProductMVPFeature: (
+    id: string,
+    updates: Partial<ProductMVPFeature>
+  ) => void;
   deleteProductMVPFeature: (id: string) => void;
-  
+
   // Financial actions
   setFinancialRevenueStreams: (streams: FinancialRevenueStream[]) => void;
   addFinancialRevenueStream: (stream: FinancialRevenueStream) => void;
-  updateFinancialRevenueStream: (id: string, updates: Partial<FinancialRevenueStream>) => void;
+  updateFinancialRevenueStream: (
+    id: string,
+    updates: Partial<FinancialRevenueStream>
+  ) => void;
   deleteFinancialRevenueStream: (id: string) => void;
-  
+
   setFinancialCostStructure: (costs: FinancialCostStructure[]) => void;
   addFinancialCostStructure: (cost: FinancialCostStructure) => void;
-  updateFinancialCostStructure: (id: string, updates: Partial<FinancialCostStructure>) => void;
+  updateFinancialCostStructure: (
+    id: string,
+    updates: Partial<FinancialCostStructure>
+  ) => void;
   deleteFinancialCostStructure: (id: string) => void;
-  
-  setFinancialPricingStrategies: (strategies: FinancialPricingStrategy[]) => void;
+
+  setFinancialPricingStrategies: (
+    strategies: FinancialPricingStrategy[]
+  ) => void;
   addFinancialPricingStrategy: (strategy: FinancialPricingStrategy) => void;
-  updateFinancialPricingStrategy: (id: string, updates: Partial<FinancialPricingStrategy>) => void;
+  updateFinancialPricingStrategy: (
+    id: string,
+    updates: Partial<FinancialPricingStrategy>
+  ) => void;
   deleteFinancialPricingStrategy: (id: string) => void;
-  
+
   setFinancialProjections: (projections: FinancialProjection[]) => void;
   addFinancialProjection: (projection: FinancialProjection) => void;
-  updateFinancialProjection: (id: string, updates: Partial<FinancialProjection>) => void;
+  updateFinancialProjection: (
+    id: string,
+    updates: Partial<FinancialProjection>
+  ) => void;
   deleteFinancialProjection: (id: string) => void;
-  
+
   // Validation actions
   setValidationExperiments: (experiments: ValidationExperiment[]) => void;
   addValidationExperiment: (experiment: ValidationExperiment) => void;
-  updateValidationExperiment: (id: string, updates: Partial<ValidationExperiment>) => void;
+  updateValidationExperiment: (
+    id: string,
+    updates: Partial<ValidationExperiment>
+  ) => void;
   deleteValidationExperiment: (id: string) => void;
-  
+  setValidationRelationships: (relationships: ValidationRelationship[]) => void;
+  setValidationInsights: (insights: ValidationInsight[]) => void;
+  setValidationDecisions: (decisions: ValidationDecision[]) => void;
+  setValidationMilestones: (milestones: ValidationMilestone[]) => void;
+
   setValidationABTests: (tests: ValidationABTest[]) => void;
   addValidationABTest: (test: ValidationABTest) => void;
-  updateValidationABTest: (id: string, updates: Partial<ValidationABTest>) => void;
+  updateValidationABTest: (
+    id: string,
+    updates: Partial<ValidationABTest>
+  ) => void;
   deleteValidationABTest: (id: string) => void;
-  
+
   setValidationUserFeedback: (feedback: ValidationUserFeedback[]) => void;
   addValidationUserFeedback: (feedback: ValidationUserFeedback) => void;
-  updateValidationUserFeedback: (id: string, updates: Partial<ValidationUserFeedback>) => void;
+  updateValidationUserFeedback: (
+    id: string,
+    updates: Partial<ValidationUserFeedback>
+  ) => void;
   deleteValidationUserFeedback: (id: string) => void;
-  
+
   setValidationHypotheses: (hypotheses: ValidationHypothesis[]) => void;
   addValidationHypothesis: (hypothesis: ValidationHypothesis) => void;
-  updateValidationHypothesis: (id: string, updates: Partial<ValidationHypothesis>) => void;
+  updateValidationHypothesis: (
+    id: string,
+    updates: Partial<ValidationHypothesis>
+  ) => void;
   deleteValidationHypothesis: (id: string) => void;
-  
+
   // Team actions
   setTeamMembers: (members: TeamMember[]) => void;
   addTeamMember: (member: TeamMember) => void;
   updateTeamMember: (id: string, updates: Partial<TeamMember>) => void;
   deleteTeamMember: (id: string) => void;
-  
+
   setTeamTasks: (tasks: TeamTask[]) => void;
   addTeamTask: (task: TeamTask) => void;
   updateTeamTask: (id: string, updates: Partial<TeamTask>) => void;
   deleteTeamTask: (id: string) => void;
-  
+
   setTeamResponsibilityMatrix: (matrix: TeamResponsibilityMatrix[]) => void;
   addTeamResponsibilityMatrix: (matrix: TeamResponsibilityMatrix) => void;
-  updateTeamResponsibilityMatrix: (id: string, updates: Partial<TeamResponsibilityMatrix>) => void;
+  updateTeamResponsibilityMatrix: (
+    id: string,
+    updates: Partial<TeamResponsibilityMatrix>
+  ) => void;
   deleteTeamResponsibilityMatrix: (id: string) => void;
-  
+
   // Document actions
   setDocuments: (documents: Document[]) => void;
   addDocument: (document: Document) => void;
   updateDocument: (id: string, updates: Partial<Document>) => void;
   deleteDocument: (id: string) => void;
-  
+
   setDocumentCollaborators: (collaborators: DocumentCollaborator[]) => void;
   addDocumentCollaborator: (collaborator: DocumentCollaborator) => void;
-  updateDocumentCollaborator: (id: string, updates: Partial<DocumentCollaborator>) => void;
+  updateDocumentCollaborator: (
+    id: string,
+    updates: Partial<DocumentCollaborator>
+  ) => void;
   deleteDocumentCollaborator: (id: string) => void;
-  
+
   // Cross-feature actions
   setNotifications: (notifications: ProjectNotification[]) => void;
   addNotification: (notification: ProjectNotification) => void;
-  updateNotification: (id: string, updates: Partial<ProjectNotification>) => void;
+  updateNotification: (
+    id: string,
+    updates: Partial<ProjectNotification>
+  ) => void;
   deleteNotification: (id: string) => void;
-  
+
   setRelatedItems: (items: RelatedItem[]) => void;
   addRelatedItem: (item: RelatedItem) => void;
   updateRelatedItem: (id: string, updates: Partial<RelatedItem>) => void;
   deleteRelatedItem: (id: string) => void;
-  
+
   setProjectTags: (tags: ProjectTag[]) => void;
   addProjectTag: (tag: ProjectTag) => void;
   updateProjectTag: (id: string, updates: Partial<ProjectTag>) => void;
   deleteProjectTag: (id: string) => void;
-  
+
   setFeatureItemTags: (tags: FeatureItemTag[]) => void;
   addFeatureItemTag: (tag: FeatureItemTag) => void;
   updateFeatureItemTag: (id: string, updates: Partial<FeatureItemTag>) => void;
   deleteFeatureItemTag: (id: string) => void;
-  
+
   // Version control actions
   stageChanges: () => void;
   commitChanges: () => void;
   discardChanges: () => void;
   toggleComparisonMode: () => void;
-  
+
   // Loading and error states
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
-  
+
   // Project Roles actions
   setProjectRoles: (roles: ProjectRole[]) => void;
   addProjectRole: (role: ProjectRole) => void;
   updateProjectRole: (id: string, updates: Partial<ProjectRole>) => void;
   deleteProjectRole: (id: string) => void;
-  
 }
 
 export type ChangeType = 'added' | 'modified' | 'deleted' | 'unchanged';
@@ -470,6 +549,10 @@ export interface DiffMetadata {
   validationABTests?: FeatureDiff;
   validationUserFeedback?: FeatureDiff;
   validationHypotheses?: FeatureDiff;
+  validationRelationships?: FeatureDiff;
+  validationInsights?: FeatureDiff;
+  validationDecisions?: FeatureDiff;
+  validationMilestones?: FeatureDiff;
   // Team
   teamMembers?: FeatureDiff;
   teamTasks?: FeatureDiff;

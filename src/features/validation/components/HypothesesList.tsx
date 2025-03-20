@@ -48,25 +48,37 @@ import {
   XCircle, 
   HelpCircle,
   PlusCircle,
-  Percent
+  EyeIcon,
+  EyeOffIcon,
+  SlidersHorizontal,
+  Percent,
+  BarChart3
 } from 'lucide-react';
-import { ValidationHypothesis as Hypothesis, Update } from '@/store/types';
+import { ValidationHypothesis as Hypothesis, Insert, Update } from '@/store/types';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
-import { ViewToggle, ViewMode } from './common/ViewToggle';
-import { HypothesisCard } from './common/HypothesisCard';
+import { ValidationTable, ValidationTableColumn } from './common/ValidationTable';
+import { HypothesisModal } from './modals/HypothesisModal';
+import { ValidationItemType } from './common/ValidationItemModal';
+import { EnhancedHypothesisForm } from './forms/EnhancedHypothesisForm';
+
+// Define a DetailLevel type for our component
+type DetailLevel = 'simple' | 'detailed';
 
 interface HypothesesListProps {
   hypotheses: Hypothesis[];
   onUpdate: (params: { id: string; data: Update<"validation_hypotheses"> }) => void;
   onDelete: (id: string) => void;
+  relationships?: any[];
+  data?: any;
+  projectId?: string;
 }
 
 interface HypothesisFormValues {
   statement: string;
   assumptions: string[];
   validationMethod: string;
-  status: 'unvalidated' | 'validated' | 'invalidated';
+  status: 'validated' | 'invalidated' | 'unvalidated';
   confidence: number;
   evidence: string[];
 }
@@ -74,13 +86,22 @@ interface HypothesisFormValues {
 export const HypothesesList: React.FC<HypothesesListProps> = ({ 
   hypotheses, 
   onUpdate,
-  onDelete
+  onDelete,
+  relationships = [],
+  data = {},
+  projectId
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHypothesis, setEditingHypothesis] = useState<Hypothesis | null>(null);
   const [newAssumption, setNewAssumption] = useState('');
   const [newEvidence, setNewEvidence] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  // Detail level (how much information to show)
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>('simple');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  
+  // Modal state
+  const [selectedHypothesisForModal, setSelectedHypothesisForModal] = useState<Hypothesis | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const form = useForm<HypothesisFormValues>({
     defaultValues: {
@@ -93,19 +114,14 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
     }
   });
   
+  // Add new states for the enhanced form
+  const [openNewDialog, setOpenNewDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedHypothesis, setSelectedHypothesis] = useState<Hypothesis | null>(null);
+  
   const handleEdit = (hypothesis: Hypothesis) => {
-    setEditingHypothesis(hypothesis);
-    
-    form.reset({
-      statement: hypothesis.statement || '',
-      assumptions: hypothesis.assumptions || [],
-      validationMethod: hypothesis.validation_method || '',
-      status: (hypothesis.status as 'validated' | 'invalidated' | 'unvalidated') || 'unvalidated',
-      confidence: hypothesis.confidence || 0,
-      evidence: hypothesis.evidence || []
-    });
-    
-    setIsDialogOpen(true);
+    setSelectedHypothesis(hypothesis);
+    setOpenEditDialog(true);
   };
   
   const handleSave = (values: HypothesisFormValues) => {
@@ -136,40 +152,42 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
     }
   };
   
-  const getStatusColor = (status: Hypothesis['status']) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'validated':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'invalidated':
-        return 'bg-red-100 text-red-800';
+        return 'destructive';
       case 'unvalidated':
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
   
-  const getStatusIcon = (status: Hypothesis['status']) => {
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
       case 'validated':
-        return <CheckCircle2 className="h-3 w-3" />;
+        return <CheckCircle2 className="h-3.5 w-3.5" />;
       case 'invalidated':
-        return <XCircle className="h-3 w-3" />;
+        return <XCircle className="h-3.5 w-3.5" />;
       case 'unvalidated':
       default:
-        return <HelpCircle className="h-3 w-3" />;
+        return <HelpCircle className="h-3.5 w-3.5" />;
     }
   };
   
-  const getConfidenceLevel = (confidence: number) => {
-    if (confidence < 30) return 'Low';
-    if (confidence < 70) return 'Medium';
-    return 'High';
+  const getConfidenceColor = (confidence: number | null) => {
+    if (!confidence) return 'secondary';
+    if (confidence >= 80) return 'success';
+    if (confidence >= 50) return 'warning';
+    return 'destructive';
   };
   
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence < 30) return 'text-red-600';
-    if (confidence < 70) return 'text-yellow-600';
-    return 'text-green-600';
+  const getConfidenceLevel = (confidence: number | null) => {
+    if (!confidence) return 'Unknown';
+    if (confidence >= 80) return 'High';
+    if (confidence >= 50) return 'Medium';
+    return 'Low';
   };
   
   const handleAddAssumption = () => {
@@ -198,342 +216,277 @@ export const HypothesesList: React.FC<HypothesesListProps> = ({
     form.setValue('evidence', currentEvidence.filter(e => e !== evidence));
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('en-US', {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    }).format(date);
+      day: 'numeric'
+    });
   };
 
   // Render empty state for no hypotheses
   const renderEmptyState = () => (
-        <Card className="border-dashed border-2">
-          <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-            <Lightbulb className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Hypotheses Yet</h3>
-            <p className="text-sm text-gray-500 max-w-md mb-4">
-              Formulate and track your key business hypotheses and their validation status
-            </p>
-          </CardContent>
-        </Card>
-  );
-
-  // Render the table view
-  const renderTableView = () => (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[40%]">Hypothesis</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Confidence</TableHead>
-              <TableHead>Validation Method</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {hypotheses.map((hypothesis: Hypothesis) => (
-              <TableRow key={hypothesis.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{hypothesis.statement || "Unnamed hypothesis"}</span>
-                    {hypothesis.assumptions && hypothesis.assumptions.length > 0 && (
-                      <div className="mt-1">
-                        <span className="text-xs text-gray-500 mb-1">Key assumptions:</span>
-                        <ul className="list-disc list-inside text-xs text-gray-600 ml-1 space-y-0.5">
-                          {hypothesis.assumptions.slice(0, 2).map((assumption: string, i: number) => (
-                            <li key={i} className="line-clamp-1">{assumption}</li>
-                          ))}
-                          {hypothesis.assumptions.length > 2 && (
-                            <li className="text-gray-500">
-                              +{hypothesis.assumptions.length - 2} more
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                    <span className="text-xs text-gray-500 mt-1">
-                      Updated {formatDate(hypothesis.updated_at ?? undefined)}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(hypothesis.status)}>
-                    <span className="flex items-center gap-1">
-                      {getStatusIcon(hypothesis.status)}
-                      {hypothesis.status}
-                    </span>
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${
-                          (hypothesis.confidence ?? 0) < 30 ? 'bg-red-500' :
-                          (hypothesis.confidence ?? 0) < 70 ? 'bg-yellow-500' :
-                          'bg-green-500'
-                        }`}
-                        style={{ width: `${hypothesis.confidence}%` }}
-                      ></div>
-                    </div>
-                    <span className={`text-xs mt-1 ${getConfidenceColor(hypothesis.confidence ?? 0)}`}>
-                      {hypothesis.confidence}% - {getConfidenceLevel(hypothesis.confidence ?? 0)}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {hypothesis.validation_method || "Not specified"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(hypothesis)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(hypothesis.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-  );
-
-  // Render the card view
-  const renderCardView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {hypotheses.map((hypothesis) => (
-        <HypothesisCard 
-          key={hypothesis.id}
-          hypothesis={hypothesis}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      ))}
+    <div className="flex h-[400px] shrink-0 items-center justify-center rounded-md border border-dashed">
+      <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
+        <BarChart3 className="h-10 w-10 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-semibold">No hypotheses</h3>
+        <p className="mb-4 mt-2 text-sm text-muted-foreground">
+          You haven't created any hypotheses yet. Get started by creating your first hypothesis.
+        </p>
+        <Button onClick={() => setOpenNewDialog(true)} className="flex items-center gap-2">
+          <PlusCircle className="h-4 w-4" />
+          New Hypothesis
+        </Button>
+      </div>
     </div>
   );
 
+  // Define table columns based on detail level
+  const getTableColumns = (): ValidationTableColumn<Hypothesis>[] => {
+    const baseColumns: ValidationTableColumn<Hypothesis>[] = [
+      {
+        header: "Statement",
+        cell: (hypothesis) => (
+          <div className="font-medium max-w-md truncate">
+            {hypothesis.statement}
+          </div>
+        )
+      },
+      {
+        header: "Status",
+        cell: (hypothesis) => (
+          <Badge variant={getStatusColor(hypothesis.status)} className="flex w-fit items-center gap-1">
+            {getStatusIcon(hypothesis.status)}
+            {(hypothesis.status || 'unvalidated').charAt(0).toUpperCase() + (hypothesis.status || 'unvalidated').slice(1)}
+          </Badge>
+        )
+      }
+    ];
+
+    if (detailLevel === 'detailed') {
+      return [
+        ...baseColumns,
+        {
+          header: "Confidence",
+          cell: (hypothesis) => (
+            <Badge variant={getConfidenceColor(hypothesis.confidence)} className="w-fit">
+              {getConfidenceLevel(hypothesis.confidence)}
+            </Badge>
+          )
+        },
+        {
+          header: "Method",
+          cell: (hypothesis) => (
+            <div className="max-w-[150px] truncate">
+              {hypothesis.validation_method || 'Not specified'}
+            </div>
+          )
+        },
+        {
+          header: "Created",
+          cell: (hypothesis) => formatDate(hypothesis.created_at)
+        }
+      ];
+    }
+
+    return baseColumns;
+  };
+
+  // Handle opening the modal when a row is clicked
+  const handleRowClick = (hypothesis: Hypothesis) => {
+    setSelectedHypothesisForModal(hypothesis);
+    setIsModalOpen(true);
+  };
+
+  // Handle view item in related items
+  const handleViewItem = (itemType: ValidationItemType, itemId: string) => {
+    // This would be implemented to open the appropriate modal for the related item
+    console.log(`View ${itemType} with ID ${itemId}`);
+    // You would implement this to open the appropriate modal
+  };
+
+  // Handle hypothesis actions
+  const handleValidate = () => {
+    if (!selectedHypothesisForModal) return;
+    
+    onUpdate({
+      id: selectedHypothesisForModal.id,
+      data: { status: 'validated' }
+    });
+  };
+
+  const handleInvalidate = () => {
+    if (!selectedHypothesisForModal) return;
+    
+    onUpdate({
+      id: selectedHypothesisForModal.id,
+      data: { status: 'invalidated' }
+    });
+  };
+
+  const handleCreateExperiment = () => {
+    // Implement navigation or modal to create experiment based on hypothesis
+    console.log('Create experiment from hypothesis', selectedHypothesisForModal?.id);
+  };
+
+  const handleCreateABTest = () => {
+    // Implement navigation or modal to create A/B test based on hypothesis
+    console.log('Create A/B test from hypothesis', selectedHypothesisForModal?.id);
+  };
+
+  const handleCreateFeedback = () => {
+    // Implement navigation or modal to add user feedback related to hypothesis
+    console.log('Add user feedback for hypothesis', selectedHypothesisForModal?.id);
+  };
+
   return (
-    <div className="space-y-6">
-      {/* View toggle control */}
-      <div className="flex justify-end mb-4">
-        <ViewToggle
-          viewMode={viewMode}
-          onChange={setViewMode}
-          className="ml-auto"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Hypotheses</h2>
+          <p className="text-muted-foreground">
+            Create and validate your business hypotheses.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setDetailLevel(detailLevel === "simple" ? "detailed" : "simple")
+            }
+            className="flex items-center gap-1"
+          >
+            {detailLevel === "simple" ? (
+              <EyeIcon className="h-4 w-4" />
+            ) : (
+              <EyeOffIcon className="h-4 w-4" />
+            )}
+            {detailLevel === "simple" ? "Show Details" : "Simple View"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            className="flex items-center gap-1"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters
+          </Button>
+          <Button 
+            onClick={() => setOpenNewDialog(true)} 
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4" />
+            New Hypothesis
+          </Button>
+        </div>
       </div>
 
-      {/* Content based on available data and view mode */}
       {hypotheses.length === 0 ? (
         renderEmptyState()
       ) : (
-        viewMode === 'table' ? renderTableView() : renderCardView()
+        <div className="space-y-4">
+          {isFiltersOpen && (
+            <Card className="mb-4">
+              <CardContent className="pt-4">
+                {/* Filter content would go here */}
+              </CardContent>
+            </Card>
+          )}
+          
+          <ValidationTable
+            data={hypotheses}
+            columns={getTableColumns()}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            getRowId={(hypothesis) => hypothesis.id}
+            onRowClick={handleRowClick}
+            isRowClickable={true}
+            emptyState={
+              <div className="flex flex-col items-center justify-center text-muted-foreground">
+                <BarChart3 className="h-8 w-8 mb-2 opacity-50" />
+                <p>No hypotheses yet</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => setOpenNewDialog(true)}
+                  className="mt-2"
+                >
+                  Add your first hypothesis
+                </Button>
+              </div>
+            }
+          />
+        </div>
       )}
 
-      {/* Edit hypothesis dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Edit Hypothesis</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="statement"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Statement</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="We believe that..." 
-                        className="min-h-[80px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      {/* Enhanced Hypothesis Form for Creating New Hypotheses */}
+      <EnhancedHypothesisForm
+        open={openNewDialog}
+        onOpenChange={setOpenNewDialog}
+        onSubmit={(data) => {
+          // Format the Hypothesis for the database
+          const newHypothesis = {
+            ...data,
+            project_id: projectId ?? ''
+          };
+          
+          onUpdate({
+            id: data.id ?? '',
+            data: newHypothesis
+          });
+        }}
+      />
+
+      {/* Enhanced Hypothesis Form for Editing Existing Hypotheses */}
+      {selectedHypothesis && (
+        <EnhancedHypothesisForm
+          open={openEditDialog}
+          onOpenChange={setOpenEditDialog}
+          initialData={selectedHypothesis}
+          onSubmit={(data) => {
+            if (selectedHypothesis) {
+              // Format the Hypothesis for the database
+              const updatedHypothesis = {
+                ...data,
+                id: selectedHypothesis.id,
+                project_id: projectId ?? ''
+              };
               
-              <div className="space-y-3">
-                <FormLabel>Assumptions</FormLabel>
-                <div className="flex space-x-2">
-                  <Input 
-                    placeholder="Add an assumption" 
-                    value={newAssumption}
-                    onChange={(e) => setNewAssumption(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={handleAddAssumption}
-                  >
-                    Add
-                  </Button>
-                </div>
-                
-                {form.watch('assumptions').length > 0 && (
-                  <ul className="space-y-2">
-                    {form.watch('assumptions').map((assumption, index) => (
-                      <li key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <span className="text-sm">{assumption}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveAssumption(assumption)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="validationMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Validation Method</FormLabel>
-                    <FormControl>
-                      <Input placeholder="How will you test this hypothesis?" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="space-y-2">
-                <FormLabel className="flex items-center gap-1">
-                  <Percent className="h-4 w-4 text-gray-500" />
-                  Confidence Level: {form.watch('confidence')}%
-                </FormLabel>
-                <FormField
-                  control={form.control}
-                  name="confidence"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Slider
-                          defaultValue={[field.value]}
-                          max={100}
-                          step={1}
-                          onValueChange={(value) => field.onChange(value[0])}
-                          className={`${
-                            field.value < 30 ? 'accent-red-500' :
-                            field.value < 70 ? 'accent-yellow-500' :
-                            'accent-green-500'
-                          }`}
-                        />
-                      </FormControl>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>Low confidence</span>
-                        <span>High confidence</span>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="unvalidated">Unvalidated</SelectItem>
-                        <SelectItem value="validated">Validated</SelectItem>
-                        <SelectItem value="invalidated">Invalidated</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              {(form.watch('status') === 'validated' || form.watch('status') === 'invalidated') && (
-                <div className="space-y-3">
-                  <FormLabel>Supporting Evidence</FormLabel>
-                  <div className="flex space-x-2">
-                    <Input 
-                      placeholder="Add evidence"
-                      value={newEvidence}
-                      onChange={(e) => setNewEvidence(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={handleAddEvidence}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  
-                  {form.watch('evidence').length > 0 && (
-                    <ul className="space-y-2">
-                      {form.watch('evidence').map((evidence, index) => (
-                        <li key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                          <span className="text-sm">{evidence}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveEvidence(evidence)}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-              
-              <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+              onUpdate({
+                id: selectedHypothesis.id,
+                data: updatedHypothesis
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* Keep the existing modal for detailed view */}
+      {selectedHypothesisForModal && (
+        <HypothesisModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          hypothesis={selectedHypothesisForModal}
+          onEdit={() => {
+            setIsModalOpen(false);
+            handleEdit(selectedHypothesisForModal);
+          }}
+          onDelete={() => {
+            setIsModalOpen(false);
+            handleDelete(selectedHypothesisForModal.id);
+          }}
+          onValidate={handleValidate}
+          onInvalidate={handleInvalidate}
+          onCreateExperiment={handleCreateExperiment}
+          onCreateABTest={handleCreateABTest}
+          onCreateFeedback={handleCreateFeedback}
+          onViewItem={handleViewItem}
+          relationships={relationships}
+          data={data}
+        />
+      )}
     </div>
   );
 }; 

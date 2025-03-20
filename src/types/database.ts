@@ -2894,6 +2894,211 @@ export type Database = {
           },
         ]
       }
+      validation_relationships: {
+        Row: {
+          id: string;
+          source_type: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          source_id: string;
+          target_type: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          target_id: string;
+          relationship_type: 'tests' | 'validates' | 'invalidates' | 'supports';
+          created_at: string;
+          updated_at: string;
+          project_id: string;
+        }
+        Insert: {
+          id?: string;
+          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          source_id?: string;
+          target_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          target_id?: string;
+          relationship_type?: 'tests' | 'validates' | 'invalidates' | 'supports';
+          created_at?: string;
+          updated_at?: string;
+          project_id?: string;
+        }
+        Update: {
+          id?: string;
+          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          source_id?: string;
+          target_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          target_id?: string;
+          relationship_type?: 'tests' | 'validates' | 'invalidates' | 'supports';
+          updated_at?: string;
+          project_id?: string;
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_relationships_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_insights: {
+        Row: {
+          id: string;
+          title: string;
+          description: string;
+          source_type: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          source_id: string;
+          actionability: 'high' | 'medium' | 'low';
+          business_impact: 'high' | 'medium' | 'low';
+          status: 'new' | 'reviewed' | 'implemented';
+          created_at: string;
+          updated_at: string;
+          project_id: string;
+        }
+        Insert: {
+          id?: string;
+          title?: string;
+          description?: string;
+          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          source_id?: string;
+          actionability?: 'high' | 'medium' | 'low';
+          business_impact?: 'high' | 'medium' | 'low';
+          status?: 'new' | 'reviewed' | 'implemented';
+          created_at?: string;
+          updated_at?: string;
+          project_id?: string;
+        }
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string;
+          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
+          source_id?: string;
+          actionability?: 'high' | 'medium' | 'low';
+          business_impact?: 'high' | 'medium' | 'low';
+          status?: 'new' | 'reviewed' | 'implemented';
+          updated_at?: string;
+          project_id?: string;
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_decisions: {
+        Row: {
+          id: string;
+          title: string;
+          description: string;
+          decision_type: 'pivot' | 'persist' | 'stop';
+          affected_areas: string[];
+          created_at: string;
+          updated_at: string;
+          project_id: string;
+        }
+        Insert: {
+          id?: string;
+          title?: string;
+          description?: string;
+          decision_type?: 'pivot' | 'persist' | 'stop';
+          affected_areas?: string[];
+          created_at?: string;
+          updated_at?: string;
+          project_id?: string;
+        }
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string;
+          decision_type?: 'pivot' | 'persist' | 'stop';
+          affected_areas?: string[];
+          updated_at?: string;
+          project_id?: string;
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_decisions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_insight_decision: {
+        Row: {
+          insight_id: string;
+          decision_id: string;
+        }
+        Insert: {
+          insight_id?: string;
+          decision_id?: string;
+        }
+        Update: {
+          insight_id?: string;
+          decision_id?: string;
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_insight_decision_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "validation_insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "validation_insight_decision_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "validation_decisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_milestones: {
+        Row: {
+          id: string;
+          title: string;
+          description: string;
+          completion_criteria: string;
+          status: 'not_started' | 'in_progress' | 'completed';
+          dependencies: string[];
+          created_at: string;
+          updated_at: string;
+          project_id: string;
+        }
+        Insert: {
+          id?: string;
+          title?: string;
+          description?: string;
+          completion_criteria?: string;
+          status?: 'not_started' | 'in_progress' | 'completed';
+          dependencies?: string[];
+          created_at?: string;
+          updated_at?: string;
+          project_id?: string;
+        }
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string;
+          completion_criteria?: string;
+          status?: 'not_started' | 'in_progress' | 'completed';
+          dependencies?: string[];
+          updated_at?: string;
+          project_id?: string;
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       raci_matrix_view: {

@@ -2,16 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Remove overscroll bounce effect */
+/* Remove overscroll bounce effect but allow scrolling when needed */
 html {
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
   overscroll-behavior: none;
 }
 
 body {
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
   overscroll-behavior: none;
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -270,4 +270,113 @@ body {
 .wmde-markdown h5,
 .wmde-markdown h6 {
   font-size: 1rem !important;
+}
+
+/* Canvas animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideInDown {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fadeOut {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.3s ease-out forwards;
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.3s ease-out forwards;
+}
+
+.animate-slideInDown {
+  animation: slideInDown 0.3s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
+/* Transitions for canvas */
+.canvas-transition-enter {
+  opacity: 0;
+}
+
+.canvas-transition-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-in-out;
+}
+
+.canvas-transition-exit {
+  opacity: 1;
+}
+
+.canvas-transition-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-in-out;
+}
+
+/* Canvas node styles */
+.journey-node {
+  transition: all 0.3s ease;
+}
+
+.journey-node:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.journey-node.active {
+  transform: scale(1.1);
+  filter: drop-shadow(0px 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+/* Dashed line styles */
+.dashed-line {
+  background-image: linear-gradient(
+    to right,
+    currentColor 50%,
+    transparent 50%
+  );
+  background-size: 8px 1px;
+  background-repeat: repeat-x;
 }

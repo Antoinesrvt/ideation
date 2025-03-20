@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -40,7 +40,6 @@ import { UserJourneyMap } from "./UserJourneyMap";
 import { ProblemSolutionFit } from "./ProblemSolutionFit";
 import { MVPScopeDefinition } from "./MVPScopeDefinition";
 import { StepperDialog } from "./StepperDialog";
-import { Problem, Solution, Evidence } from "./ProblemSolutionFit";
 import { SuccessCriterion, TimelinePhase } from "./MVPScopeDefinition";
 
 import { useProjectStore } from "@/store";
@@ -54,7 +53,9 @@ import {
   ErrorState,
 } from "@/features/common/components/LoadingAndErrorState";
 import { useProductDesign } from "@/hooks/features/useProductDesign";
+import { useProductDevelopment } from "@/hooks/features/useProductDevelopment";
 import { useToast } from "@/components/ui/use-toast";
+import { ProductProblem, ProductSolution, ProductEvidence } from "@/store/types";
 
 const tabs = [
   {
@@ -108,19 +109,23 @@ const tabContentVariants = {
 export const ProductDesign: React.FC = () => {
   const { currentData, comparisonMode, stagedData } = useProjectStore();
   const { toast } = useToast();
+  const projectId = currentData?.project?.id;
+
+ 
 
   const [activeTab, setActiveTab] = useState("wireframes");
-    const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({
-      wireframes: false,
-      features: false,
-      journey: false,
+  const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({
+    wireframes: false,
+    features: false,
+    journey: false,
     problems: false,
   });
 
+  // Use the product design hook for wireframes, features, and journey
   const {
     data,
-    isLoading,
-    error,
+    isLoading: isProductDesignLoading,
+    error: productDesignError,
     addWireframe,
     updateWireframe,
     deleteWireframe,
@@ -128,188 +133,123 @@ export const ProductDesign: React.FC = () => {
     updateFeature,
     deleteFeature,
     addJourneyStage,
-    updateJourneyStage,
-    deleteJourneyStage,
-    addJourneyAction,
-    updateJourneyAction,
-    deleteJourneyAction,
-    addJourneyPainPoint,
-    updateJourneyPainPoint,
-    deleteJourneyPainPoint,
-  } = useProductDesign(currentData?.project?.id);
+  } = useProductDesign(projectId);
 
-  // Mock data for Problem-Solution Fit
-  const [mockProblems] = useState<Problem[]>([
-    { 
-      id: "prob-1",
-      title: "Data access in remote areas",
-      description: "Field researchers struggle to access and update data when working in remote areas with limited connectivity.",
-      status: "critical",
-      significance: 85, 
-      customerSegments: ["Field Researchers", "Remote Teams"],
-      evidenceCount: 2
-    },
-    { 
-      id: "prob-2",
-      title: "Complex data visualization",
-      description: "Researchers find it difficult to create meaningful visualizations from complex datasets without technical help.",
-      status: "validated",
-      significance: 70,
-      customerSegments: ["Data Analysts", "Researchers"],
-      evidenceCount: 1
-    },
-    {
-      id: "prob-3",
-      title: "Collaboration on findings",
-      description: "Teams struggle to effectively collaborate on research findings across different locations and time zones.",
-      status: "discovered",
-      significance: 65,
-      customerSegments: ["Research Teams", "Project Managers"],
-      evidenceCount: 0
-    }
-  ]);
-  
-  const [mockSolutions] = useState<Solution[]>([
-    {
-      id: "sol-1",
-      title: "Offline data synchronization",
-      description: "A mobile app with offline capabilities that synchronizes data when connectivity is restored.",
-      problemId: "prob-1",
-      effectiveness: 80,
-      feasibility: 70,
-      hypothesisStatement: "We believe that offline data synchronization will solve the data access issues for field researchers by allowing them to continue working without internet connection."
-    },
-    {
-      id: "sol-2",
-      title: "Automated visualization tools",
-      description: "AI-powered tools that automatically generate appropriate visualizations based on data type and research questions.",
-      problemId: "prob-2",
-      effectiveness: 75,
-      feasibility: 60,
-      hypothesisStatement: "We believe that automated visualization tools will help researchers easily create meaningful visualizations by removing the technical barriers."
-    }
-  ]);
-  
-  const [mockEvidence] = useState<Evidence[]>([
-    {
-      id: "evid-1",
-      title: "Field researcher interviews",
-      description: "5 interviews with field researchers revealed consistent frustration with data access in remote areas.",
-      source: "User Interviews",
-      type: "interview",
-      status: "verified",
-      relatedIds: ["prob-1"]
-    },
-    {
-      id: "evid-2",
-      title: "Usage data analysis",
-      description: "Analysis of current system usage shows 68% of users struggle with creating visualizations.",
-      source: "Analytics",
-      type: "research",
-      status: "partial",
-      relatedIds: ["prob-2"]
-    }
-  ]);
-  
-  // Mock data for MVP Scope Definition
-  const [mockSelectedMVPFeatures] = useState([
-    "feat-1", "feat-3", "feat-5"
-  ]);
-  
-  const [mockSuccessCriteria] = useState<SuccessCriterion[]>([
-    {
-      id: "crit-1",
-      title: "Offline data collection",
-      description: "Users can collect and store data while offline and successfully sync when back online.",
-      metricType: "qualitative",
-      isAchieved: false
-    },
-    {
-      id: "crit-2",
-      title: "User adoption rate",
-      description: "Percentage of target users who adopt the solution within the first month of release.",
-      metricType: "quantitative",
-      targetValue: "30%",
-      currentValue: "0%",
-      isAchieved: false
-    }
-  ]);
-  
-  const [mockTimeline] = useState<TimelinePhase[]>([
-    {
-      id: "phase-1",
-      title: "MVP Phase",
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      features: ["feat-1", "feat-3", "feat-5"],
-      milestones: [
-        {
-          id: "mile-1",
-          title: "MVP Launch",
-          date: new Date(Date.now() + 58 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isCompleted: false
-        }
-      ]
-    },
-    {
-      id: "phase-2",
-      title: "Version 1.0",
-      startDate: new Date(Date.now() + 61 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      features: ["feat-2", "feat-4"],
-      milestones: [
-        {
-          id: "mile-2",
-          title: "Full Release",
-          date: new Date(Date.now() + 118 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          isCompleted: false
-        }
-      ]
-    }
-  ]);
+  // Use the product development hook for problems, solutions, and evidence
+  const {
+    data: developmentData,
+    isLoading: isDevelopmentLoading,
+    error: developmentError,
+    addProblem,
+    updateProblem,
+    deleteProblem,
+    addSolution,
+    updateSolution,
+    deleteSolution,
+    addEvidence,
+    updateEvidence,
+    deleteEvidence,
+  } = useProductDevelopment(projectId);
 
-  // Extend the data object with our mock data
-  const enhancedData = {
-    ...data,
-    problems: mockProblems,
-    solutions: mockSolutions,
-    evidence: mockEvidence,
-    selectedMVPFeatures: mockSelectedMVPFeatures,
-    successCriteria: mockSuccessCriteria,
-    timeline: mockTimeline
-  };
+  // Combine loading and error states
+  const isLoading = isProductDesignLoading || isDevelopmentLoading;
+  const error = productDesignError || developmentError;
 
-  // Get current data from the hook
+  // Single handler for tab changes to avoid confusion
+  const handleTabChange = useCallback((value: string) => {
+    console.log("Tab change requested:", value);
+    setActiveTab(value);
+  }, []);
+
+  // Get current data from the hook - memoized with all dependencies
   const uiData = useMemo(
     () => ({
       wireframes: data?.wireframes || [],
       features: data?.features || [],
       journeyStages: data?.journey?.stages || [],
+      problems: developmentData?.problems || [],
+      solutions: developmentData?.solutions || [],
+      evidence: developmentData?.evidence || [],
+      mvps: developmentData?.mvps || [],
+      mvpFeatures: developmentData?.mvpFeatures || []
     }),
-    [data]
+    [
+      data?.wireframes, 
+      data?.features, 
+      data?.journey?.stages, 
+      developmentData?.problems, 
+      developmentData?.solutions, 
+      developmentData?.evidence,
+      developmentData?.mvps,
+      developmentData?.mvpFeatures
+    ]
   );
 
-  // Handle adding a new wireframe
-  const handleAddWireframe = async () => {
-    const projectId = currentData.project?.id || "";
+  // Memoize the problem-solution data for ProblemSolutionFit component
+  const problemSolutionProps = useMemo(() => ({
+    problems: uiData.problems,
+    solutions: uiData.solutions,
+    evidence: uiData.evidence,
+    evidenceLinks: developmentData?.evidenceLinks || [],
+    projectId,
+    isLoading: isDevelopmentLoading,
+    error: developmentError,
+  }), [
+    uiData.problems,
+    uiData.solutions,
+    uiData.evidence,
+    developmentData?.evidenceLinks,
+    projectId,
+    isDevelopmentLoading,
+    developmentError,
+  ]);
 
+  // Memoize handler functions for the ProblemSolutionFit component
+  const problemSolutionHandlers = useMemo(() => ({
+    onAddProblem: addProblem,
+    onUpdateProblem: updateProblem,
+    onDeleteProblem: deleteProblem,
+    onAddSolution: addSolution,
+    onUpdateSolution: updateSolution,
+    onDeleteSolution: deleteSolution,
+    onAddEvidence: addEvidence,
+    onUpdateEvidence: updateEvidence,
+    onDeleteEvidence: deleteEvidence,
+  }), [
+    addProblem,
+    updateProblem,
+    deleteProblem,
+    addSolution,
+    updateSolution,
+    deleteSolution,
+    addEvidence,
+    updateEvidence,
+    deleteEvidence,
+  ]);
+
+  // Handle adding a new wireframe - with mounted check
+  const handleAddWireframe = useCallback(async () => {
+    if (!projectId) return;
+  
     try {
       await addWireframe({
         project_id: projectId,
         name: "New Wireframe",
         description: "",
-      image_url: null,
+        image_url: null,
         screen_type: "desktop",
         order_index: uiData.wireframes.length,
         tags: [],
       });
 
+      
       toast({
         title: "Wireframe added",
         description: "New wireframe has been created successfully.",
         variant: "default",
       });
     } catch (err) {
+      
       toast({
         title: "Error adding wireframe",
         description:
@@ -317,13 +257,13 @@ export const ProductDesign: React.FC = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [projectId, addWireframe, uiData.wireframes.length, toast]);
   
   // Handle adding a new feature
-  const handleAddFeature = async (
+  const handleAddFeature = useCallback(async (
     priority: "must" | "should" | "could" | "wont" = "should"
   ) => {
-    const projectId = currentData.project?.id || "";
+    if (!projectId) return;
 
     try {
       await addFeature({
@@ -332,11 +272,13 @@ export const ProductDesign: React.FC = () => {
         description: "",
         priority,
         status: "planned",
-      effort: 2,
-      impact: 2,
-      tags: [],
+        effort: 2,
+        impact: 2,
+        tags: [],
         notes: "",
       });
+
+
 
       toast({
         title: "Feature added",
@@ -351,20 +293,21 @@ export const ProductDesign: React.FC = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [projectId, addFeature, toast]);
   
   // Handle adding a new journey stage
-  const handleAddJourneyStage = async () => {
-    const projectId = currentData.project?.id || "";
+  const handleAddJourneyStage = useCallback(async () => {
+    if (!projectId) return;
 
     try {
       await addJourneyStage({
         project_id: projectId,
         name: "New Stage",
         description: "",
-      completed: false,
+        completed: false,
         order_index: uiData.journeyStages.length,
       });
+
 
       toast({
         title: "Journey stage added",
@@ -379,7 +322,7 @@ export const ProductDesign: React.FC = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [projectId, addJourneyStage, uiData.journeyStages.length, toast]);
 
   if (error) {
     return (
@@ -425,7 +368,7 @@ export const ProductDesign: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center">
-                  <p className="text-2xl font-bold">{data.wireframes.length}</p>
+                  <p className="text-2xl font-bold">{uiData.wireframes.length}</p>
                   <p className="text-xs text-gray-500 ml-2">Total wireframes</p>
                 </div>
               </CardContent>
@@ -460,11 +403,11 @@ export const ProductDesign: React.FC = () => {
                 <div className="flex items-center">
                   <p className="text-2xl font-bold">
                     {
-                      data.features.filter(
+                      uiData.features.filter(
                         (feature) => feature.priority === "must"
                       ).length
                     }{" "}
-                    / {data.features.length}
+                    / {uiData.features.length}
                   </p>
                   <p className="text-xs text-gray-500 ml-2">
                     MVP / Total features
@@ -501,7 +444,7 @@ export const ProductDesign: React.FC = () => {
               <CardContent>
                 <div className="flex items-center">
                   <p className="text-2xl font-bold">
-                    {data.journey.stages.length}
+                    {uiData.journeyStages.length}
                   </p>
                   <p className="text-xs text-gray-500 ml-2">Total stages</p>
                 </div>
@@ -535,16 +478,16 @@ export const ProductDesign: React.FC = () => {
             <Tabs
               defaultValue={activeTab}
               value={activeTab}
-              onValueChange={setActiveTab}
+              onValueChange={handleTabChange}
               className="w-full"
             >
               <div className="flex justify-between items-center mb-4">
                 <TabList
                   tabs={tabs}
                   activeTab={activeTab}
-                  onTabChange={setActiveTab}
+                  onTabChange={handleTabChange}
                 />
-                  </div>
+              </div>
 
               <AnimatePresence mode="wait">
                 
@@ -570,14 +513,15 @@ export const ProductDesign: React.FC = () => {
                         }
                         title="Problem-Solution Fit"
                         description="Define and validate the problems you're solving and your proposed solutions"
-                        count={enhancedData.problems ? enhancedData.problems.length : 0}
+                        count={uiData.problems ? uiData.problems.length : 0}
                         hasItems={
-                          enhancedData.problems ? enhancedData.problems.length > 0 : false
+                          uiData.problems ? uiData.problems.length > 0 : false
                         }
                         emptyState={{
                           description:
                             "Define the problems your customers are facing and how your solution addresses them.",
                         }}
+                        isCustomEmptyState={true}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
                           title: "Problem-Solution Fit",
@@ -605,18 +549,8 @@ export const ProductDesign: React.FC = () => {
                         }}
                       >
                         <ProblemSolutionFit 
-                          problems={enhancedData.problems || []}
-                          solutions={enhancedData.solutions || []}
-                          evidence={enhancedData.evidence || []}
-                          onAddProblem={() => {}}
-                          onUpdateProblem={() => {}}
-                          onDeleteProblem={() => {}}
-                          onAddSolution={() => {}}
-                          onUpdateSolution={() => {}}
-                          onDeleteSolution={() => {}}
-                          onAddEvidence={() => {}}
-                          onUpdateEvidence={() => {}}
-                          onDeleteEvidence={() => {}}
+                          {...problemSolutionProps}
+                          {...problemSolutionHandlers}
                         />
                       </SectionTab>
                     </TabsContent>
@@ -644,7 +578,7 @@ export const ProductDesign: React.FC = () => {
                         title="Wireframes"
                         description="Visualize your product's interface and user flow"
                         onCreate={() => handleAddWireframe()}
-                        count={data.wireframes.length}
+                        count={uiData.wireframes.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
                           title: "Creating Effective Wireframes",
@@ -668,14 +602,14 @@ export const ProductDesign: React.FC = () => {
                     </div>
                           ),
                         }}
-                        hasItems={data.wireframes.length > 0}
+                        hasItems={uiData.wireframes.length > 0}
                         emptyState={{
                           description:
                             "Start by adding wireframes to visualize your product's interface and user flows.",
                         }}
                       >
                         <WireframeGallery
-                          wireframes={data.wireframes}
+                          wireframes={uiData.wireframes}
                           onAdd={handleAddWireframe}
                           onSelect={(id) => console.log(id)}
                         />
@@ -705,7 +639,7 @@ export const ProductDesign: React.FC = () => {
                         title="Feature Map"
                         description="Define and prioritize your product features using the MoSCoW method"
                         onCreate={() => handleAddFeature("must")}
-                        count={data.features.length}
+                        count={uiData.features.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
                           title: "MoSCoW Prioritization",
@@ -751,7 +685,7 @@ export const ProductDesign: React.FC = () => {
                     </div>
                           ),
                         }}
-                        hasItems={data.features.length > 0}
+                        hasItems={uiData.features.length > 0}
                         emptyState={{
                           description:
                             "Define and prioritize your product features using the MoSCoW method.",
@@ -760,7 +694,7 @@ export const ProductDesign: React.FC = () => {
                         <div className="space-y-8">
                           {/* Feature Map */}
                         <FeatureMap
-                          features={data.features}
+                          features={uiData.features}
                           onAddFeature={handleAddFeature}
                           onEditFeature={(id) => console.log(id)}
                         />
@@ -789,16 +723,25 @@ export const ProductDesign: React.FC = () => {
                             </CardHeader>
                             <CardContent>
                               <MVPScopeDefinition
-                                features={data.features}
-                                onUpdateFeature={() => {}}
-                                onUpdateMVPScope={() => {}}
+                                features={uiData.features}
+                                onUpdateFeature={(id, updates) => updateFeature({ id, data: updates })}
+                                onUpdateMVPScope={(featureIds) => {
+                                  // Handle MVP scope update
+                                  console.log("Updating MVP scope", featureIds);
+                                }}
                                 selectedMVPFeatures={
-                                  enhancedData.selectedMVPFeatures || []
+                                  uiData.mvpFeatures?.map(mvpf => mvpf.feature_id).filter((id): id is string => id !== null) || []
                                 }
-                                onSaveSuccessCriteria={() => {}}
-                                successCriteria={enhancedData.successCriteria || []}
-                                onSaveTimeline={() => {}}
-                                timeline={enhancedData.timeline || []}
+                                onSaveSuccessCriteria={(criteria) => {
+                                  // Handle success criteria
+                                  console.log("Saving success criteria", criteria);
+                                }}
+                                successCriteria={[]} // Connect to actual data when available
+                                onSaveTimeline={(timeline) => {
+                                  // Handle timeline
+                                  console.log("Saving timeline", timeline);
+                                }}
+                                timeline={[]} // Connect to actual data when available
                               />
                             </CardContent>
                           </Card>
@@ -829,7 +772,7 @@ export const ProductDesign: React.FC = () => {
                         title="User Journey"
                         description="Map out the complete user experience with your product"
                         onCreate={() => handleAddJourneyStage()}
-                        count={data.journey.stages.length}
+                        count={uiData.journeyStages.length}
                         helper={{
                           icon: <Info className="h-5 w-5" />,
                           title: "User Journey Mapping",
@@ -852,14 +795,14 @@ export const ProductDesign: React.FC = () => {
                     </div>
                           ),
                         }}
-                        hasItems={data.journey.stages.length > 0}
+                        hasItems={uiData.journeyStages.length > 0}
                         emptyState={{
                           description:
                             "Create a user journey map to visualize the complete user experience with your product.",
                         }}
                       >
                 <UserJourneyMap 
-                          stages={data.journey.stages}
+                          stages={uiData.journeyStages}
                   onAddStage={handleAddJourneyStage} 
                   onEditStage={(id) => console.log(id)} 
                 />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { PlusCircle, HelpCircle, AlertCircle, Tag, PlayCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
@@ -23,15 +23,25 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
   onAddFeature,
   onEditFeature 
 }) => {
+  // Add mounted ref to prevent updates after unmounting
+  const isMounted = useRef(true);
+  
+  // Set up cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  
   const [showHelp, setShowHelp] = useState<{[key: string]: boolean}>({});
   
-  // Group features by priority
-  const featuresByPriority = {
+  // Group features by priority - memoized to prevent recalculation on every render
+  const featuresByPriority = useMemo(() => ({
     must: features.filter(f => f.priority === 'must'),
     should: features.filter(f => f.priority === 'should'),
     could: features.filter(f => f.priority === 'could'),
     wont: features.filter(f => f.priority === 'wont')
-  };
+  }), [features]);
   
   const priorityLabels = {
     must: 'Must Have (MVP)',
@@ -82,15 +92,30 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
     }
   };
   
-  const toggleHelp = (priority: string) => {
+  // Convert to useCallback to ensure stable reference
+  const toggleHelp = useCallback((priority: string) => {
+    if (!isMounted.current) return;
+    
     setShowHelp(prev => ({
       ...prev,
       [priority]: !prev[priority]
     }));
-  };
+  }, []);
+  
+  // Handle adding feature with proper error handling
+  const handleAddFeature = useCallback((priority: 'must' | 'should' | 'could' | 'wont') => {
+    if (!isMounted.current) return;
+    onAddFeature(priority);
+  }, [onAddFeature]);
+  
+  // Handle editing feature with proper error handling
+  const handleEditFeature = useCallback((id: string) => {
+    if (!isMounted.current || !onEditFeature) return;
+    onEditFeature(id);
+  }, [onEditFeature]);
 
-  const renderFeatureGroup = (priority: 'must' | 'should' | 'could' | 'wont') => {
-    const features = featuresByPriority[priority];
+  const renderFeatureGroup = useCallback((priority: 'must' | 'should' | 'could' | 'wont') => {
+    const groupFeatures = featuresByPriority[priority];
     
     return (
       <div className="mb-6 last:mb-0">
@@ -121,7 +146,7 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
               variant="outline"
               size="sm"
               className="text-primary-700 border-primary-200 hover:border-primary-300 hover:bg-primary-50"
-              onClick={() => onAddFeature(priority)}
+              onClick={() => handleAddFeature(priority)}
             >
               <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
               Add Feature
@@ -164,13 +189,13 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
           </CollapsibleContent>
         </Collapsible>
 
-        {features.length === 0 ? (
+        {groupFeatures.length === 0 ? (
           <div className="border border-dashed border-gray-300 rounded-md p-4 bg-white/50 text-dark-500 text-center text-sm">
             No {priority} have features added yet
           </div>
         ) : (
           <div className={`grid gap-3 grid-cols-1`}>
-            {features.map(feature => (
+            {groupFeatures.map(feature => (
               <Card 
                 key={feature.id} 
                 variant="default" 
@@ -209,7 +234,7 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
                         variant="ghost"
                         size="sm"
                         className="text-primary-700 hover:bg-primary-50"
-                        onClick={() => onEditFeature(feature.id)}
+                        onClick={() => handleEditFeature(feature.id)}
                       >
                         Edit
                       </Button>
@@ -222,7 +247,7 @@ export const FeatureMap: React.FC<FeatureMapProps> = ({
         )}
       </div>
     );
-  };
+  }, [featuresByPriority, showHelp, toggleHelp, handleAddFeature, handleEditFeature, onEditFeature]);
 
   return (
     <div className="space-y-6">

@@ -10,14 +10,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from '@/components/ui/badge';
 import { 
   Edit, 
@@ -26,31 +18,58 @@ import {
   MessageSquare,
   ThumbsUp,
   ThumbsDown,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal,
+  EyeIcon,
+  EyeOffIcon,
+  PlusCircle,
+  BarChart3
 } from 'lucide-react';
 import { Update, ValidationUserFeedback } from '@/store/types';
-import { ViewToggle, ViewMode } from './common/ViewToggle';
-import { UserFeedbackCard } from './common/UserFeedbackCard';
 import { UserFeedbackForm } from './forms/UserFeedbackForm';
+import { ValidationTable, ValidationTableColumn } from './common/ValidationTable';
+import { UserFeedbackModal } from './modals/UserFeedbackModal';
+import { ValidationItemType } from './common/ValidationItemModal';
+import { EnhancedValidationUserFeedback } from '../types';
+import { EnhancedUserFeedbackForm } from './forms/EnhancedUserFeedbackForm';
 
 interface UserFeedbackListProps {
   feedback: ValidationUserFeedback[];
   onUpdate: (params: { id: string; data: Update<"validation_user_feedback"> }) => void;
   onDelete: (id: string) => void;
+  relationships?: any[];
+  data?: any;
+  projectId?: string;
 }
+
+// Define a DetailLevel type for our component
+type DetailLevel = 'simple' | 'detailed';
 
 export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({ 
   feedback, 
   onUpdate,
-  onDelete
+  onDelete,
+  relationships = [],
+  data = {},
+  projectId
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFeedback, setEditingFeedback] = useState<ValidationUserFeedback | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>('simple');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  
+  // Modal state
+  const [selectedFeedbackForModal, setSelectedFeedbackForModal] = useState<EnhancedValidationUserFeedback | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Add new states for the enhanced form
+  const [openNewDialog, setOpenNewDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<ValidationUserFeedback | null>(null);
   
   const handleEdit = (item: ValidationUserFeedback) => {
-    setEditingFeedback(item);
-    setIsDialogOpen(true);
+    setSelectedFeedback(item);
+    setOpenEditDialog(true);
   };
   
   const handleSave = (feedback: any) => {
@@ -58,11 +77,11 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
       // Extract only the data fields from the feedback object (exclude id, created_at, updated_at)
       const { id, created_at, updated_at, ...data } = feedback;
 
-    onUpdate({
-      id: editingFeedback.id,
+      onUpdate({
+        id: editingFeedback.id,
         data
       });
-      }
+    }
     setIsDialogOpen(false);
     setEditingFeedback(null);
   };
@@ -87,12 +106,12 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
   const getSentimentColor = (sentiment: string | null) => {
     switch (sentiment) {
       case 'positive':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'negative':
-        return 'bg-red-100 text-red-800';
+        return 'destructive';
       case 'neutral':
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
   
@@ -111,13 +130,13 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
   const getImpactColor = (impact: string | null) => {
     switch (impact) {
       case 'high':
-        return 'bg-orange-100 text-orange-800';
+        return 'warning';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'info';
       case 'low':
-        return 'bg-blue-100 text-blue-800';
+        return 'secondary';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
   
@@ -125,152 +144,329 @@ export const UserFeedbackList: React.FC<UserFeedbackListProps> = ({
     switch (status) {
       case 'addressed':
       case 'implemented':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'in_progress':
       case 'in-review':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
       case 'planned':
       case 'accepted':
-        return 'bg-blue-100 text-blue-800';
+        return 'info';
       case 'wont_fix':
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'destructive';
       case 'new':
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
   
   // Render empty state
   const renderEmptyState = () => (
-        <Card className="border-dashed border-2">
-          <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-            <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No User Feedback Yet</h3>
-            <p className="text-sm text-gray-500 max-w-md mb-4">
-          Track and analyze feedback from your users to improve your product
-            </p>
-          </CardContent>
-        </Card>
-  );
-  
-  // Render the table view
-  const renderTableView = () => (
-        <Table>
-          <TableHeader>
-            <TableRow>
-          <TableHead className="w-[30%]">Feedback</TableHead>
-          <TableHead>Source</TableHead>
-              <TableHead>Type</TableHead>
-          <TableHead>Sentiment</TableHead>
-          <TableHead>Impact</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-        {feedback.map((item: ValidationUserFeedback) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                <span className="font-medium line-clamp-2">{item.content}</span>
-                {item.date && (
-                  <span className="text-xs text-gray-500 mt-1">
-                    {formatDate(item.date)}
-                  </span>
-                )}
-              </div>
-            </TableCell>
-            <TableCell>{item.source}</TableCell>
-            <TableCell>{item.type || '—'}</TableCell>
-            <TableCell>
-                      <Badge className={getSentimentColor(item.sentiment)}>
-                        <span className="flex items-center gap-1">
-                          {getSentimentIcon(item.sentiment)}
-                  {item.sentiment || 'Neutral'}
-                        </span>
-                      </Badge>
-                </TableCell>
-                <TableCell>
-              <Badge className={getImpactColor(item.impact)}>
-                {item.impact || 'Unknown'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge className={getStatusColor(item.status)}>
-                {item.status?.replace('_', ' ') || 'New'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(item)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                  <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-  );
-  
-  // Render the card view
-  const renderCardView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {feedback.map((item) => (
-        <UserFeedbackCard 
-          key={item.id}
-          feedback={item}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      ))}
+    <div className="flex h-[400px] shrink-0 items-center justify-center rounded-md border border-dashed">
+      <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
+        <BarChart3 className="h-10 w-10 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-semibold">No user feedback</h3>
+        <p className="mb-4 mt-2 text-sm text-muted-foreground">
+          You haven't collected any user feedback yet. Get started by recording your first piece of feedback.
+        </p>
+        <Button onClick={() => setOpenNewDialog(true)} className="flex items-center gap-2">
+          <PlusCircle className="h-4 w-4" />
+          Add User Feedback
+        </Button>
+      </div>
     </div>
   );
+  
+  // Define table columns based on detail level
+  const getTableColumns = (): ValidationTableColumn<ValidationUserFeedback>[] => {
+    const baseColumns: ValidationTableColumn<ValidationUserFeedback>[] = [
+      {
+        header: "Feedback",
+        className: "w-[30%]",
+        cell: (item) => (
+          <div className="font-medium max-w-md truncate">
+            {item.content}
+          </div>
+        )
+      },
+      {
+        header: "Sentiment",
+        cell: (item) => (
+          <Badge variant={getSentimentColor(item.sentiment)} className="flex w-fit items-center gap-1">
+            {getSentimentIcon(item.sentiment)}
+            {item.sentiment || 'Neutral'}
+          </Badge>
+        )
+      }
+    ];
+    
+    if (detailLevel === 'detailed') {
+      return [
+        ...baseColumns,
+        {
+          header: "Source",
+          cell: (item) => (
+            <div className="max-w-[150px] truncate">
+              {item.source || 'Unknown'}
+            </div>
+          )
+        },
+        {
+          header: "Type",
+          cell: (item) => (
+            <div className="max-w-[150px] truncate">
+              {item.type || '—'}
+            </div>
+          )
+        },
+        {
+          header: "Impact",
+          cell: (item) => (
+            <Badge variant={getImpactColor(item.impact)}>
+              {item.impact || 'Unknown'}
+            </Badge>
+          )
+        },
+        {
+          header: "Status",
+          cell: (item) => (
+            <Badge variant={getStatusColor(item.status)}>
+              {item.status?.replace('_', ' ') || 'New'}
+            </Badge>
+          )
+        }
+      ];
+    }
+    
+    return baseColumns;
+  };
+
+  // Handle opening the modal when a row is clicked
+  const handleRowClick = (item: ValidationUserFeedback) => {
+    // Convert to enhanced feedback type
+    const enhancedFeedback: EnhancedValidationUserFeedback = {
+      ...item,
+      analysis: item.sentiment ? {
+        sentiment: (item.sentiment as 'positive' | 'neutral' | 'negative'),
+        impact: (item.impact as 'high' | 'medium' | 'low') || 'medium',
+        tags: item.tags || [],
+        response: item.response || '',
+        responseTime: 0 // This would need to be calculated
+      } : null,
+      entityId: null, // These fields are added in the EnhancedValidationUserFeedback type
+      entityType: null, // These fields are added in the EnhancedValidationUserFeedback type
+      sentimentScore: item.sentiment === 'positive' ? 1 : item.sentiment === 'negative' ? -1 : 0
+    };
+    
+    setSelectedFeedbackForModal(enhancedFeedback);
+    setIsModalOpen(true);
+  };
+
+  // Handle view item in related items
+  const handleViewItem = (itemType: ValidationItemType, itemId: string) => {
+    // This would be implemented to open the appropriate modal for the related item
+    console.log(`View ${itemType} with ID ${itemId}`);
+    // You would implement this to open the appropriate modal
+  };
+
+  // Handle feedback actions
+  const handleMarkAddressed = () => {
+    if (!selectedFeedbackForModal) return;
+    
+    onUpdate({
+      id: selectedFeedbackForModal.id,
+      data: { status: 'addressed' }
+    });
+  };
+
+  const handleMarkImplemented = () => {
+    if (!selectedFeedbackForModal) return;
+    
+    onUpdate({
+      id: selectedFeedbackForModal.id,
+      data: { status: 'implemented' }
+    });
+  };
+
+  const handleReject = () => {
+    if (!selectedFeedbackForModal) return;
+    
+    onUpdate({
+      id: selectedFeedbackForModal.id,
+      data: { status: 'rejected' }
+    });
+  };
+
+  const handleAddResponse = () => {
+    if (!selectedFeedbackForModal) return;
+    setIsModalOpen(false);
+    handleEdit(selectedFeedbackForModal);
+  };
+
+  const handleCreateHypothesis = () => {
+    // Implement navigation or modal to create hypothesis based on feedback
+    console.log('Create hypothesis from feedback', selectedFeedbackForModal?.id);
+  };
+
+  const handleCreateExperiment = () => {
+    // Implement navigation or modal to create experiment based on feedback
+    console.log('Create experiment from feedback', selectedFeedbackForModal?.id);
+  };
+
+  const handleCreateABTest = () => {
+    // Implement navigation or modal to create A/B test based on feedback
+    console.log('Create A/B test from feedback', selectedFeedbackForModal?.id);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* View toggle control */}
-      <div className="flex justify-end mb-4">
-        <ViewToggle
-          viewMode={viewMode}
-          onChange={setViewMode}
-          className="ml-auto"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">User Feedback</h2>
+          <p className="text-muted-foreground">
+            Collect and track user feedback to inform your product decisions.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setDetailLevel(detailLevel === "simple" ? "detailed" : "simple")
+            }
+            className="flex items-center gap-1"
+          >
+            {detailLevel === "simple" ? (
+              <EyeIcon className="h-4 w-4" />
+            ) : (
+              <EyeOffIcon className="h-4 w-4" />
+            )}
+            {detailLevel === "simple" ? "Show Details" : "Simple View"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+            className="flex items-center gap-1"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters
+          </Button>
+          <Button 
+            onClick={() => setOpenNewDialog(true)} 
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Add User Feedback
+          </Button>
+        </div>
       </div>
 
-      {/* Content based on available data and view mode */}
       {feedback.length === 0 ? (
         renderEmptyState()
       ) : (
-        viewMode === 'table' ? renderTableView() : renderCardView()
+        <div className="space-y-4">
+          {isFiltersOpen && (
+            <Card className="mb-4">
+              <CardContent className="pt-4">
+                {/* Filter content would go here */}
+              </CardContent>
+            </Card>
+          )}
+          
+          <ValidationTable
+            data={feedback}
+            columns={getTableColumns()}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            getRowId={(item) => item.id}
+            onRowClick={handleRowClick}
+            isRowClickable={true}
+            emptyState={
+              <div className="flex flex-col items-center justify-center text-muted-foreground">
+                <BarChart3 className="h-8 w-8 mb-2 opacity-50" />
+                <p>No user feedback yet</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => setOpenNewDialog(true)}
+                  className="mt-2"
+                >
+                  Add your first feedback
+                </Button>
+              </div>
+            }
+          />
+        </div>
       )}
 
-      {/* Edit dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>Edit User Feedback</DialogTitle>
-          </DialogHeader>
-          <UserFeedbackForm 
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            initialData={editingFeedback || undefined}
-            onSubmit={handleSave}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Enhanced User Feedback Form for Creating New Feedback */}
+      <EnhancedUserFeedbackForm
+        open={openNewDialog}
+        onOpenChange={setOpenNewDialog}
+        onSubmit={(data) => {
+          // Format the User Feedback for the database
+          const newFeedback = {
+            ...data,
+            project_id: projectId ?? ''
+          };
+          
+          onUpdate({
+            id: data.id ?? '',
+            data: newFeedback
+          });
+        }}
+      />
+
+      {/* Enhanced User Feedback Form for Editing Existing Feedback */}
+      {selectedFeedback && (
+        <EnhancedUserFeedbackForm
+          open={openEditDialog}
+          onOpenChange={setOpenEditDialog}
+          initialData={selectedFeedback}
+          onSubmit={(data) => {
+            if (selectedFeedback) {
+              // Format the User Feedback for the database
+              const updatedFeedback = {
+                ...data,
+                id: selectedFeedback.id,
+                project_id: projectId ?? ''
+              };
+              
+              onUpdate({
+                id: selectedFeedback.id,
+                data: updatedFeedback
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* User Feedback Modal */}
+      {selectedFeedbackForModal && (
+        <UserFeedbackModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          feedback={selectedFeedbackForModal as unknown as EnhancedValidationUserFeedback}
+          onEdit={() => {
+            setIsModalOpen(false);
+            handleEdit(selectedFeedbackForModal);
+          }}
+          onDelete={() => {
+            setIsModalOpen(false);
+            handleDelete(selectedFeedbackForModal.id);
+          }}
+          onMarkAddressed={handleMarkAddressed}
+          onMarkImplemented={handleMarkImplemented}
+          onReject={handleReject}
+          onAddResponse={handleAddResponse}
+          onCreateHypothesis={handleCreateHypothesis}
+          onCreateExperiment={handleCreateExperiment}
+          onCreateABTest={handleCreateABTest}
+          onViewItem={handleViewItem}
+          relationships={relationships}
+          data={data}
+        />
+      )}
     </div>
   );
 }; 

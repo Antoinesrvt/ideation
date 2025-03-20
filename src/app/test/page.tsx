@@ -809,3 +809,5 @@ const AmbientBackground = ({ energyLevel }: AmbientBackgroundProps) => {
 };
 
 export default LivingAIDashboard;
+
+

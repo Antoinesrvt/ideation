@@ -27,7 +27,7 @@ import { useProjectStore } from "@/store/project-store";
 import { useProductStepper } from '@/context/product-stepper-context';
 import { useValidation } from '@/hooks/features/useValidation';
 import { useToast } from '@/components/ui/use-toast';
-import type { Problem, Solution, Evidence } from '../ProblemSolutionFit';
+import type { Problem, Solution, Evidence } from '@/context/product-stepper-context';
 
 // Memoized select components to prevent unnecessary re-renders
 const MemoizedProblemSelect = React.memo(({

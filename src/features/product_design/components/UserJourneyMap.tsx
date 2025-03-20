@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { 
   PlusCircle, 
   ArrowRight, 
@@ -10,7 +10,8 @@ import {
   HelpCircle,
   Smile,
   Frown,
-  Meh
+  Meh,
+  ChevronUp
 } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,8 +36,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ProductJourneyStage } from '@/store/types';
 
-// Add extended type for ProductJourneyStage to include status
-interface ExtendedProductJourneyStage extends ProductJourneyStage {
+export interface ExtendedProductJourneyStage extends ProductJourneyStage {
   status?: 'new' | 'modified' | 'removed';
   sentiment?: number;
   touchpoint?: string;
@@ -54,23 +54,56 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
   onAddStage,
   onEditStage
 }) => {
+  // Add mounted ref to prevent updates after unmounting
+  const isMounted = useRef(true);
+  
+  // Set up cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  
   const [showHelp, setShowHelp] = useState(false);
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
 
+  // Use memoization for sorted journey stages to prevent unnecessary recomputation
+  const sortedStages = useMemo(() => {
+    return [...stages].sort((a, b) => 
+      (a.order_index ?? Number.MAX_SAFE_INTEGER) - (b.order_index ?? Number.MAX_SAFE_INTEGER)
+    );
+  }, [stages]);
   
+  // Convert to useCallback to ensure stable reference
+  const toggleHelp = useCallback(() => {
+    if (!isMounted.current) return;
+    setShowHelp(prev => !prev);
+  }, []);
+  
+  // Handle adding stage with proper error handling
+  const handleAddStage = useCallback(() => {
+    if (!isMounted.current) return;
+    onAddStage?.();
+  }, [onAddStage]);
+  
+  // Handle editing stage with proper error handling
+  const handleEditStage = useCallback((id: string) => {
+    if (!isMounted.current || !onEditStage) return;
+    onEditStage(id);
+  }, [onEditStage]);
 
   // Helper functions for sentiment display
-  const getSentimentIcon = (sentiment: number) => {
+  const getSentimentIcon = useCallback((sentiment: number) => {
     if (sentiment >= 4) return <Smile className="text-success-500 h-5 w-5" />;
     if (sentiment <= 2) return <Frown className="text-destructive-500 h-5 w-5" />;
     return <Meh className="text-warning-500 h-5 w-5" />;
-  };
+  }, []);
   
-  const getSentimentColor = (sentiment: number) => {
+  const getSentimentColor = useCallback((sentiment: number) => {
     if (sentiment >= 4) return 'bg-success-50 text-success-700 border-success-200';
     if (sentiment <= 2) return 'bg-destructive-50 text-destructive-700 border-destructive-200';
     return 'bg-warning-50 text-warning-700 border-warning-200';
-  };
+  }, []);
 
   return (
     <TooltipProvider>
@@ -96,15 +129,25 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
             </Tooltip>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHelp(!showHelp)}
-            className="text-primary-700 border-primary-200 hover:border-primary-300 hover:bg-primary-50"
-          >
-            <HelpCircle className="h-3.5 w-3.5 mr-1.5" />
-            {showHelp ? "Hide" : "Show"} Help
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-primary-700 border-primary-200 hover:border-primary-300 hover:bg-primary-50"
+              onClick={handleAddStage}
+            >
+              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+              Add Journey Stage
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-dark-500"
+              onClick={toggleHelp}
+            >
+              {showHelp ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
         <Collapsible open={showHelp} className="mb-6">
@@ -162,7 +205,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
           </CollapsibleContent>
         </Collapsible>
 
-        {stages.length === 0 ? (
+        {sortedStages.length === 0 ? (
           <Card variant="default" className="border-dashed border-gray-300">
             <CardContent className="p-8 flex flex-col items-center justify-center text-center">
               <div className="bg-primary-50 p-3 rounded-full mb-4">
@@ -178,7 +221,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
               {onAddStage && (
                 <Button
                   variant="default"
-                  onClick={onAddStage}
+                  onClick={handleAddStage}
                   className="bg-gradient-primary text-white"
                 >
                   <PlusCircle className="h-4 w-4 mr-2" />
@@ -191,13 +234,13 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
           <div className="relative">
             <div className="absolute top-1/2 left-0 right-0 h-1 bg-primary-100 -translate-y-1/2 z-0"></div>
             <div className="flex justify-between relative z-10">
-              {stages.map((stage, index) => (
+              {sortedStages.map((stage, index) => (
                 <div
                   key={stage.id}
                   className={cn(
                     "flex flex-col items-center",
                     index === 0 ? "ml-0" : "",
-                    index === stages.length - 1 ? "mr-0" : ""
+                    index === sortedStages.length - 1 ? "mr-0" : ""
                   )}
                 >
                   <Card
@@ -213,8 +256,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                         ? "border-l-4 border-l-red-500 bg-red-50/60"
                         : ""
                     )}
-                    onClick={() =>setSelectedStage(stage.id)
-                    }
+                    onClick={() => setSelectedStage(stage.id)}
                   >
                     <CardHeader className="p-3 pb-0">
                       <CardTitle className="text-sm font-heading font-medium text-primary-800 line-clamp-2">
@@ -257,7 +299,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                             className="h-7 w-7 text-dark-400 hover:text-primary-700 hover:bg-primary-50"
                             onClick={(e) => {
                               e.stopPropagation();
-                              onEditStage(stage.id);
+                              handleEditStage(stage.id);
                             }}
                           >
                             <Edit2 className="h-3.5 w-3.5" />
@@ -286,7 +328,7 @@ export const UserJourneyMap: React.FC<UserJourneyMapProps> = ({
                 <div className="flex flex-col items-center">
                   <Card
                     className="w-36 sm:w-44 border-dashed border-gray-300 hover:border-primary-300 hover:bg-primary-50/10 transition-colors cursor-pointer mb-4"
-                    onClick={onAddStage}
+                    onClick={handleAddStage}
                   >
                     <CardContent className="p-6 flex flex-col items-center justify-center text-center">
                       <PlusCircle className="h-6 w-6 text-primary-400 mb-2" />

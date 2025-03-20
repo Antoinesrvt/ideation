@@ -40,6 +40,10 @@ import {
   ValidationABTest,
   ValidationUserFeedback,
   ValidationHypothesis,
+  ValidationRelationship,
+  ValidationInsight,
+  ValidationDecision,
+  ValidationMilestone,
   // Team
   TeamMember,
   TeamTask,
@@ -104,6 +108,10 @@ const initialState: ProjectState = {
     validationABTests: [],
     validationUserFeedback: [],
     validationHypotheses: [],
+    validationRelationships: [],
+    validationInsights: [],
+    validationDecisions: [],
+    validationMilestones: [],
     // Team
     teamMembers: [],
     teamTasks: [],
@@ -161,6 +169,10 @@ const initialDiffMetadata: DiffMetadata = {
   validationABTests: { additions: [], modifications: [], deletions: [] },
   validationUserFeedback: { additions: [], modifications: [], deletions: [] },
   validationHypotheses: { additions: [], modifications: [], deletions: [] },
+  validationRelationships: { additions: [], modifications: [], deletions: [] },
+  validationInsights: { additions: [], modifications: [], deletions: [] },
+  validationDecisions: { additions: [], modifications: [], deletions: [] },
+  validationMilestones: { additions: [], modifications: [], deletions: [] },
   // Team
   teamMembers: { additions: [], modifications: [], deletions: [] },
   teamTasks: { additions: [], modifications: [], deletions: [] },
@@ -722,1326 +734,1867 @@ export function useProjectStore(): ProjectStore {
     discardStagedChanges,
 
     // Project actions
-    setProject: useCallback((project) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          project,
-        },
-      }));
-    }, [setState]),
+    setProject: useCallback(
+      (project) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            project,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProject: useCallback((updates) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          project: prev.currentData.project
-            ? { ...prev.currentData.project, ...updates }
-            : null,
-        },
-      }));
-    }, [setState]),
+    updateProject: useCallback(
+      (updates) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            project: prev.currentData.project
+              ? { ...prev.currentData.project, ...updates }
+              : null,
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Business Model Canvas actions
-    setCanvasSections: useCallback((sections: CanvasSection[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasSections: sections,
-        },
-      }));
-    }, [setState]),
+    setCanvasSections: useCallback(
+      (sections: CanvasSection[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasSections: sections,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addCanvasSection: useCallback((section: CanvasSection) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasSections: [...prev.currentData.canvasSections, section],
-        },
-      }));
-    }, [setState]),
+    addCanvasSection: useCallback(
+      (section: CanvasSection) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasSections: [...prev.currentData.canvasSections, section],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateCanvasSection: useCallback((id: string, updates: Partial<CanvasSection>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasSections: updateArray(prev.currentData.canvasSections, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateCanvasSection: useCallback(
+      (id: string, updates: Partial<CanvasSection>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasSections: updateArray(
+              prev.currentData.canvasSections,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteCanvasSection: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasSections: prev.currentData.canvasSections.filter(
-            (section) => section.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteCanvasSection: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasSections: prev.currentData.canvasSections.filter(
+              (section) => section.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setCanvasItems: useCallback((items: CanvasItem[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasItems: items,
-        },
-      }));
-    }, [setState]),
+    setCanvasItems: useCallback(
+      (items: CanvasItem[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasItems: items,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addCanvasItem: useCallback((item: CanvasItem) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasItems: [...prev.currentData.canvasItems, item],
-        },
-      }));
-    }, [setState]),
+    addCanvasItem: useCallback(
+      (item: CanvasItem) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasItems: [...prev.currentData.canvasItems, item],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateCanvasItem: useCallback((id: string, updates: Partial<CanvasItem>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasItems: updateArray(prev.currentData.canvasItems, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateCanvasItem: useCallback(
+      (id: string, updates: Partial<CanvasItem>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasItems: updateArray(prev.currentData.canvasItems, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteCanvasItem: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          canvasItems: prev.currentData.canvasItems.filter(
-            (item) => item.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteCanvasItem: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            canvasItems: prev.currentData.canvasItems.filter(
+              (item) => item.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // GRP Model actions
-    setGrpCategories: useCallback((categories: GrpCategory[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpCategories: categories,
-        },
-      }));
-    }, [setState]),
+    setGrpCategories: useCallback(
+      (categories: GrpCategory[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpCategories: categories,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addGrpCategory: useCallback((category: GrpCategory) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpCategories: [...prev.currentData.grpCategories, category],
-        },
-      }));
-    }, [setState]),
+    addGrpCategory: useCallback(
+      (category: GrpCategory) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpCategories: [...prev.currentData.grpCategories, category],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateGrpCategory: useCallback((id: string, updates: Partial<GrpCategory>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpCategories: updateArray(prev.currentData.grpCategories, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateGrpCategory: useCallback(
+      (id: string, updates: Partial<GrpCategory>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpCategories: updateArray(
+              prev.currentData.grpCategories,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteGrpCategory: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpCategories: prev.currentData.grpCategories.filter(
-            (category) => category.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteGrpCategory: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpCategories: prev.currentData.grpCategories.filter(
+              (category) => category.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setGrpSections: useCallback((sections: GrpSection[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpSections: sections,
-        },
-      }));
-    }, [setState]),
+    setGrpSections: useCallback(
+      (sections: GrpSection[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpSections: sections,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addGrpSection: useCallback((section: GrpSection) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpSections: [...prev.currentData.grpSections, section],
-        },
-      }));
-    }, [setState]),
+    addGrpSection: useCallback(
+      (section: GrpSection) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpSections: [...prev.currentData.grpSections, section],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateGrpSection: useCallback((id: string, updates: Partial<GrpSection>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpSections: updateArray(prev.currentData.grpSections, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateGrpSection: useCallback(
+      (id: string, updates: Partial<GrpSection>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpSections: updateArray(prev.currentData.grpSections, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteGrpSection: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpSections: prev.currentData.grpSections.filter(
-            (section) => section.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteGrpSection: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpSections: prev.currentData.grpSections.filter(
+              (section) => section.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setGrpItems: useCallback((items: GrpItem[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpItems: items,
-        },
-      }));
-    }, [setState]),
+    setGrpItems: useCallback(
+      (items: GrpItem[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpItems: items,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addGrpItem: useCallback((item: GrpItem) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpItems: [...prev.currentData.grpItems, item],
-        },
-      }));
-    }, [setState]),
+    addGrpItem: useCallback(
+      (item: GrpItem) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpItems: [...prev.currentData.grpItems, item],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateGrpItem: useCallback((id: string, updates: Partial<GrpItem>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpItems: updateArray(prev.currentData.grpItems, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateGrpItem: useCallback(
+      (id: string, updates: Partial<GrpItem>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpItems: updateArray(prev.currentData.grpItems, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteGrpItem: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          grpItems: prev.currentData.grpItems.filter(
-            (item) => item.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteGrpItem: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            grpItems: prev.currentData.grpItems.filter(
+              (item) => item.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Market Analysis actions
-    setMarketPersonas: useCallback((personas: MarketPersona[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketPersonas: personas,
-        },
-      }));
-    }, [setState]),
+    setMarketPersonas: useCallback(
+      (personas: MarketPersona[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketPersonas: personas,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addMarketPersona: useCallback((persona: MarketPersona) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketPersonas: [...prev.currentData.marketPersonas, persona],
-        },
-      }));
-    }, [setState]),
+    addMarketPersona: useCallback(
+      (persona: MarketPersona) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketPersonas: [...prev.currentData.marketPersonas, persona],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateMarketPersona: useCallback((id: string, updates: Partial<MarketPersona>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketPersonas: updateArray(prev.currentData.marketPersonas, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateMarketPersona: useCallback(
+      (id: string, updates: Partial<MarketPersona>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketPersonas: updateArray(
+              prev.currentData.marketPersonas,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteMarketPersona: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketPersonas: prev.currentData.marketPersonas.filter(
-            (persona) => persona.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteMarketPersona: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketPersonas: prev.currentData.marketPersonas.filter(
+              (persona) => persona.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setMarketInterviews: useCallback((interviews: MarketInterview[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketInterviews: interviews,
-        },
-      }));
-    }, [setState]),
+    setMarketInterviews: useCallback(
+      (interviews: MarketInterview[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketInterviews: interviews,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addMarketInterview: useCallback((interview: MarketInterview) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketInterviews: [...prev.currentData.marketInterviews, interview],
-        },
-      }));
-    }, [setState]),
+    addMarketInterview: useCallback(
+      (interview: MarketInterview) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketInterviews: [...prev.currentData.marketInterviews, interview],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateMarketInterview: useCallback((id: string, updates: Partial<MarketInterview>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketInterviews: updateArray(prev.currentData.marketInterviews, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateMarketInterview: useCallback(
+      (id: string, updates: Partial<MarketInterview>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketInterviews: updateArray(
+              prev.currentData.marketInterviews,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteMarketInterview: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketInterviews: prev.currentData.marketInterviews.filter(
-            (interview) => interview.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteMarketInterview: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketInterviews: prev.currentData.marketInterviews.filter(
+              (interview) => interview.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setMarketCompetitors: useCallback((competitors: MarketCompetitor[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketCompetitors: competitors,
-        },
-      }));
-    }, [setState]),
+    setMarketCompetitors: useCallback(
+      (competitors: MarketCompetitor[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketCompetitors: competitors,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addMarketCompetitor: useCallback((competitor: MarketCompetitor) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketCompetitors: [...prev.currentData.marketCompetitors, competitor],
-        },
-      }));
-    }, [setState]),
+    addMarketCompetitor: useCallback(
+      (competitor: MarketCompetitor) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketCompetitors: [
+              ...prev.currentData.marketCompetitors,
+              competitor,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateMarketCompetitor: useCallback((id: string, updates: Partial<MarketCompetitor>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketCompetitors: updateArray(prev.currentData.marketCompetitors, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateMarketCompetitor: useCallback(
+      (id: string, updates: Partial<MarketCompetitor>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketCompetitors: updateArray(
+              prev.currentData.marketCompetitors,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteMarketCompetitor: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketCompetitors: prev.currentData.marketCompetitors.filter(
-            (competitor) => competitor.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteMarketCompetitor: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketCompetitors: prev.currentData.marketCompetitors.filter(
+              (competitor) => competitor.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setMarketTrends: useCallback((trends: MarketTrend[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketTrends: trends,
-        },
-      }));
-    }, [setState]),
+    setMarketTrends: useCallback(
+      (trends: MarketTrend[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketTrends: trends,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addMarketTrend: useCallback((trend: MarketTrend) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketTrends: [...prev.currentData.marketTrends, trend],
-        },
-      }));
-    }, [setState]),
+    addMarketTrend: useCallback(
+      (trend: MarketTrend) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketTrends: [...prev.currentData.marketTrends, trend],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateMarketTrend: useCallback((id: string, updates: Partial<MarketTrend>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketTrends: updateArray(prev.currentData.marketTrends, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateMarketTrend: useCallback(
+      (id: string, updates: Partial<MarketTrend>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketTrends: updateArray(
+              prev.currentData.marketTrends,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteMarketTrend: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          marketTrends: prev.currentData.marketTrends.filter(
-            (trend) => trend.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteMarketTrend: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            marketTrends: prev.currentData.marketTrends.filter(
+              (trend) => trend.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Product Design actions
-    setProductWireframes: useCallback((wireframes: ProductWireframe[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productWireframes: wireframes,
-        },
-      }));
-    }, [setState]),
+    setProductWireframes: useCallback(
+      (wireframes: ProductWireframe[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productWireframes: wireframes,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProductWireframe: useCallback((wireframe: ProductWireframe) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productWireframes: [...prev.currentData.productWireframes, wireframe],
-        },
-      }));
-    }, [setState]),
+    addProductWireframe: useCallback(
+      (wireframe: ProductWireframe) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productWireframes: [
+              ...prev.currentData.productWireframes,
+              wireframe,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProductWireframe: useCallback((id: string, updates: Partial<ProductWireframe>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productWireframes: updateArray(prev.currentData.productWireframes, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateProductWireframe: useCallback(
+      (id: string, updates: Partial<ProductWireframe>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productWireframes: updateArray(
+              prev.currentData.productWireframes,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProductWireframe: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productWireframes: prev.currentData.productWireframes.filter(
-            (wireframe) => wireframe.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteProductWireframe: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productWireframes: prev.currentData.productWireframes.filter(
+              (wireframe) => wireframe.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setProductFeatures: useCallback((features: ProductFeature[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productFeatures: features,
-        },
-      }));
-    }, [setState]),
+    setProductFeatures: useCallback(
+      (features: ProductFeature[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productFeatures: features,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProductFeature: useCallback((feature: ProductFeature) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productFeatures: [...prev.currentData.productFeatures, feature],
-        },
-      }));
-    }, [setState]),
+    addProductFeature: useCallback(
+      (feature: ProductFeature) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productFeatures: [...prev.currentData.productFeatures, feature],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProductFeature: useCallback((id: string, updates: Partial<ProductFeature>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productFeatures: updateArray(prev.currentData.productFeatures, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateProductFeature: useCallback(
+      (id: string, updates: Partial<ProductFeature>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productFeatures: updateArray(
+              prev.currentData.productFeatures,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProductFeature: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productFeatures: prev.currentData.productFeatures.filter(
-            (feature) => feature.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteProductFeature: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productFeatures: prev.currentData.productFeatures.filter(
+              (feature) => feature.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setProductJourneyStages: useCallback((stages: ProductJourneyStage[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyStages: stages,
-        },
-      }));
-    }, [setState]),
+    setProductJourneyStages: useCallback(
+      (stages: ProductJourneyStage[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyStages: stages,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProductJourneyStage: useCallback((stage: ProductJourneyStage) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyStages: [...prev.currentData.productJourneyStages, stage],
-        },
-      }));
-    }, [setState]),
+    addProductJourneyStage: useCallback(
+      (stage: ProductJourneyStage) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyStages: [
+              ...prev.currentData.productJourneyStages,
+              stage,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProductJourneyStage: useCallback((id: string, updates: Partial<ProductJourneyStage>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyStages: updateArray(prev.currentData.productJourneyStages, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateProductJourneyStage: useCallback(
+      (id: string, updates: Partial<ProductJourneyStage>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyStages: updateArray(
+              prev.currentData.productJourneyStages,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProductJourneyStage: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyStages: prev.currentData.productJourneyStages.filter(
-            (stage) => stage.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteProductJourneyStage: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyStages: prev.currentData.productJourneyStages.filter(
+              (stage) => stage.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setProductJourneyActions: useCallback((actions: ProductJourneyAction[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyActions: actions,
-        },
-      }));
-    }, [setState]),
+    setProductJourneyActions: useCallback(
+      (actions: ProductJourneyAction[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyActions: actions,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProductJourneyAction: useCallback((action: ProductJourneyAction) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyActions: [...prev.currentData.productJourneyActions, action],
-        },
-      }));
-    }, [setState]),
+    addProductJourneyAction: useCallback(
+      (action: ProductJourneyAction) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyActions: [
+              ...prev.currentData.productJourneyActions,
+              action,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProductJourneyAction: useCallback((id: string, updates: Partial<ProductJourneyAction>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyActions: updateArray(prev.currentData.productJourneyActions, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateProductJourneyAction: useCallback(
+      (id: string, updates: Partial<ProductJourneyAction>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyActions: updateArray(
+              prev.currentData.productJourneyActions,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProductJourneyAction: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyActions: prev.currentData.productJourneyActions.filter(
-            (action) => action.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteProductJourneyAction: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyActions:
+              prev.currentData.productJourneyActions.filter(
+                (action) => action.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setProductJourneyPainPoints: useCallback((painPoints: ProductJourneyPainPoint[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyPainPoints: painPoints,
-        },
-      }));
-    }, [setState]),
+    setProductJourneyPainPoints: useCallback(
+      (painPoints: ProductJourneyPainPoint[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyPainPoints: painPoints,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProductJourneyPainPoint: useCallback((painPoint: ProductJourneyPainPoint) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyPainPoints: [...prev.currentData.productJourneyPainPoints, painPoint],
-        },
-      }));
-    }, [setState]),
+    addProductJourneyPainPoint: useCallback(
+      (painPoint: ProductJourneyPainPoint) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyPainPoints: [
+              ...prev.currentData.productJourneyPainPoints,
+              painPoint,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProductJourneyPainPoint: useCallback((id: string, updates: Partial<ProductJourneyPainPoint>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyPainPoints: updateArray(prev.currentData.productJourneyPainPoints, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateProductJourneyPainPoint: useCallback(
+      (id: string, updates: Partial<ProductJourneyPainPoint>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyPainPoints: updateArray(
+              prev.currentData.productJourneyPainPoints,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProductJourneyPainPoint: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productJourneyPainPoints: prev.currentData.productJourneyPainPoints.filter(
-            (painPoint) => painPoint.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteProductJourneyPainPoint: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productJourneyPainPoints:
+              prev.currentData.productJourneyPainPoints.filter(
+                (painPoint) => painPoint.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Financial actions
-    setFinancialRevenueStreams: useCallback((streams: FinancialRevenueStream[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialRevenueStreams: streams,
-        },
-      }));
-    }, [setState]),
+    setFinancialRevenueStreams: useCallback(
+      (streams: FinancialRevenueStream[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialRevenueStreams: streams,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addFinancialRevenueStream: useCallback((stream: FinancialRevenueStream) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialRevenueStreams: [...prev.currentData.financialRevenueStreams, stream],
-        },
-      }));
-    }, [setState]),
+    addFinancialRevenueStream: useCallback(
+      (stream: FinancialRevenueStream) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialRevenueStreams: [
+              ...prev.currentData.financialRevenueStreams,
+              stream,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateFinancialRevenueStream: useCallback((id: string, updates: Partial<FinancialRevenueStream>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialRevenueStreams: updateArray(prev.currentData.financialRevenueStreams, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateFinancialRevenueStream: useCallback(
+      (id: string, updates: Partial<FinancialRevenueStream>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialRevenueStreams: updateArray(
+              prev.currentData.financialRevenueStreams,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteFinancialRevenueStream: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialRevenueStreams: prev.currentData.financialRevenueStreams.filter(
-            (stream) => stream.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteFinancialRevenueStream: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialRevenueStreams:
+              prev.currentData.financialRevenueStreams.filter(
+                (stream) => stream.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setFinancialCostStructure: useCallback((costs: FinancialCostStructure[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialCostStructure: costs,
-        },
-      }));
-    }, [setState]),
+    setFinancialCostStructure: useCallback(
+      (costs: FinancialCostStructure[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialCostStructure: costs,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addFinancialCostStructure: useCallback((cost: FinancialCostStructure) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialCostStructure: [...prev.currentData.financialCostStructure, cost],
-        },
-      }));
-    }, [setState]),
+    addFinancialCostStructure: useCallback(
+      (cost: FinancialCostStructure) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialCostStructure: [
+              ...prev.currentData.financialCostStructure,
+              cost,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateFinancialCostStructure: useCallback((id: string, updates: Partial<FinancialCostStructure>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialCostStructure: updateArray(prev.currentData.financialCostStructure, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateFinancialCostStructure: useCallback(
+      (id: string, updates: Partial<FinancialCostStructure>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialCostStructure: updateArray(
+              prev.currentData.financialCostStructure,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteFinancialCostStructure: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialCostStructure: prev.currentData.financialCostStructure.filter(
-            (cost) => cost.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteFinancialCostStructure: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialCostStructure:
+              prev.currentData.financialCostStructure.filter(
+                (cost) => cost.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setFinancialPricingStrategies: useCallback((strategies: FinancialPricingStrategy[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialPricingStrategies: strategies,
-        },
-      }));
-    }, [setState]),
+    setFinancialPricingStrategies: useCallback(
+      (strategies: FinancialPricingStrategy[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialPricingStrategies: strategies,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addFinancialPricingStrategy: useCallback((strategy: FinancialPricingStrategy) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialPricingStrategies: [...prev.currentData.financialPricingStrategies, strategy],
-        },
-      }));
-    }, [setState]),
+    addFinancialPricingStrategy: useCallback(
+      (strategy: FinancialPricingStrategy) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialPricingStrategies: [
+              ...prev.currentData.financialPricingStrategies,
+              strategy,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateFinancialPricingStrategy: useCallback((id: string, updates: Partial<FinancialPricingStrategy>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialPricingStrategies: updateArray(prev.currentData.financialPricingStrategies, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateFinancialPricingStrategy: useCallback(
+      (id: string, updates: Partial<FinancialPricingStrategy>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialPricingStrategies: updateArray(
+              prev.currentData.financialPricingStrategies,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteFinancialPricingStrategy: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialPricingStrategies: prev.currentData.financialPricingStrategies.filter(
-            (strategy) => strategy.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteFinancialPricingStrategy: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialPricingStrategies:
+              prev.currentData.financialPricingStrategies.filter(
+                (strategy) => strategy.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setFinancialProjections: useCallback((projections: FinancialProjection[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialProjections: projections,
-        },
-      }));
-    }, [setState]),
+    setFinancialProjections: useCallback(
+      (projections: FinancialProjection[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialProjections: projections,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addFinancialProjection: useCallback((projection: FinancialProjection) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialProjections: [...prev.currentData.financialProjections, projection],
-        },
-      }));
-    }, [setState]),
+    addFinancialProjection: useCallback(
+      (projection: FinancialProjection) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialProjections: [
+              ...prev.currentData.financialProjections,
+              projection,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateFinancialProjection: useCallback((id: string, updates: Partial<FinancialProjection>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialProjections: updateArray(prev.currentData.financialProjections, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateFinancialProjection: useCallback(
+      (id: string, updates: Partial<FinancialProjection>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialProjections: updateArray(
+              prev.currentData.financialProjections,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteFinancialProjection: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          financialProjections: prev.currentData.financialProjections.filter(
-            (projection) => projection.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteFinancialProjection: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            financialProjections: prev.currentData.financialProjections.filter(
+              (projection) => projection.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Validation actions
-    setValidationExperiments: useCallback((experiments: ValidationExperiment[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationExperiments: experiments,
-        },
-      }));
-    }, [setState]),
+    setValidationExperiments: useCallback(
+      (experiments: ValidationExperiment[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationExperiments: experiments,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addValidationExperiment: useCallback((experiment: ValidationExperiment) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationExperiments: [...prev.currentData.validationExperiments, experiment],
-        },
-      }));
-    }, [setState]),
+    addValidationExperiment: useCallback(
+      (experiment: ValidationExperiment) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationExperiments: [
+              ...prev.currentData.validationExperiments,
+              experiment,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateValidationExperiment: useCallback((id: string, updates: Partial<ValidationExperiment>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationExperiments: updateArray(prev.currentData.validationExperiments, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateValidationExperiment: useCallback(
+      (id: string, updates: Partial<ValidationExperiment>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationExperiments: updateArray(
+              prev.currentData.validationExperiments,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteValidationExperiment: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationExperiments: prev.currentData.validationExperiments.filter(
-            (experiment) => experiment.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteValidationExperiment: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationExperiments:
+              prev.currentData.validationExperiments.filter(
+                (experiment) => experiment.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setValidationABTests: useCallback((tests: ValidationABTest[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationABTests: tests,
-        },
-      }));
-    }, [setState]),
+    setValidationABTests: useCallback(
+      (tests: ValidationABTest[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationABTests: tests,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addValidationABTest: useCallback((test: ValidationABTest) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationABTests: [...prev.currentData.validationABTests, test],
-        },
-      }));
-    }, [setState]),
+    addValidationABTest: useCallback(
+      (test: ValidationABTest) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationABTests: [...prev.currentData.validationABTests, test],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateValidationABTest: useCallback((id: string, updates: Partial<ValidationABTest>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationABTests: updateArray(prev.currentData.validationABTests, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateValidationABTest: useCallback(
+      (id: string, updates: Partial<ValidationABTest>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationABTests: updateArray(
+              prev.currentData.validationABTests,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteValidationABTest: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationABTests: prev.currentData.validationABTests.filter(
-            (test) => test.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteValidationABTest: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationABTests: prev.currentData.validationABTests.filter(
+              (test) => test.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setValidationUserFeedback: useCallback((feedback: ValidationUserFeedback[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationUserFeedback: feedback,
-        },
-      }));
-    }, [setState]),
+    setValidationUserFeedback: useCallback(
+      (feedback: ValidationUserFeedback[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationUserFeedback: feedback,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addValidationUserFeedback: useCallback((feedback: ValidationUserFeedback) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationUserFeedback: [...prev.currentData.validationUserFeedback, feedback],
-        },
-      }));
-    }, [setState]),
+    addValidationUserFeedback: useCallback(
+      (feedback: ValidationUserFeedback) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationUserFeedback: [
+              ...prev.currentData.validationUserFeedback,
+              feedback,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateValidationUserFeedback: useCallback((id: string, updates: Partial<ValidationUserFeedback>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationUserFeedback: updateArray(prev.currentData.validationUserFeedback, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateValidationUserFeedback: useCallback(
+      (id: string, updates: Partial<ValidationUserFeedback>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationUserFeedback: updateArray(
+              prev.currentData.validationUserFeedback,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteValidationUserFeedback: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationUserFeedback: prev.currentData.validationUserFeedback.filter(
-            (feedback) => feedback.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteValidationUserFeedback: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationUserFeedback:
+              prev.currentData.validationUserFeedback.filter(
+                (feedback) => feedback.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setValidationHypotheses: useCallback((hypotheses: ValidationHypothesis[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationHypotheses: hypotheses,
-        },
-      }));
-    }, [setState]),
+    setValidationHypotheses: useCallback(
+      (hypotheses: ValidationHypothesis[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationHypotheses: hypotheses,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addValidationHypothesis: useCallback((hypothesis: ValidationHypothesis) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationHypotheses: [...prev.currentData.validationHypotheses, hypothesis],
-        },
-      }));
-    }, [setState]),
+    addValidationHypothesis: useCallback(
+      (hypothesis: ValidationHypothesis) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationHypotheses: [
+              ...prev.currentData.validationHypotheses,
+              hypothesis,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateValidationHypothesis: useCallback((id: string, updates: Partial<ValidationHypothesis>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationHypotheses: updateArray(prev.currentData.validationHypotheses, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateValidationHypothesis: useCallback(
+      (id: string, updates: Partial<ValidationHypothesis>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationHypotheses: updateArray(
+              prev.currentData.validationHypotheses,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteValidationHypothesis: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          validationHypotheses: prev.currentData.validationHypotheses.filter(
-            (hypothesis) => hypothesis.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteValidationHypothesis: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            validationHypotheses: prev.currentData.validationHypotheses.filter(
+              (hypothesis) => hypothesis.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Team actions
-    setTeamMembers: useCallback((members: TeamMember[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamMembers: members,
-        },
-      }));
-    }, [setState]),
+    setTeamMembers: useCallback(
+      (members: TeamMember[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamMembers: members,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addTeamMember: useCallback((member: TeamMember) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamMembers: [...prev.currentData.teamMembers, member],
-        },
-      }));
-    }, [setState]),
+    addTeamMember: useCallback(
+      (member: TeamMember) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamMembers: [...prev.currentData.teamMembers, member],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateTeamMember: useCallback((id: string, updates: Partial<TeamMember>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamMembers: updateArray(prev.currentData.teamMembers, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateTeamMember: useCallback(
+      (id: string, updates: Partial<TeamMember>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamMembers: updateArray(prev.currentData.teamMembers, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteTeamMember: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamMembers: prev.currentData.teamMembers.filter(
-            (member) => member.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
+    deleteTeamMember: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamMembers: prev.currentData.teamMembers.filter(
+              (member) => member.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setTeamTasks: useCallback((tasks: TeamTask[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamTasks: tasks,
-        },
-      }));
-    }, [setState]),
+    setTeamTasks: useCallback(
+      (tasks: TeamTask[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamTasks: tasks,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addTeamTask: useCallback((task: TeamTask) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamTasks: [...prev.currentData.teamTasks, task],
-        },
-      }));
-    }, [setState]),
+    addTeamTask: useCallback(
+      (task: TeamTask) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamTasks: [...prev.currentData.teamTasks, task],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateTeamTask: useCallback((id: string, updates: Partial<TeamTask>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamTasks: updateArray(prev.currentData.teamTasks, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateTeamTask: useCallback(
+      (id: string, updates: Partial<TeamTask>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamTasks: updateArray(prev.currentData.teamTasks, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteTeamTask: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamTasks: prev.currentData.teamTasks.filter((task) => task.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteTeamTask: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamTasks: prev.currentData.teamTasks.filter(
+              (task) => task.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Team Responsibility Matrix actions
-    setTeamResponsibilityMatrix: useCallback((matrix: TeamResponsibilityMatrix[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamResponsibilityMatrix: matrix,
-        },
-      }));
-    }, [setState]),
+    setTeamResponsibilityMatrix: useCallback(
+      (matrix: TeamResponsibilityMatrix[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamResponsibilityMatrix: matrix,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addTeamResponsibilityMatrix: useCallback((matrix: TeamResponsibilityMatrix) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamResponsibilityMatrix: [...prev.currentData.teamResponsibilityMatrix, matrix],
-        },
-      }));
-    }, [setState]),
+    addTeamResponsibilityMatrix: useCallback(
+      (matrix: TeamResponsibilityMatrix) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamResponsibilityMatrix: [
+              ...prev.currentData.teamResponsibilityMatrix,
+              matrix,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateTeamResponsibilityMatrix: useCallback((id: string, updates: Partial<TeamResponsibilityMatrix>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamResponsibilityMatrix: updateArray(prev.currentData.teamResponsibilityMatrix, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateTeamResponsibilityMatrix: useCallback(
+      (id: string, updates: Partial<TeamResponsibilityMatrix>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamResponsibilityMatrix: updateArray(
+              prev.currentData.teamResponsibilityMatrix,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteTeamResponsibilityMatrix: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          teamResponsibilityMatrix: prev.currentData.teamResponsibilityMatrix.filter((matrix) => matrix.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteTeamResponsibilityMatrix: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            teamResponsibilityMatrix:
+              prev.currentData.teamResponsibilityMatrix.filter(
+                (matrix) => matrix.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Document actions
-    setDocuments: useCallback((documents: Document[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documents,
-        },
-      }));
-    }, [setState]),
+    setDocuments: useCallback(
+      (documents: Document[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documents,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addDocument: useCallback((document: Document) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documents: [...prev.currentData.documents, document],
-        },
-      }));
-    }, [setState]),
+    addDocument: useCallback(
+      (document: Document) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documents: [...prev.currentData.documents, document],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateDocument: useCallback((id: string, updates: Partial<Document>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documents: updateArray(prev.currentData.documents, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateDocument: useCallback(
+      (id: string, updates: Partial<Document>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documents: updateArray(prev.currentData.documents, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteDocument: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documents: prev.currentData.documents.filter((doc) => doc.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteDocument: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documents: prev.currentData.documents.filter(
+              (doc) => doc.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Document Collaborator actions
-    setDocumentCollaborators: useCallback((collaborators: DocumentCollaborator[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documentCollaborators: collaborators,
-        },
-      }));
-    }, [setState]),
+    setDocumentCollaborators: useCallback(
+      (collaborators: DocumentCollaborator[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documentCollaborators: collaborators,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addDocumentCollaborator: useCallback((collaborator: DocumentCollaborator) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documentCollaborators: [...prev.currentData.documentCollaborators, collaborator],
-        },
-      }));
-    }, [setState]),
+    addDocumentCollaborator: useCallback(
+      (collaborator: DocumentCollaborator) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documentCollaborators: [
+              ...prev.currentData.documentCollaborators,
+              collaborator,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateDocumentCollaborator: useCallback((id: string, updates: Partial<DocumentCollaborator>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documentCollaborators: updateArray(prev.currentData.documentCollaborators, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateDocumentCollaborator: useCallback(
+      (id: string, updates: Partial<DocumentCollaborator>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documentCollaborators: updateArray(
+              prev.currentData.documentCollaborators,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteDocumentCollaborator: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          documentCollaborators: prev.currentData.documentCollaborators.filter((collaborator) => collaborator.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteDocumentCollaborator: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            documentCollaborators:
+              prev.currentData.documentCollaborators.filter(
+                (collaborator) => collaborator.id !== id
+              ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Cross-feature actions
-    setNotifications: useCallback((notifications: ProjectNotification[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          notifications,
-        },
-      }));
-    }, [setState]),
+    setNotifications: useCallback(
+      (notifications: ProjectNotification[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            notifications,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addNotification: useCallback((notification: ProjectNotification) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          notifications: [...prev.currentData.notifications, notification],
-        },
-      }));
-    }, [setState]),
+    addNotification: useCallback(
+      (notification: ProjectNotification) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            notifications: [...prev.currentData.notifications, notification],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateNotification: useCallback((id: string, updates: Partial<ProjectNotification>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          notifications: updateArray(prev.currentData.notifications, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateNotification: useCallback(
+      (id: string, updates: Partial<ProjectNotification>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            notifications: updateArray(
+              prev.currentData.notifications,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteNotification: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          notifications: prev.currentData.notifications.filter((notification) => notification.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteNotification: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            notifications: prev.currentData.notifications.filter(
+              (notification) => notification.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    setRelatedItems: useCallback((items: RelatedItem[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          relatedItems: items,
-        },
-      }));
-    }, [setState]),
+    setRelatedItems: useCallback(
+      (items: RelatedItem[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            relatedItems: items,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addRelatedItem: useCallback((item: RelatedItem) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          relatedItems: [...prev.currentData.relatedItems, item],
-        },
-      }));
-    }, [setState]),
+    addRelatedItem: useCallback(
+      (item: RelatedItem) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            relatedItems: [...prev.currentData.relatedItems, item],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateRelatedItem: useCallback((id: string, updates: Partial<RelatedItem>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          relatedItems: updateArray(prev.currentData.relatedItems, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateRelatedItem: useCallback(
+      (id: string, updates: Partial<RelatedItem>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            relatedItems: updateArray(
+              prev.currentData.relatedItems,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteRelatedItem: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          relatedItems: prev.currentData.relatedItems.filter((item) => item.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteRelatedItem: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            relatedItems: prev.currentData.relatedItems.filter(
+              (item) => item.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Project Tags actions
-    setProjectTags: useCallback((tags: ProjectTag[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectTags: tags,
-        },
-      }));
-    }, [setState]),
+    setProjectTags: useCallback(
+      (tags: ProjectTag[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectTags: tags,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProjectTag: useCallback((tag: ProjectTag) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectTags: [...prev.currentData.projectTags, tag],
-        },
-      }));
-    }, [setState]),
+    addProjectTag: useCallback(
+      (tag: ProjectTag) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectTags: [...prev.currentData.projectTags, tag],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProjectTag: useCallback((id: string, updates: Partial<ProjectTag>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectTags: updateArray(prev.currentData.projectTags, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateProjectTag: useCallback(
+      (id: string, updates: Partial<ProjectTag>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectTags: updateArray(prev.currentData.projectTags, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProjectTag: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectTags: prev.currentData.projectTags.filter((tag) => tag.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteProjectTag: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectTags: prev.currentData.projectTags.filter(
+              (tag) => tag.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Feature Item Tags actions
-    setFeatureItemTags: useCallback((tags: FeatureItemTag[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          featureItemTags: tags,
-        },
-      }));
-    }, [setState]),
+    setFeatureItemTags: useCallback(
+      (tags: FeatureItemTag[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            featureItemTags: tags,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addFeatureItemTag: useCallback((tag: FeatureItemTag) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          featureItemTags: [...prev.currentData.featureItemTags, tag],
-        },
-      }));
-    }, [setState]),
+    addFeatureItemTag: useCallback(
+      (tag: FeatureItemTag) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            featureItemTags: [...prev.currentData.featureItemTags, tag],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateFeatureItemTag: useCallback((id: string, updates: Partial<FeatureItemTag>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          featureItemTags: updateArray(prev.currentData.featureItemTags, id, updates),
-        },
-      }));
-    }, [setState]),
+    updateFeatureItemTag: useCallback(
+      (id: string, updates: Partial<FeatureItemTag>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            featureItemTags: updateArray(
+              prev.currentData.featureItemTags,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteFeatureItemTag: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          featureItemTags: prev.currentData.featureItemTags.filter((tag) => tag.id !== id),
-        },
-      }));
-    }, [setState]),
+    deleteFeatureItemTag: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            featureItemTags: prev.currentData.featureItemTags.filter(
+              (tag) => tag.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Version control actions
     stageChanges: useCallback(() => {
@@ -2060,7 +2613,7 @@ export function useProjectStore(): ProjectStore {
     }, [setState]),
 
     discardChanges: useCallback(() => {
-      setState(prev => {
+      setState((prev) => {
         if (prev.stagedData) {
           return {
             ...prev,
@@ -2078,313 +2631,470 @@ export function useProjectStore(): ProjectStore {
     }, [setComparisonMode]),
 
     // Loading and error states
-    setLoading: useCallback((isLoading: boolean) => {
-      setState((prev) => ({
-        ...prev,
-        isLoading,
-      }));
-    }, [setState]),
+    setLoading: useCallback(
+      (isLoading: boolean) => {
+        setState((prev) => ({
+          ...prev,
+          isLoading,
+        }));
+      },
+      [setState]
+    ),
 
-    setError: useCallback((error: Error | null) => {
-      setState((prev) => ({
-        ...prev,
-        error,
-      }));
-    }, [setState]),
+    setError: useCallback(
+      (error: Error | null) => {
+        setState((prev) => ({
+          ...prev,
+          error,
+        }));
+      },
+      [setState]
+    ),
 
     // Project Roles actions
-    setProjectRoles: useCallback((roles: ProjectRole[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectRoles: roles
-        }
-      }));
-    }, [setState]),
+    setProjectRoles: useCallback(
+      (roles: ProjectRole[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectRoles: roles,
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    addProjectRole: useCallback((role: ProjectRole) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectRoles: [...prev.currentData.projectRoles, role]
-        }
-      }));
-    }, [setState]),
+    addProjectRole: useCallback(
+      (role: ProjectRole) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectRoles: [...prev.currentData.projectRoles, role],
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    updateProjectRole: useCallback((id: string, updates: Partial<ProjectRole>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectRoles: updateArray(prev.currentData.projectRoles, id, updates)
-        }
-      }));
-    }, [setState]),
+    updateProjectRole: useCallback(
+      (id: string, updates: Partial<ProjectRole>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectRoles: updateArray(
+              prev.currentData.projectRoles,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
-    deleteProjectRole: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          projectRoles: prev.currentData.projectRoles.filter(r => r.id !== id)
-        }
-      }));
-    }, [setState]),
+    deleteProjectRole: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            projectRoles: prev.currentData.projectRoles.filter(
+              (r) => r.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
 
     // Product Development actions
-    setProductProblems: useCallback((problems: ProductProblem[]) => {
+    setProductProblems: useCallback(
+      (problems: ProductProblem[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productProblems: problems,
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    addProductProblem: useCallback(
+      (problem: ProductProblem) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productProblems: [...prev.currentData.productProblems, problem],
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    updateProductProblem: useCallback(
+      (id: string, updates: Partial<ProductProblem>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productProblems: updateArray(
+              prev.currentData.productProblems,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    deleteProductProblem: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productProblems: prev.currentData.productProblems.filter(
+              (problem) => problem.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    setProductSolutions: useCallback(
+      (solutions: ProductSolution[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productSolutions: solutions,
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    addProductSolution: useCallback(
+      (solution: ProductSolution) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productSolutions: [...prev.currentData.productSolutions, solution],
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    updateProductSolution: useCallback(
+      (id: string, updates: Partial<ProductSolution>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productSolutions: updateArray(
+              prev.currentData.productSolutions,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    deleteProductSolution: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productSolutions: prev.currentData.productSolutions.filter(
+              (solution) => solution.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    setProductEvidence: useCallback(
+      (evidence: ProductEvidence[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidence: evidence,
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    addProductEvidence: useCallback(
+      (evidence: ProductEvidence) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidence: [...prev.currentData.productEvidence, evidence],
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    updateProductEvidence: useCallback(
+      (id: string, updates: Partial<ProductEvidence>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidence: updateArray(
+              prev.currentData.productEvidence,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    deleteProductEvidence: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidence: prev.currentData.productEvidence.filter(
+              (evidence) => evidence.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    setProductEvidenceLinks: useCallback(
+      (links: ProductEvidenceLink[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidenceLinks: links,
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    addProductEvidenceLink: useCallback(
+      (link: ProductEvidenceLink) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidenceLinks: [
+              ...prev.currentData.productEvidenceLinks,
+              link,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    updateProductEvidenceLink: useCallback(
+      (id: string, updates: Partial<ProductEvidenceLink>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidenceLinks: updateArray(
+              prev.currentData.productEvidenceLinks,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    deleteProductEvidenceLink: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productEvidenceLinks: prev.currentData.productEvidenceLinks.filter(
+              (link) => link.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    setProductMVPs: useCallback(
+      (mvps: ProductMVP[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPs: mvps,
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    addProductMVP: useCallback(
+      (mvp: ProductMVP) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPs: [...prev.currentData.productMVPs, mvp],
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    updateProductMVP: useCallback(
+      (id: string, updates: Partial<ProductMVP>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPs: updateArray(prev.currentData.productMVPs, id, updates),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    deleteProductMVP: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPs: prev.currentData.productMVPs.filter(
+              (mvp) => mvp.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    setProductMVPFeatures: useCallback(
+      (features: ProductMVPFeature[]) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPFeatures: features,
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    addProductMVPFeature: useCallback(
+      (feature: ProductMVPFeature) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPFeatures: [
+              ...prev.currentData.productMVPFeatures,
+              feature,
+            ],
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    updateProductMVPFeature: useCallback(
+      (id: string, updates: Partial<ProductMVPFeature>) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPFeatures: updateArray(
+              prev.currentData.productMVPFeatures,
+              id,
+              updates
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+
+    deleteProductMVPFeature: useCallback(
+      (id: string) => {
+        setState((prev) => ({
+          ...prev,
+          currentData: {
+            ...prev.currentData,
+            productMVPFeatures: prev.currentData.productMVPFeatures.filter(
+              (feature) => feature.id !== id
+            ),
+          },
+        }));
+      },
+      [setState]
+    ),
+    // Add new setters
+    setValidationRelationships: (relationships) =>
       setState((prev) => ({
         ...prev,
         currentData: {
           ...prev.currentData,
-          productProblems: problems,
+          validationRelationships: relationships,
         },
-      }));
-    }, [setState]),
+      })),
 
-    addProductProblem: useCallback((problem: ProductProblem) => {
+    setValidationInsights: (insights) =>
       setState((prev) => ({
         ...prev,
         currentData: {
           ...prev.currentData,
-          productProblems: [...prev.currentData.productProblems, problem],
+          validationInsights: insights,
         },
-      }));
-    }, [setState]),
+      })),
 
-    updateProductProblem: useCallback((id: string, updates: Partial<ProductProblem>) => {
+    setValidationDecisions: (decisions) =>
       setState((prev) => ({
         ...prev,
         currentData: {
           ...prev.currentData,
-          productProblems: updateArray(prev.currentData.productProblems, id, updates),
+          validationDecisions: decisions,
         },
-      }));
-    }, [setState]),
+      })),
 
-    deleteProductProblem: useCallback((id: string) => {
+    setValidationMilestones: (milestones) =>
       setState((prev) => ({
         ...prev,
         currentData: {
           ...prev.currentData,
-          productProblems: prev.currentData.productProblems.filter(
-            (problem) => problem.id !== id
-          ),
+          validationMilestones: milestones,
         },
-      }));
-    }, [setState]),
-
-    setProductSolutions: useCallback((solutions: ProductSolution[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productSolutions: solutions,
-        },
-      }));
-    }, [setState]),
-
-    addProductSolution: useCallback((solution: ProductSolution) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productSolutions: [...prev.currentData.productSolutions, solution],
-        },
-      }));
-    }, [setState]),
-
-    updateProductSolution: useCallback((id: string, updates: Partial<ProductSolution>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productSolutions: updateArray(prev.currentData.productSolutions, id, updates),
-        },
-      }));
-    }, [setState]),
-
-    deleteProductSolution: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productSolutions: prev.currentData.productSolutions.filter(
-            (solution) => solution.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
-
-    setProductEvidence: useCallback((evidence: ProductEvidence[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidence: evidence,
-        },
-      }));
-    }, [setState]),
-
-    addProductEvidence: useCallback((evidence: ProductEvidence) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidence: [...prev.currentData.productEvidence, evidence],
-        },
-      }));
-    }, [setState]),
-
-    updateProductEvidence: useCallback((id: string, updates: Partial<ProductEvidence>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidence: updateArray(prev.currentData.productEvidence, id, updates),
-        },
-      }));
-    }, [setState]),
-
-    deleteProductEvidence: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidence: prev.currentData.productEvidence.filter(
-            (evidence) => evidence.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
-
-    setProductEvidenceLinks: useCallback((links: ProductEvidenceLink[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidenceLinks: links,
-        },
-      }));
-    }, [setState]),
-
-    addProductEvidenceLink: useCallback((link: ProductEvidenceLink) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidenceLinks: [...prev.currentData.productEvidenceLinks, link],
-        },
-      }));
-    }, [setState]),
-
-    updateProductEvidenceLink: useCallback((id: string, updates: Partial<ProductEvidenceLink>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidenceLinks: updateArray(prev.currentData.productEvidenceLinks, id, updates),
-        },
-      }));
-    }, [setState]),
-
-    deleteProductEvidenceLink: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productEvidenceLinks: prev.currentData.productEvidenceLinks.filter(
-            (link) => link.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
-
-    setProductMVPs: useCallback((mvps: ProductMVP[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPs: mvps,
-        },
-      }));
-    }, [setState]),
-
-    addProductMVP: useCallback((mvp: ProductMVP) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPs: [...prev.currentData.productMVPs, mvp],
-        },
-      }));
-    }, [setState]),
-
-    updateProductMVP: useCallback((id: string, updates: Partial<ProductMVP>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPs: updateArray(prev.currentData.productMVPs, id, updates),
-        },
-      }));
-    }, [setState]),
-
-    deleteProductMVP: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPs: prev.currentData.productMVPs.filter(
-            (mvp) => mvp.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
-
-    setProductMVPFeatures: useCallback((features: ProductMVPFeature[]) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPFeatures: features,
-        },
-      }));
-    }, [setState]),
-
-    addProductMVPFeature: useCallback((feature: ProductMVPFeature) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPFeatures: [...prev.currentData.productMVPFeatures, feature],
-        },
-      }));
-    }, [setState]),
-
-    updateProductMVPFeature: useCallback((id: string, updates: Partial<ProductMVPFeature>) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPFeatures: updateArray(prev.currentData.productMVPFeatures, id, updates),
-        },
-      }));
-    }, [setState]),
-
-    deleteProductMVPFeature: useCallback((id: string) => {
-      setState((prev) => ({
-        ...prev,
-        currentData: {
-          ...prev.currentData,
-          productMVPFeatures: prev.currentData.productMVPFeatures.filter(
-            (feature) => feature.id !== id
-          ),
-        },
-      }));
-    }, [setState]),
-
+      })),
   };
 } 

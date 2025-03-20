@@ -196,3 +196,7 @@ then, to go even deeper, my product have a goal to create a real journey with ac
 so based on that and the goal to be as fluid and natural to use as possible, like the product evolves based on the needs of the project of the user, to not overwelm directly and be like a guide on the journey
 
 you can start with the first step
+
+1) correctly integrate with the data layer (context), and use supabase types 
+2) connect with external sections for some data, thanks to the context
+3) refine the value proposition, design, user experience, layout and components used to maybe remove redundance, add some visualisation or more data to show, clarify the user flow, etc...

@@ -11,11 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PlusCircle, ArrowRight, Check, X, AlignLeft, Sparkles, FileInput, Settings, Layers, MoveRight } from 'lucide-react';
-import { Solution } from '../ProblemSolutionFit';
 import { ProductFeature } from "@/store/types";
 import { useToast } from '@/components/ui/use-toast';
 import { useProductStepper } from '@/context/product-stepper-context';
 import { useProjectStore } from '@/store/project-store';
+import { Solution } from '@/context/product-stepper-context';
 
 // Define a local ProductFeature type if the imported one is causing issues
 interface LocalProductFeature {

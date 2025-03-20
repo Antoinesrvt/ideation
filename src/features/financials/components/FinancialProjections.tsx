@@ -105,6 +105,14 @@ export const FinancialProjections: React.FC = () => {
     deleteProjection,
   } = useFinancials(projectId);
   
+  // Use market analysis hook here unconditionally with other hooks
+  // This ensures it's always called in the same order
+  const { 
+    addCompetitor, 
+    updateCompetitor, 
+    deleteCompetitor 
+  } = useMarketAnalysis(projectId);
+  
   // Process financial data using memoization
   const processedData = useMemo(() => 
     processFinancialData(data, isLoading),
@@ -392,14 +400,7 @@ export const FinancialProjections: React.FC = () => {
   const profitMargin = calculateProfitMargin(totalRevenue, totalCosts);
   const profit = totalRevenue - totalCosts;
 
-  // Add handlers for competitor prices using the market analysis hook
-  // We can get the hooks from useMarketAnalysis
-  const { 
-    addCompetitor, 
-    updateCompetitor, 
-    deleteCompetitor 
-  } = useMarketAnalysis(projectId);
-
+  // Handlers for competitor prices
   const handleAddCompetitorPrice = async (competitorData: CompetitorPrice): Promise<void> => {
     try {
       // Only include properties that are expected by the API

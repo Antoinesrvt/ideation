@@ -9,7 +9,7 @@ import { useProductStepper } from '@/context/product-stepper-context';
 import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
 import { useValidation } from '@/hooks/features/useValidation';
 import { useToast } from '@/components/ui/use-toast';
-import type { Problem } from '../ProblemSolutionFit';
+import type { Problem } from '@/context/product-stepper-context'; 
 import type { MarketInterview } from '@/store/types';
 import type { ValidationUserFeedback } from '@/store/types';
 import { useProjectStore } from "@/store/project-store";

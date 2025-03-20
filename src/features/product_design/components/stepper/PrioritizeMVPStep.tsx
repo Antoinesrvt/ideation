@@ -14,7 +14,6 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { PlusCircle, ArrowRight, Check, X, ChevronRight, ChevronDown, RefreshCw, Clock, Sparkles, Target, Calendar, BarChart2, PieChart, AlertCircle, Layers } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { Solution } from '../ProblemSolutionFit';
 import { useProductStepper } from '@/context/product-stepper-context';
 import { useProjectStore } from '@/store/project-store';
 

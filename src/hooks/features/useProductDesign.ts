@@ -35,6 +35,19 @@ function arraysEqual(a: any[], b: any[]): boolean {
   return JSON.stringify(sortedA) === JSON.stringify(sortedB);
 }
 
+// Add debounce helper at the top of the file after imports
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout;
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  } as T;
+}
+
 export interface UseProductDesignReturn {
   data: ProductDesignData;
   isLoading: boolean;
@@ -166,36 +179,65 @@ export function useProductDesign(projectId: string | undefined): UseProductDesig
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Update store when query data changes, but only if the data is different
+  // Create a stable reference to store updates
+  const debouncedStoreUpdate = useMemo(() => ({
+    wireframes: debounce((data: ProductWireframe[]) => {
+      if (data && !arraysEqual(data, store.currentData.productWireframes)) {
+        store.setProductWireframes(data);
+      }
+    }, 300),
+    features: debounce((data: ProductFeature[]) => {
+      if (data && !arraysEqual(data, store.currentData.productFeatures)) {
+        store.setProductFeatures(data);
+      }
+    }, 300),
+    journeyStages: debounce((data: ProductJourneyStage[]) => {
+      if (data && !arraysEqual(data, store.currentData.productJourneyStages)) {
+        store.setProductJourneyStages(data);
+      }
+    }, 300),
+    journeyActions: debounce((data: ProductJourneyAction[]) => {
+      if (data && !arraysEqual(data, store.currentData.productJourneyActions)) {
+        store.setProductJourneyActions(data);
+      }
+    }, 300),
+    journeyPainPoints: debounce((data: ProductJourneyPainPoint[]) => {
+      if (data && !arraysEqual(data, store.currentData.productJourneyPainPoints)) {
+        store.setProductJourneyPainPoints(data);
+      }
+    }, 300),
+  }), [store]);
+
+  // Update store when query data changes, with debounce
   useEffect(() => {
-    if (wireframesData && !arraysEqual(wireframesData, store.currentData.productWireframes)) {
-      store.setProductWireframes(wireframesData);
+    if (!store.comparisonMode && wireframesData) {
+      debouncedStoreUpdate.wireframes(wireframesData);
     }
-  }, [wireframesData, store]);
+  }, [wireframesData, store.comparisonMode, debouncedStoreUpdate]);
 
   useEffect(() => {
-    if (featuresData && !arraysEqual(featuresData, store.currentData.productFeatures)) {
-      store.setProductFeatures(featuresData);
+    if (!store.comparisonMode && featuresData) {
+      debouncedStoreUpdate.features(featuresData);
     }
-  }, [featuresData, store]);
+  }, [featuresData, store.comparisonMode, debouncedStoreUpdate]);
 
   useEffect(() => {
-    if (journeyStagesData && !arraysEqual(journeyStagesData, store.currentData.productJourneyStages)) {
-      store.setProductJourneyStages(journeyStagesData);
+    if (!store.comparisonMode && journeyStagesData) {
+      debouncedStoreUpdate.journeyStages(journeyStagesData);
     }
-  }, [journeyStagesData, store]);
+  }, [journeyStagesData, store.comparisonMode, debouncedStoreUpdate]);
 
   useEffect(() => {
-    if (journeyActionsData && !arraysEqual(journeyActionsData, store.currentData.productJourneyActions)) {
-      store.setProductJourneyActions(journeyActionsData);
+    if (!store.comparisonMode && journeyActionsData) {
+      debouncedStoreUpdate.journeyActions(journeyActionsData);
     }
-  }, [journeyActionsData, store]);
+  }, [journeyActionsData, store.comparisonMode, debouncedStoreUpdate]);
 
   useEffect(() => {
-    if (journeyPainPointsData && !arraysEqual(journeyPainPointsData, store.currentData.productJourneyPainPoints)) {
-      store.setProductJourneyPainPoints(journeyPainPointsData);
+    if (!store.comparisonMode && journeyPainPointsData) {
+      debouncedStoreUpdate.journeyPainPoints(journeyPainPointsData);
     }
-  }, [journeyPainPointsData, store]);
+  }, [journeyPainPointsData, store.comparisonMode, debouncedStoreUpdate]);
 
   // For comparison mode, we still want to use store data
   const storeData = useMemo(() => {

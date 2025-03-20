@@ -29,6 +29,11 @@
    count: number;
 
    /**
+    * Whether the section is empty and should show a custom empty state
+    */
+   isCustomEmptyState?: boolean;
+
+   /**
     * Description text to display below the title
     */
    description?: string;
@@ -97,6 +102,7 @@
  export function SectionTab({
    icon,
    title,
+   isCustomEmptyState = false,
    description,
    onCreate,
    helper,
@@ -161,7 +167,7 @@
 
        {/* Main content or empty state */}
        <div className="min-h-[200px] pt-3">
-         {hasItems ? (
+         {hasItems || isCustomEmptyState ? (
           <div className="h-full">
              {children}
           </div>

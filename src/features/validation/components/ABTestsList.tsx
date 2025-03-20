@@ -13,6 +13,11 @@ import {
 } from '@/components/ui/dialog';
 import { 
   Form, 
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
 } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,17 +50,29 @@ import {
   UserCheck,
   Clock,
   Plus,
-  Trash
+  Trash,
+  SlidersHorizontal,
+  EyeIcon,
+  EyeOffIcon,
+  PlusCircle,
+  SplitSquareVertical,
+  BarChart3
 } from 'lucide-react';
-import { ValidationABTest } from '@/store/types';
+import { ValidationABTest as ABTest, Insert, Update } from '@/store/types';
 import { useForm } from 'react-hook-form';
-import { ViewToggle, ViewMode } from './common/ViewToggle';
-import { ABTestCard } from './common/ABTestCard';
+import { ValidationTable, ValidationTableColumn } from './common/ValidationTable';
+import { ABTestModal } from './modals/ABTestModal';
+import { ValidationItemType } from './common/ValidationItemModal';
+import { EnhancedValidationABTest } from '../types';
+import { EnhancedABTestForm } from './forms/EnhancedABTestForm';
 
 interface ABTestsListProps {
-  tests: ValidationABTest[];
-  onUpdate: (params: { id: string; data: Partial<Omit<ValidationABTest, 'id' | 'created_at' | 'updated_at'>> }) => void;
-  onDelete: (id: string) => void;
+  tests: ABTest[];
+  onUpdate: (params: { id: string; data: Partial<Omit<ABTest, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  onDelete: (id: string) => void; 
+  relationships?: any[];
+  data?: any;
+  projectId?: string;
 }
 
 interface ABTestFormValues {
@@ -75,10 +92,25 @@ interface ABTestFormValues {
   notes: string;
 }
 
-export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
+// Define a DetailLevel type for our component
+type DetailLevel = 'simple' | 'detailed';
+
+export function ABTestsList({ 
+  tests, 
+  onUpdate, 
+  onDelete,
+  relationships = [],
+  data = {},
+  projectId
+}: ABTestsListProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTest, setEditingTest] = useState<ValidationABTest | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [editingTest, setEditingTest] = useState<ABTest | null>(null);
+  const [detailLevel, setDetailLevel] = useState<DetailLevel>('simple');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  
+  // Modal state
+  const [selectedTestForModal, setSelectedTestForModal] = useState<EnhancedValidationABTest | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const form = useForm<ABTestFormValues>({
     defaultValues: {
@@ -99,27 +131,14 @@ export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
     }
   });
   
-  const handleEdit = (test: ValidationABTest) => {
-    setEditingTest(test);
-    
-    form.reset({
-      title: test.title || '',
-      description: test.description || '',
-      variant_a: test.variant_a || '',
-      variant_b: test.variant_b || '',
-      metric: test.metric || '',
-      status: (test.status as 'planned' | 'running' | 'completed') || 'planned',
-      start_date: test.start_date || '',
-      end_date: test.end_date || '',
-      sample_size: test.sample_size || 0,
-      conversion_a: test.conversion_a || 0,
-      conversion_b: test.conversion_b || 0,
-      confidence: test.confidence || 0,
-      winner: test.winner as string | null,
-      notes: test.notes || ''
-    });
-    
-    setIsDialogOpen(true);
+  // Add new state for the enhanced form
+  const [openNewDialog, setOpenNewDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [selectedTest, setSelectedTest] = useState<ABTest | null>(null);
+  
+  const handleEdit = (test: ABTest) => {
+    setSelectedTest(test);
+    setOpenEditDialog(true);
   };
   
   const handleSave = (values: ABTestFormValues) => {
@@ -144,36 +163,51 @@ export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
     }
   };
   
-  const getStatusColor = (status: ValidationABTest['status']) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'running':
-        return 'bg-blue-100 text-blue-800';
+        return 'warning';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
   
-  const getWinnerColor = (winner: ValidationABTest['winner']) => {
+  const getStatusIcon = (status: string | null) => {
+    switch (status) {
+      case 'completed':
+        return <Award className="h-3.5 w-3.5" />;
+      case 'running':
+        return <Clock className="h-3.5 w-3.5" />;
+      default:
+        return <SplitSquareVertical className="h-3.5 w-3.5" />;
+    }
+  };
+  
+  const getWinnerColor = (winner: string | null) => {
     switch (winner) {
       case 'A':
-        return 'bg-green-100 text-green-800';
+        return 'success';
       case 'B':
-        return 'bg-blue-100 text-blue-800';
+        return 'info';
       case 'inconclusive':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'warning';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'secondary';
     }
   };
   
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
-  const getImprovement = (test: ValidationABTest) => {
+  const getImprovement = (test: ABTest) => {
     if (
       !test.conversion_a ||
       !test.conversion_b ||
@@ -188,261 +222,258 @@ export function ABTestsList({ tests, onUpdate, onDelete }: ABTestsListProps) {
 
   // Render empty state
   const renderEmptyState = () => (
-    <Card className="border-dashed border-2">
-      <CardContent className="pt-6 pb-4 flex flex-col items-center text-center">
-        <LineChart className="h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium mb-2">No A/B Tests Yet</h3>
-        <p className="text-sm text-gray-500 max-w-md mb-4">
-          Create and track A/B tests to optimize your product
+    <div className="flex h-[400px] shrink-0 items-center justify-center rounded-md border border-dashed">
+      <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
+        <BarChart3 className="h-10 w-10 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-semibold">No A/B tests</h3>
+        <p className="mb-4 mt-2 text-sm text-muted-foreground">
+          You haven't created any A/B tests yet. Get started by creating your first test.
         </p>
-      </CardContent>
-    </Card>
+        <Button onClick={() => setOpenNewDialog(true)} className="flex items-center gap-2">
+          <PlusCircle className="h-4 w-4" />
+          New A/B Test
+        </Button>
+      </div>
+    </div>
   );
   
-  // Render the table view
-  const renderTableView = () => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Title</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Metrics</TableHead>
-          <TableHead>Results</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {tests.map((test) => (
-          <TableRow key={test.id}>
-            <TableCell>
-              <div>
-                <div className="font-medium">{test.title}</div>
-                <span className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {formatDate(test.start_date ?? undefined) || "Not scheduled"}
-                </span>
+  // Define table columns based on detail level
+  const getTableColumns = (): ValidationTableColumn<ABTest>[] => {
+    const baseColumns: ValidationTableColumn<ABTest>[] = [
+      {
+        header: "Title",
+        cell: (test) => (
+          <div className="font-medium max-w-md truncate">
+            {test.title}
               </div>
-            </TableCell>
-            <TableCell>
-              <Badge className={getStatusColor(test.status)}>
-                {test.status}
+        )
+      },
+      {
+        header: "Status",
+        cell: (test) => (
+          <Badge variant={getStatusColor(test.status)} className="flex w-fit items-center gap-1">
+            {getStatusIcon(test.status)}
+            {(test.status || 'planned').charAt(0).toUpperCase() + (test.status || 'planned').slice(1)}
               </Badge>
-            </TableCell>
-            <TableCell>
+        )
+      }
+    ];
+    
+    if (detailLevel === 'detailed') {
+      return [
+        ...baseColumns,
+        {
+          header: "Variants",
+          cell: (test) => (
+            <div className="text-sm">
+              <div>A: {test.variant_a || 'Control'}</div>
+              <div>B: {test.variant_b || 'Variant'}</div>
+            </div>
+          )
+        },
+        {
+          header: "Metric",
+          cell: (test) => (
+            <div className="max-w-[150px] truncate">
+              {test.metric || 'Not specified'}
+            </div>
+          )
+        },
+        {
+          header: "Results",
+          cell: (test) => (
+            test.status === 'completed' ? (
               <div>
-                <span className="text-sm">{test.metric || "-"}</span>
-                <div className="text-xs text-gray-500 mt-1 flex items-start gap-2">
-                  <span className="flex-1">A: {test.variant_a || "Variant A"}</span>
-                  <span className="flex-1">B: {test.variant_b || "Variant B"}</span>
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>
-              {test.status === 'completed' ? (
-                <div>
-                  <Badge className={getWinnerColor(test.winner)}>
-                    {test.winner === 'A' ? 'Variant A Wins' :
-                     test.winner === 'B' ? 'Variant B Wins' :
+                <Badge variant={getWinnerColor(test.winner)}>
+                  {test.winner === 'A' ? 'A Wins' :
+                  test.winner === 'B' ? 'B Wins' :
                      test.winner === 'inconclusive' ? 'Inconclusive' : 'No Result'}
                   </Badge>
-                  {test.confidence && test.confidence > 0 && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {test.confidence}% confidence
-                    </div>
-                  )}
                   {getImprovement(test) && (
-                    <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground mt-1">
                       {getImprovement(test)}% improvement
                     </div>
                   )}
                 </div>
               ) : (
-                <span className="text-sm text-gray-500">-</span>
-              )}
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleEdit(test)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(test.id)}
-                >
-                  <Trash className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-  
-  // Render the card view
-  const renderCardView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {tests.map((test) => (
-        <ABTestCard 
-          key={test.id}
-          abTest={test}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      ))}
-    </div>
-  );
+              <span className="text-muted-foreground text-sm">No results</span>
+            )
+          )
+        }
+      ];
+    }
+    
+    return baseColumns;
+  };
+
+  // Handle opening the modal when a row is clicked
+  const handleRowClick = (test: ABTest) => {
+    // Convert to enhanced test type
+    const enhancedTest: EnhancedValidationABTest = {
+      ...test,
+      results: test.conversion_a && test.conversion_b ? {
+        sampleSize: test.sample_size || 0,
+        conversionA: test.conversion_a || 0,
+        conversionB: test.conversion_b || 0,
+        confidence: test.confidence || 0,
+        winner: (test.winner as 'A' | 'B' | 'inconclusive') || 'inconclusive',
+        improvement: parseFloat(getImprovement(test) || '0')
+      } : null,
+      experimentId: null
+    };
+    
+    setSelectedTestForModal(enhancedTest);
+    setIsModalOpen(true);
+  };
+
+  // Handle view item in related items
+  const handleViewItem = (itemType: ValidationItemType, itemId: string) => {
+    // This would be implemented to open the appropriate modal for the related item
+    console.log(`View ${itemType} with ID ${itemId}`);
+    // You would implement this to open the appropriate modal
+  };
+
+  // Handle A/B test actions
+  const handleComplete = () => {
+    if (!selectedTestForModal) return;
+    
+    onUpdate({
+      id: selectedTestForModal.id,
+      data: { status: 'completed' }
+    });
+  };
+
+  const handleCancel = () => {
+    if (!selectedTestForModal) return;
+    
+    onUpdate({
+      id: selectedTestForModal.id,
+      data: { status: 'cancelled' }
+    });
+  };
+
+  const handleAddResults = () => {
+    if (!selectedTestForModal) return;
+    setIsModalOpen(false);
+    handleEdit(selectedTestForModal);
+  };
+
+  const handleImplementWinner = () => {
+    // Implement logic to implement the winner
+    console.log('Implement winner for A/B test', selectedTestForModal?.id);
+  };
+
+  const handleCreateFeedback = () => {
+    // Implement navigation or modal to add user feedback related to A/B test
+    console.log('Add user feedback for A/B test', selectedTestForModal?.id);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* View toggle control */}
-      <div className="flex justify-end mb-4">
-        <ViewToggle
-          viewMode={viewMode}
-          onChange={setViewMode}
-          className="ml-auto"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">A/B Tests</h2>
+          <p className="text-muted-foreground">
+            Test different versions of your product to optimize for success.
+          </p>
+        </div>
+        <Button onClick={() => setOpenNewDialog(true)} className="flex items-center gap-2">
+          <PlusCircle className="h-4 w-4" />
+          New A/B Test
+        </Button>
       </div>
 
-      {/* Content based on available data and view mode */}
       {tests.length === 0 ? (
         renderEmptyState()
       ) : (
-        viewMode === 'table' ? renderTableView() : renderCardView()
+        <ValidationTable
+          data={tests}
+          columns={getTableColumns()}
+          getRowId={(test) => test.id}
+          onRowClick={handleRowClick}
+          isRowClickable={true}
+          emptyState={
+            <div className="flex flex-col items-center justify-center text-muted-foreground">
+              <BarChart3 className="h-8 w-8 mb-2 opacity-50" />
+              <p>No A/B tests yet</p>
+              <Button 
+                variant="link" 
+                onClick={() => setOpenNewDialog(true)}
+                className="mt-2"
+              >
+                Add your first A/B test
+              </Button>
+            </div>
+          }
+        />
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingTest?.id ? 'Edit A/B Test' : 'Add A/B Test'}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Enhanced AB Test Form for Creating New Tests */}
+      <EnhancedABTestForm
+        open={openNewDialog}
+        onOpenChange={setOpenNewDialog}
+        onSubmit={(data) => {
+          // Format the AB Test for the database
+          const newABTest = {
+            ...data,
+            project_id: projectId ?? ''
+          };
           
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Title</label>
-                <Input {...form.register('title')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Description</label>
-                <Textarea {...form.register('description')} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Variant A</label>
-                  <Input {...form.register('variant_a')} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Variant B</label>
-                  <Input {...form.register('variant_b')} />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Metric</label>
-                <Input {...form.register('metric')} />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  value={form.watch('status')}
-                  onValueChange={(value) => form.setValue('status', value as ABTestFormValues['status'])}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="planned">Planned</SelectItem>
-                    <SelectItem value="running">Running</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Start Date</label>
-                  <Input type="date" {...form.register('start_date')} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">End Date</label>
-                  <Input type="date" {...form.register('end_date')} />
-                </div>
-              </div>
-              {form.watch('status') === 'completed' && (
-                <>
-                  <div>
-                    <label className="text-sm font-medium">Sample Size</label>
-                    <Input
-                      type="number"
-                      {...form.register('sample_size', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Conversion A (%)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...form.register('conversion_a', { valueAsNumber: true })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Conversion B (%)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...form.register('conversion_b', { valueAsNumber: true })}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Confidence (%)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...form.register('confidence', { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Winner</label>
-                    <Select
-                      value={form.watch('winner') || ''}
-                      onValueChange={(value: string) => form.setValue('winner', value || null)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">No Result</SelectItem>
-                        <SelectItem value="A">Variant A</SelectItem>
-                        <SelectItem value="B">Variant B</SelectItem>
-                        <SelectItem value="inconclusive">Inconclusive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="text-sm font-medium">Notes</label>
-                <Textarea {...form.register('notes')} />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Save</Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+          onUpdate({
+            id: data.id ?? '', // Ensure id is a string
+            data: newABTest
+          });
+        }}
+      />
+
+      {/* Enhanced AB Test Form for Editing Existing Tests */}
+      {selectedTest && (
+        <EnhancedABTestForm
+          open={openEditDialog}
+          onOpenChange={setOpenEditDialog}
+          initialData={selectedTest}
+          onSubmit={(data) => {
+            if (selectedTest) {
+              // Format the AB Test for the database
+              const { id, ...restData } = data;
+              const updatedABTest = {
+                ...restData,
+                project_id: projectId ?? ''
+              };
+              
+              onUpdate({
+                id: selectedTest.id,
+                data: updatedABTest
+              });
+            }
+          }}
+        />
+      )}
+
+      {/* Keep the existing modal for detailed view */}
+      {selectedTestForModal && (
+        <ABTestModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          abTest={selectedTestForModal}
+          onEdit={() => {
+            setIsModalOpen(false);
+            handleEdit(selectedTestForModal);
+          }}
+          onDelete={() => {
+            setIsModalOpen(false);
+            handleDelete(selectedTestForModal.id);
+          }}
+          onComplete={handleComplete}
+          onCancel={handleCancel}
+          onAddResults={handleAddResults}
+          onImplementWinner={handleImplementWinner}
+          onCreateFeedback={handleCreateFeedback}
+          onViewItem={handleViewItem}
+          relationships={relationships}
+          data={data}
+        />
+      )}
     </div>
   );
 } 

@@ -25,16 +25,36 @@ import { productDevelopmentService } from '@/lib/services';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
-// Check if arrays are equal (used for diff logic)
+// Helper function to check array equality
 function arraysEqual<T>(a: T[], b: T[]): boolean {
   if (a === b) return true;
-  if (a == null || b == null) return false;
   if (a.length !== b.length) return false;
+  
+  // Sort by ID if present
+  const sortedA = [...a].sort((x: any, y: any) => 
+    (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+  );
+  const sortedB = [...b].sort((x: any, y: any) => 
+    (x.id && y.id) ? x.id.localeCompare(y.id) : 0
+  );
+  
+  // Simple comparison of stringified arrays (works for our case of objects with IDs)
+  return JSON.stringify(sortedA) === JSON.stringify(sortedB);
+}
 
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
+// Add debounce helper function
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout;
+  
+  return function executedFunction(...args: Parameters<T>) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  } as T;
 }
 
 // Interface for the data returned by this hook
@@ -409,26 +429,76 @@ export function useProductDevelopment(projectId: string | undefined): UseProduct
     }
   });
   
-  // Update store with data from queries
+  // Create debounced update functions to prevent too many store updates
+  const debouncedStoreUpdate = useMemo(() => ({
+    problems: debounce((data: ProductProblem[]) => {
+      if (data && !arraysEqual(data, store.currentData.productProblems)) {
+        store.setProductProblems(data);
+      }
+    }, 300),
+    solutions: debounce((data: ProductSolution[]) => {
+      if (data && !arraysEqual(data, store.currentData.productSolutions)) {
+        store.setProductSolutions(data);
+      }
+    }, 300),
+    evidence: debounce((data: ProductEvidence[]) => {
+      if (data && !arraysEqual(data, store.currentData.productEvidence)) {
+        store.setProductEvidence(data);
+      }
+    }, 300),
+    evidenceLinks: debounce((data: ProductEvidenceLink[]) => {
+      if (data && !arraysEqual(data, store.currentData.productEvidenceLinks)) {
+        store.setProductEvidenceLinks(data);
+      }
+    }, 300),
+    mvps: debounce((data: ProductMVP[]) => {
+      if (data && !arraysEqual(data, store.currentData.productMVPs)) {
+        store.setProductMVPs(data);
+      }
+    }, 300),
+    mvpFeatures: debounce((data: ProductMVPFeature[]) => {
+      if (data && !arraysEqual(data, store.currentData.productMVPFeatures)) {
+        store.setProductMVPFeatures(data);
+      }
+    }, 300),
+  }), [store]);
+
+  // Update store with data from queries - using debounce
   useEffect(() => {
-    if (!store.comparisonMode) {
-      if (problemsData) store.setProductProblems(problemsData);
-      if (solutionsData) store.setProductSolutions(solutionsData);
-      if (evidenceData) store.setProductEvidence(evidenceData);
-      if (evidenceLinksData) store.setProductEvidenceLinks(evidenceLinksData);
-      if (mvpsData) store.setProductMVPs(mvpsData);
-      if (mvpFeaturesData) store.setProductMVPFeatures(mvpFeaturesData);
+    if (!store.comparisonMode && problemsData) {
+      debouncedStoreUpdate.problems(problemsData);
     }
-  }, [
-    store,
-    store.comparisonMode,
-    problemsData,
-    solutionsData,
-    evidenceData,
-    evidenceLinksData,
-    mvpsData,
-    mvpFeaturesData
-  ]);
+  }, [problemsData, store.comparisonMode, debouncedStoreUpdate]);
+
+  useEffect(() => {
+    if (!store.comparisonMode && solutionsData) {
+      debouncedStoreUpdate.solutions(solutionsData);
+    }
+  }, [solutionsData, store.comparisonMode, debouncedStoreUpdate]);
+
+  useEffect(() => {
+    if (!store.comparisonMode && evidenceData) {
+      debouncedStoreUpdate.evidence(evidenceData);
+    }
+  }, [evidenceData, store.comparisonMode, debouncedStoreUpdate]);
+
+  useEffect(() => {
+    if (!store.comparisonMode && evidenceLinksData) {
+      debouncedStoreUpdate.evidenceLinks(evidenceLinksData);
+    }
+  }, [evidenceLinksData, store.comparisonMode, debouncedStoreUpdate]);
+
+  useEffect(() => {
+    if (!store.comparisonMode && mvpsData) {
+      debouncedStoreUpdate.mvps(mvpsData);
+    }
+  }, [mvpsData, store.comparisonMode, debouncedStoreUpdate]);
+
+  useEffect(() => {
+    if (!store.comparisonMode && mvpFeaturesData) {
+      debouncedStoreUpdate.mvpFeatures(mvpFeaturesData);
+    }
+  }, [mvpFeaturesData, store.comparisonMode, debouncedStoreUpdate]);
   
   // Access data from store or query results
   const storeData = useMemo(() => ({

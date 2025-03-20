@@ -17,7 +17,7 @@ import type {
 } from '@/store/types';
 
 // Define the types that were previously imported from PrioritizeMVPStep
-interface Problem {
+export interface Problem {
   id: string;
   title: string;
   description: string;
@@ -27,7 +27,7 @@ interface Problem {
   evidenceCount: number;
 }
 
-interface Solution {
+export interface Solution {
   id: string;
   title: string;
   description: string;
@@ -37,7 +37,7 @@ interface Solution {
   hypothesisStatement: string;
 }
 
-interface Evidence {
+export interface Evidence {
   id: string;
   title: string;
   description: string;
