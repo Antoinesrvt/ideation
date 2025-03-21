@@ -46,6 +46,7 @@ interface JourneyStageCardProps {
     title: string;
     color: string;
   }>;
+  delayIndex?: number;
 }
 
 export function JourneyStageCard({
@@ -62,7 +63,8 @@ export function JourneyStageCard({
   onHover,
   dependencies = [],
   unlocks = [],
-  allStages = []
+  allStages = [],
+  delayIndex = 0
 }: JourneyStageCardProps) {
   // Map tool IDs to tool info objects with icons
   const getToolInfo = (toolId: string): ToolInfo => {
@@ -179,10 +181,14 @@ export function JourneyStageCard({
     <TooltipProvider>
       <Card 
         className={`
-          relative overflow-hidden border-2 transition-all
+          relative overflow-hidden border-2 transition-all animate-slide-right-in
           ${isHighlighted ? 'shadow-lg scale-[1.02]' : 'hover:border-gray-300'}
           ${status === 'locked' ? 'opacity-75 grayscale' : ''}
         `}
+        style={{ 
+          animationDelay: `${delayIndex * 0.1}s`,
+          animationFillMode: 'both'
+        }}
         onMouseEnter={() => onHover && onHover(true)}
         onMouseLeave={() => onHover && onHover(false)}
       >

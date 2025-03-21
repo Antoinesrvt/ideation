@@ -200,3 +200,6 @@ you can start with the first step
 1) correctly integrate with the data layer (context), and use supabase types 
 2) connect with external sections for some data, thanks to the context
 3) refine the value proposition, design, user experience, layout and components used to maybe remove redundance, add some visualisation or more data to show, clarify the user flow, etc...
+
+
+Idée: donnée produite rassemble autant des docs que des visuels (comme business model par example)

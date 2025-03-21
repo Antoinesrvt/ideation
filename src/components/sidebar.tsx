@@ -13,21 +13,21 @@ import {
 } from "lucide-react"
 
 const navigation = [
-  {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
+  // {
+  //   name: "Dashboard",
+  //   href: "/dashboard",
+  //   icon: LayoutDashboard,
+  // },
   {
     name: "Projects",
     href: "/dashboard/projects",
     icon: FolderKanban,
   },
-  {
-    name: "Analytics",
-    href: "/dashboard/analytics",
-    icon: BarChart3,
-  },
+  // {
+  //   name: "Analytics",
+  //   href: "/dashboard/analytics",
+  //   icon: BarChart3,
+  // },
 ]
 
 const secondaryNavigation = [

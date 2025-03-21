@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { JOURNEY_STAGES } from '../../constants';
+import { JOURNEY_STAGES } from '../journey/constants';
 import { useAnimatedTransition, TransitionType } from './animationUtils';
 import { JourneyTimeline } from './JourneyTimeline';
 import { JourneyOverview } from './JourneyOverview';
@@ -13,7 +13,7 @@ import {
   getStageWithExpandedTools,
   formatIdToDisplay,
   findStageForTool
-} from '../../services/journeyAdapter';
+} from '../journey/services/journeyAdapter';
 import { 
   ChevronRight,
   HomeIcon

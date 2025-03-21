@@ -3,15 +3,15 @@ import dynamic from 'next/dynamic';
 import { Metadata } from 'next';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
-// Dynamically import the JourneyCanvas component to avoid SSR issues with canvas
-const JourneyCanvas = dynamic(
-  () => import('@/features/journey/components/canvas/JourneyCanvas'),
+// Dynamically import the New JourneyCanvas component to avoid SSR issues with canvas
+const NewJourneyCanvas = dynamic(
+  () => import('@/features/journey/components/NewJourneyCanvas').then(mod => ({ default: mod.NewJourneyCanvas })),
   { 
     ssr: false,
     loading: () => (
       <div className="flex justify-center items-center min-h-[calc(100vh-56px)]">
         <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-600">Loading your journey canvas...</span>
+        <span className="ml-3 text-gray-600">Chargement du parcours entrepreneurial...</span>
       </div>
     )
   }
@@ -24,8 +24,8 @@ interface CanvasPageProps {
 }
 
 export const metadata: Metadata = {
-  title: 'Journey Canvas | Ideation',
-  description: 'Interactive journey canvas with enhanced overview for entrepreneurial planning',
+  title: 'Parcours Entrepreneurial | Ideation',
+  description: 'Parcours interactif pour la validation et le développement de votre idée business',
 };
 
 export default function CanvasPage({ params }: CanvasPageProps) {
@@ -34,10 +34,10 @@ export default function CanvasPage({ params }: CanvasPageProps) {
       <Suspense fallback={
         <div className="flex justify-center items-center h-full">
           <LoadingSpinner size="lg" />
-          <span className="ml-3 text-gray-600">Preparing your journey canvas...</span>
+          <span className="ml-3 text-gray-600">Préparation de votre parcours entrepreneurial...</span>
         </div>
       }>
-        <JourneyCanvas 
+        <NewJourneyCanvas 
           projectId={params.id}
           initialFocus={{ type: 'overview' }}
         />

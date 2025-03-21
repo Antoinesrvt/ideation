@@ -95,11 +95,11 @@ body {
     --ring: 272 86% 38%;
     
     /* Chart colors */
-    --chart-1: 272 86% 38%; /* Primary */
-    --chart-2: 195 83% 51%; /* Secondary */
-    --chart-3: 334 94% 56%; /* Accent */
-    --chart-4: 249 33% 27%; /* Dark-700 */
-    --chart-5: 249 33% 45%; /* Dark-500 */
+    --chart-primary: 272 86% 38%;
+    --chart-secondary: 195 83% 51%;
+    --chart-tertiary: 334 94% 56%;
+    --chart-quaternary: 223 99% 47%;
+    --chart-quinary: 150 86% 38%;
     
     /* Border Radius */
     --radius: 0.75rem;
@@ -146,11 +146,11 @@ body {
     --ring: 272 82% 70%;
     
     /* Chart colors */
-    --chart-1: 272 82% 70%; /* Primary-400 */
-    --chart-2: 195 83% 69%; /* Secondary-400 */
-    --chart-3: 334 94% 74%; /* Accent-400 */
-    --chart-4: 249 33% 80%; /* Dark-200 */
-    --chart-5: 249 33% 55%; /* Dark-400 */
+    --chart-primary: 272 82% 70%;
+    --chart-secondary: 195 83% 69%;
+    --chart-tertiary: 334 94% 74%;
+    --chart-quaternary: 223 99% 69%;
+    --chart-quinary: 150 82% 65%;
   }
 }
 
@@ -164,7 +164,6 @@ body {
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading font-semibold leading-tight tracking-tight;
   }
-
 }
 
 /* Markdown Preview Styles */
@@ -378,5 +377,104 @@ body {
     transparent 50%
   );
   background-size: 8px 1px;
+  background-repeat: repeat-x;
+}
+
+/* Slide animations for journey transitions */
+@keyframes slideLeftIn {
+  from {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideRightIn {
+  from {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-left-in {
+  animation: slideLeftIn 0.3s ease forwards;
+}
+
+.animate-slide-right-in {
+  animation: slideRightIn 0.3s ease forwards;
+}
+
+/* Wave animation for the login page bottom */
+.wave-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  transform: rotate(180deg);
+}
+
+.wave-container svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 130px;
+}
+
+.wave-container .shape-fill {
+  fill: rgba(255, 255, 255, 0.4);
+}
+
+/* Animation for the wave */
+.waves {
+  position: relative;
+  width: 100%;
+  height: 15vh;
+  margin-bottom: -7px;
+  min-height: 100px;
+  max-height: 150px;
+}
+
+.parallax > use {
+  animation: wave-move-forever 25s cubic-bezier(.55,.5,.45,.5) infinite;
+}
+.parallax > use:nth-child(1) {
+  animation-delay: -2s;
+  animation-duration: 7s;
+}
+.parallax > use:nth-child(2) {
+  animation-delay: -3s;
+  animation-duration: 10s;
+}
+.parallax > use:nth-child(3) {
+  animation-delay: -4s;
+  animation-duration: 13s;
+}
+.parallax > use:nth-child(4) {
+  animation-delay: -5s;
+  animation-duration: 20s;
+}
+
+@keyframes wave-move-forever {
+  0% {
+    transform: translate3d(-90px,0,0);
+  }
+  100% { 
+    transform: translate3d(85px,0,0);
+  }
+}
+
+.wavy-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='pattern' width='100' height='100' viewBox='0 0 100 100' patternUnits='userSpaceOnUse' patternTransform='scale(0.5)'%3E%3Cpath fill='none' stroke='rgba(114, 9, 183, 0.06)' stroke-width='1.5' d='M-25,75 C0,75 0,25 25,25 C50,25 50,75 75,75 C100,75 100,25 125,25 C150,25 150,75 175,75'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23pattern)'/%3E%3C/svg%3E");
+  background-position: 0 0;
+  background-size: 100% 100%;
   background-repeat: repeat-x;
 }
