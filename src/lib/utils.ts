@@ -134,3 +134,61 @@ export function formatFileSize(bytes: number): string {
   
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
+
+/**
+ * Format a number as a currency string with specified currency, locale, and options
+ */
+export function formatCurrency(
+  value: number, 
+  currency = 'USD', 
+  locale = 'en-US', 
+  options?: Intl.NumberFormatOptions
+): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+    ...options
+  }).format(value);
+}
+
+/**
+ * Format a date into a relative time string (e.g., "3 days ago")
+ */
+export function formatRelativeDate(date: string | Date): string {
+  const now = new Date();
+  const inputDate = typeof date === 'string' ? new Date(date) : date;
+  
+  const diffInSeconds = Math.floor((now.getTime() - inputDate.getTime()) / 1000);
+  
+  if (isNaN(diffInSeconds)) {
+    return 'Invalid date';
+  }
+  
+  if (diffInSeconds < 60) {
+    return 'just now';
+  }
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) {
+    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) {
+    return `${diffInMonths} month${diffInMonths > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInYears = Math.floor(diffInMonths / 12);
+  return `${diffInYears} year${diffInYears > 1 ? 's' : ''} ago`;
+}

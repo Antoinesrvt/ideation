@@ -224,7 +224,7 @@ const decisionCategories = [
   { value: 'operations', label: 'Operations' }
 ];
 
-export function DecisionJournal() {
+export function DecisionJournal({ projectId }: { projectId: string }) {
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedDecisions, setExpandedDecisions] = useState<string[]>([]);

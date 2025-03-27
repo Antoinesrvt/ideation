@@ -84,7 +84,7 @@ export function DataOutputPanel({
     <Card className={`w-full shadow-sm ${className}`} style={style}>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">
-          {stageId ? 'Données produites' : 'Toutes les données du projet'}
+          {stageId !== 'all' ? 'Données produites' : 'Toutes les données du projet'}
         </CardTitle>
       </CardHeader>
       <CardContent>

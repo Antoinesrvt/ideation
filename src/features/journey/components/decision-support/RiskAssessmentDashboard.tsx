@@ -144,7 +144,7 @@ const mockRisks: Risk[] = [
   }
 ];
 
-export function RiskAssessmentDashboard() {
+export function RiskAssessmentDashboard({ projectId }: { projectId: string }) {
   const [expandedRisks, setExpandedRisks] = useState<string[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   

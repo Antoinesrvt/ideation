@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   ArrowUpRight, BarChart2, ChevronRight, Info, PlusCircle, 
   Users, UserSearch, Search, TrendingUp, Activity, AlertCircle,
-  Target, ScaleIcon, LineChart, HelpCircle
+  Target, ScaleIcon, LineChart, HelpCircle, ArrowLeft, FileText,
+  BarChart, UserRound, MessageSquare, Handshake, AppWindow, LayoutDashboard
 } from 'lucide-react';
 import { EnhancedCustomerPersonaCard } from './EnhancedCustomerPersonaCard';
 import { EnhancedCustomerInterviewCard } from './EnhancedCustomerInterviewCard';
@@ -14,15 +15,23 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useProjectStore } from '@/store';
-import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
+import { useMarketAnalysis, ExtendedMarketAnalysisData } from '@/hooks/features/useMarketAnalysis';
 import { useParams } from 'next/navigation';
 import TabList from "@/features/common/components/TabList";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
 import { SectionTab } from '@/components/ui/section-tab';
-import { MarketOverviewData } from '../types';
+import { MarketOverviewData, MarketAnalysisUIData, MarketPartner, PartnerFormValues } from '../types';
 import { MarketOverview } from './MarketOverview';
+import { MarketSectionNavigation, MarketSection } from './MarketSectionNavigation';
+import { MarketLandscape } from './MarketLandscape';
+import { MarketInsights } from './MarketInsights';
+import { PartnerAnalysis } from './PartnerAnalysis';
+import { PartnerWrapper } from './PartnerWrapper';
+import { Button } from '@/components/ui/button';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { MarketDefinition, MarketSize } from '../types';
 
 const marketTabs = [
   {
@@ -53,11 +62,11 @@ const marketTabs = [
 ];
 
 // Animation variants for the tab content
-const tabContentVariants = {
-  hidden: { opacity: 0, y: 20 },
+const sectionContentVariants = {
+  hidden: { opacity: 0, x: 20 },
   visible: { 
     opacity: 1, 
-    y: 0,
+    x: 0,
     transition: {
       duration: 0.3,
       ease: "easeOut",
@@ -67,7 +76,7 @@ const tabContentVariants = {
   },
   exit: { 
     opacity: 0, 
-    y: -20,
+    x: -20,
     transition: {
       duration: 0.2,
       ease: "easeIn",
@@ -78,7 +87,7 @@ const tabContentVariants = {
   }
 };
 
-// Animation variants for child elements within each tab
+// Animation variants for child elements within each section
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { 
@@ -127,10 +136,23 @@ const mockMarketOverviewData: MarketOverviewData = {
   ]
 };
 
-export function MarketAnalysis() {
-  const params = useParams();
-  const projectId = typeof params.id === 'string' ? params.id : undefined;
+export type MarketAnalysisProps = {
+  projectId: string;
+  currentSection?: MarketSection;
+  onSectionClick?: (section: MarketSection) => void;
+  readOnly?: boolean;
+}
+
+export function MarketAnalysis({ 
+  projectId,
+  currentSection = 'overview',
+  onSectionClick,
+  readOnly = false
+}: MarketAnalysisProps) {
   const { toast } = useToast();
+  
+  // For handling tabs in detail sections
+  const [activeTab, setActiveTab] = useState('personas');
   
   const { 
     data,
@@ -147,65 +169,80 @@ export function MarketAnalysis() {
     deleteCompetitor,
     addTrend,
     updateTrend,
-    deleteTrend
+    deleteTrend,
+    addPartner,
+    updatePartner,
+    deletePartner
   } = useMarketAnalysis(projectId);
   
   const { comparisonMode } = useProjectStore();
   
-  // Track which help sections are expanded
-  const [expandedHelp, setExpandedHelp] = useState<{
-    personas: boolean;
-    interviews: boolean;
-    competitors: boolean;
-    trends: boolean;
-  }>({
-    personas: false,
-    interviews: false,
-    competitors: false,
-    trends: false
-  });
-  
-  // Calculate market insights dashboard metrics
-  const marketStats = useMemo(() => {
-    const totalPersonas = data.personas.length;
-    const totalInterviews = data.interviews.length;
-    const totalCompetitors = data.competitors.length;
-    const totalTrends = data.trends.length;
+  // Calculate completion status for various sections
+  const completionStatus = useMemo(() => {
+    // Market definition completion
+    const marketDefinitionScore = data.overview?.marketDefinition?.industry ? 100 : 0;
     
-    // Check if sentiment exists before filtering
-    const positiveInterviews = data.interviews.filter(i => i.sentiment === 'positive').length;
-    const sentimentScore = totalInterviews > 0 
-      ? Math.round((positiveInterviews / totalInterviews) * 100) 
+    // Trends completion
+    const trendsScore = Math.min(data.trends.length * 20, 100);
+    
+    // Customers completion (personas + interviews)
+    const personasScore = Math.min(data.personas.length * 10, 50);
+    const interviewsScore = Math.min(data.interviews.length * 10, 50);
+    const customersScore = (personasScore + interviewsScore) / 2;
+    
+    // Competitors completion
+    const competitorsScore = Math.min(data.competitors.length * 20, 100);
+    
+    // Partners completion (if exists)
+    const partnersScore = data.partners && data.partners.length > 0 
+      ? Math.min(data.partners.length * 20, 100) 
       : 0;
-      
-    const opportunities = data.trends.filter(t => t.trend_type === 'opportunity').length;
-    const threats = data.trends.filter(t => t.trend_type === 'threat').length;
     
     return {
-      totalPersonas,
-      totalInterviews,
-      totalCompetitors,
-      totalTrends,
-      sentimentScore,
-      opportunities,
-      threats,
-      marketInsightScore: Math.min(Math.round((totalPersonas + totalInterviews + totalCompetitors + totalTrends) / 12 * 100), 100)
+      'market': marketDefinitionScore,
+      'trends': trendsScore,
+      'customers': customersScore,
+      'competitors': competitorsScore,
+      'partners': partnersScore,
+      'overall': (marketDefinitionScore + trendsScore + customersScore + competitorsScore + partnersScore) / 5
     };
   }, [data]);
-
+  
+  // Effect to sync tab state with section when section changes
+  useEffect(() => {
+    if (currentSection === 'customers') {
+      setActiveTab('personas');
+    } else if (currentSection === 'market') {
+      setActiveTab('overview');
+    }
+  }, [currentSection]);
+  
+  // Handle tab change within a section
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+  };
+  
+  // Handle section change
+  const handleSectionClick = (section: MarketSection) => {
+    console.log(`Section clicked: ${section}`); // Debug logging
+    if (onSectionClick) {
+      onSectionClick(section);
+    }
+  };
+  
   const handleAddPersona = async () => {
     if (!projectId) return;
     
     try {
       await addPersona({
-      name: 'New Persona',
-      role: null,
-      demographics: null,
-      pain_points: null,
-      goals: null,
-      project_id: projectId,
-      created_by: null
-    });
+        name: 'New Persona',
+        role: '',
+        demographics: '',
+        pain_points: [],
+        goals: [],
+        project_id: projectId,
+        created_by: null
+      });
       
       toast({
         title: 'Success',
@@ -226,16 +263,15 @@ export function MarketAnalysis() {
     
     try {
       await addInterview({
-      name: 'New Interview',
-      company: null,
-      interview_date: new Date().toISOString(),
-      sentiment: null,
-      notes: null,
-      key_insights: null,
-      tags: null,
-      project_id: projectId,
-        created_by: null,
-        contact_email: null
+        name: 'New Interview',
+        company: '',
+        interview_date: new Date().toISOString(),
+        sentiment: 'neutral',
+        notes: '',
+        key_insights: [],
+        tags: [],
+        project_id: projectId,
+        created_by: null
       });
       
       toast({
@@ -257,16 +293,16 @@ export function MarketAnalysis() {
     
     try {
       await addCompetitor({
-      name: 'New Competitor',
-      website: null,
-      strengths: null,
-      weaknesses: null,
-      price: null,
-      market_share: null,
-      notes: null,
-      project_id: projectId,
-      created_by: null
-    });
+        name: 'New Competitor',
+        website: '',
+        strengths: [],
+        weaknesses: [],
+        price: '',
+        market_share: '',
+        notes: '',
+        project_id: projectId,
+        created_by: null
+      });
       
       toast({
         title: 'Success',
@@ -287,15 +323,15 @@ export function MarketAnalysis() {
     
     try {
       await addTrend({
-      name: 'New Trend',
-      direction: null,
-      trend_type: null,
-      description: null,
-      tags: null,
-      sources: null,
-      project_id: projectId,
-      created_by: null
-    });
+        name: 'New Market Trend',
+        direction: 'upward',
+        trend_type: 'opportunity',
+        description: '',
+        tags: [],
+        sources: [],
+        project_id: projectId,
+        created_by: null
+      });
       
       toast({
         title: 'Success',
@@ -311,533 +347,435 @@ export function MarketAnalysis() {
     }
   };
   
-  // Handle updates with proper error handling
-  const handleUpdatePersona = async (params: { id: string; data: any }) => {
-    try {
-      await updatePersona(params);
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to update persona',
-        variant: 'destructive'
-      });
-    }
+  // If we're loading or have an error, show appropriate state
+  if (isLoading) return <LoadingState message="Loading market analysis data..." />;
+  if (error) return <ErrorState error={error.message} />;
+  
+  // Set default overview data if none exists yet
+  const marketData: MarketAnalysisUIData = {
+    personas: data.personas,
+    interviews: data.interviews,
+    competitors: data.competitors,
+    trends: data.trends,
+    partners: data.partners,
+    overview: data.overview ? {
+      marketDefinition: data.overview.marketDefinition || mockMarketOverviewData.marketDefinition,
+      marketSize: data.overview.marketSize || mockMarketOverviewData.marketSize,
+      segments: data.overview.segments || mockMarketOverviewData.segments
+    } : mockMarketOverviewData
   };
-
-  const handleUpdateInterview = async (params: { id: string; data: any }) => {
-    try {
-      await updateInterview(params);
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to update interview',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleUpdateCompetitor = async (params: { id: string; data: any }) => {
-    try {
-      await updateCompetitor(params);
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to update competitor',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleUpdateTrend = async (params: { id: string; data: any }) => {
-    try {
-      await updateTrend(params);
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to update trend',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Handle deletions with proper error handling
-  const handleDeletePersona = async (id: string) => {
-    try {
-      await deletePersona(id);
-      toast({
-        title: 'Success',
-        description: 'Persona has been deleted',
-        variant: 'default'
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete persona',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDeleteInterview = async (id: string) => {
-    try {
-      await deleteInterview(id);
-      toast({
-        title: 'Success',
-        description: 'Interview has been deleted',
-        variant: 'default'
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete interview',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDeleteCompetitor = async (id: string) => {
-    try {
-      await deleteCompetitor(id);
-      toast({
-        title: 'Success',
-        description: 'Competitor has been deleted',
-        variant: 'default'
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete competitor',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDeleteTrend = async (id: string) => {
-    try {
-      await deleteTrend(id);
-      toast({
-        title: 'Success',
-        description: 'Trend has been deleted',
-        variant: 'default'
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to delete trend',
-        variant: 'destructive'
-      });
+  
+  // Get section title for breadcrumbs
+  const getSectionTitle = (section: MarketSection): string => {
+    switch (section) {
+      case 'overview': return 'Overview';
+      case 'market': return 'Market Definition';
+      case 'trends': return 'Market Trends';
+      case 'customers': return 'Customers';
+      case 'competitors': return 'Competitors';
+      case 'partners': return 'Partners';
+      default: return 'Market Analysis';
     }
   };
   
-  // Toggle help section visibility
-  const toggleHelp = (section: keyof typeof expandedHelp) => {
-    setExpandedHelp(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  // Add state for the active tab
-  const [activeTab, setActiveTab] = useState<string>("personas");
-
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <ErrorState 
-            error={error} 
-            onRetry={() => window.location.reload()}
-          />
-        </CardContent>
-      </Card>
-    );
-  }
+  // Wrap partner data in a separate component to handle optional props
+  const PartnerWrapper = ({
+    partners,
+    addPartner,
+    updatePartner,
+    deletePartner,
+    readOnly
+  }: any) => (
+    <PartnerAnalysis 
+      partners={partners}
+      onAddPartner={addPartner} 
+      onUpdatePartner={updatePartner} 
+      onDeletePartner={deletePartner}
+      readOnly={readOnly}
+    />
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Market Insights Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Market Insight Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <BarChart2 className="h-5 w-5 text-blue-600 mr-2" />
-                <span className="text-2xl font-bold">
-                  {marketStats.marketInsightScore}%
-                </span>
-              </div>
-              <HoverCard>
-                <HoverCardTrigger>
-                  <Info className="h-4 w-4 text-gray-400" />
-                </HoverCardTrigger>
-                <HoverCardContent className="w-80">
-                  <p className="text-sm">
-                    Your market insight score is calculated based on the
-                    completeness of your market analysis. Add more personas,
-                    interviews, competitors, and trends to improve your score.
-                  </p>
-                </HoverCardContent>
-              </HoverCard>
-            </div>
-            <Progress value={marketStats.marketInsightScore} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Customer Sentiment
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <UserSearch className="h-5 w-5 text-green-600 mr-2" />
-                <span className="text-2xl font-bold">
-                  {marketStats.sentimentScore}%
-                </span>
-              </div>
-              <Badge
-                variant="outline"
-                className={
-                  marketStats.sentimentScore >= 70
-                    ? "bg-green-50 text-green-700"
-                    : marketStats.sentimentScore >= 40
-                    ? "bg-yellow-50 text-yellow-700"
-                    : "bg-red-50 text-red-700"
-                }
-              >
-                {marketStats.sentimentScore >= 70
-                  ? "Positive"
-                  : marketStats.sentimentScore >= 40
-                  ? "Mixed"
-                  : "Negative"}
-              </Badge>
-            </div>
-            <Progress value={marketStats.sentimentScore} className="mt-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Market Coverage
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <Users className="h-4 w-4 text-blue-600 mx-auto mb-1" />
-                <div className="text-xl font-bold">
-                  {marketStats.totalPersonas}
-                </div>
-                <div className="text-xs text-gray-500">Personas</div>
-              </div>
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <Target className="h-4 w-4 text-purple-600 mx-auto mb-1" />
-                <div className="text-xl font-bold">
-                  {marketStats.totalCompetitors}
-                </div>
-                <div className="text-xs text-gray-500">Competitors</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Market Trends
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-center p-2 bg-blue-50 rounded">
-                <ArrowUpRight className="h-4 w-4 text-blue-600 mx-auto mb-1" />
-                <div className="text-xl font-bold">
-                  {marketStats.opportunities}
-                </div>
-                <div className="text-xs text-gray-500">Opportunities</div>
-              </div>
-              <div className="text-center p-2 bg-red-50 rounded">
-                <AlertCircle className="h-4 w-4 text-red-600 mx-auto mb-1" />
-                <div className="text-xl font-bold">{marketStats.threats}</div>
-                <div className="text-xs text-gray-500">Threats</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content */}
-      <LayoutGroup id="market-analysis-tabs">
-        <div className="space-y-6">
-          <Tabs defaultValue="personas" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex justify-between items-center mb-4">
-              <TabList tabs={marketTabs} activeTab={activeTab} onTabChange={setActiveTab} />
-          </div>
-
-            {/* Add AnimatePresence to handle the exit animations properly */}
-            <AnimatePresence mode="wait">
-              {
-                activeTab === "overview" && (
-                  <motion.div
-                    key="overview"
-                    variants={tabContentVariants}
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    className="w-full"
-                    layoutId="tab-content"
-                  >
-                    <TabsContent value="overview" className="mt-0 border-none shadow-none" forceMount>
-                      <MarketOverview data={mockMarketOverviewData} />
-                    </TabsContent>
-                  </motion.div>
-                )
-              }
-              {activeTab === "personas" && (
-                <motion.div
-                  key="personas"
-                  variants={tabContentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="w-full"
-                  layoutId="tab-content"
-                >
-                  <TabsContent value="personas" className="mt-0 border-none shadow-none" forceMount>
-                    <SectionTab
-                      icon={<Users className="h-5 w-5 text-primary-700" />}
-                      title="Customer Personas"
-                      description="Create detailed profiles of your target customers to better understand their needs, behaviors, and pain points."
-                      onCreate={handleAddPersona}
-                      count={data.personas.length}
-                      helper={{
-                        icon: <Info className="h-5 w-5" />,
-                        title: "Creating Effective Personas",
-                        content: (
-                          <div className="space-y-3">
-                            <p className="text-dark-700">
-                              Effective customer personas should include:
-                            </p>
-                            <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Demographics (age, occupation, income level)</li>
-                              <li>Goals and motivations</li>
-                              <li>Pain points and challenges</li>
-                              <li>Purchasing behaviors</li>
-                              <li>Decision-making factors</li>
-              </ul>
-                            <p className="text-dark-600 pt-2">
-                              Focus on 3-5 primary personas that represent your core customer segments.
-                            </p>
+    <div className="w-full">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentSection}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          variants={sectionContentVariants}
+          className="space-y-6"
+        >
+          {/* Overview Section */}
+          {currentSection === 'overview' && (
+            <>
+              <motion.div variants={itemVariants}>
+                <MarketLandscape 
+                  data={marketData}
+                  onSectionClick={(section) => {
+                    // Make sure onSectionClick is provided
+                    if (onSectionClick) {
+                      switch(section) {
+                        case 'market':
+                        case 'trends':
+                        case 'customers':
+                        case 'competitors':
+                        case 'partners':
+                        case 'overview':
+                          // These are all valid sections in our MarketSection type
+                          handleSectionClick(section as MarketSection);
+                          break;
+                        default:
+                          console.warn(`Invalid section: ${section}`);
+                          break;
+                      }
+                    }
+                  }}
+                  currentSection={currentSection}
+                />
+              </motion.div>
+              
+              {/* <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-medium">Market Completion Status</CardTitle>
+                    <CardDescription>Overall progress on your market analysis</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                            <span>Market Definition</span>
                           </div>
-                        )
-                      }}
-                      hasItems={data.personas.length > 0}
-                      emptyState={{
-                        description: "Define who your target customers are, what they need, and what motivates their decisions."
-                      }}
-                    >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {data.personas.map((persona) => (
-                          <motion.div
-                  key={persona.id}
-                            variants={itemVariants}
-                          >
-                            <EnhancedCustomerPersonaCard
-                  persona={persona}
-                              onUpdate={handleUpdatePersona}
-                              onDelete={handleDeletePersona}
-                />
-                          </motion.div>
-              ))}
-            </div>
-                    </SectionTab>
-        </TabsContent>
-                </motion.div>
-              )}
-
-              {activeTab === "interviews" && (
-                <motion.div
-                  key="interviews"
-                  variants={tabContentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="w-full"
-                  layoutId="tab-content"
-                >
-                  <TabsContent value="interviews" className="mt-0 border-none shadow-none" forceMount>
-                    <SectionTab
-                      icon={<UserSearch className="h-5 w-5 text-primary-700" />}
-                      title="Customer Interviews"
-                      description="Document insights from customer conversations to validate your market assumptions."
-                      onCreate={handleAddInterview}
-                      count={data.interviews.length}
-                      helper={{
-                        icon: <Info className="h-5 w-5" />,
-                        title: "Conducting Effective Interviews",
-                        content: (
-                          <div className="space-y-3">
-                            <p className="text-dark-700">
-                              Best practices for customer interviews:
-                            </p>
-                            <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Ask open-ended questions</li>
-                              <li>Focus on problems, not solutions</li>
-                              <li>Explore their workflows and frustrations</li>
-                              <li>Listen more than you speak</li>
-                              <li>Note key insights and pain points</li>
-                            </ul>
-            </div>
-                        )
-                      }}
-                      hasItems={data.interviews.length > 0}
-                      emptyState={{
-                        description: "Record interviews with potential customers to validate your assumptions."
-                      }}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {data.interviews.map((interview) => (
-                          <motion.div
-                  key={interview.id}
-                            variants={itemVariants}
-                          >
-                            <EnhancedCustomerInterviewCard
-                  interview={interview}
-                              onUpdate={handleUpdateInterview}
-                              onDelete={handleDeleteInterview}
-                />
-                          </motion.div>
-              ))}
-            </div>
-                    </SectionTab>
-        </TabsContent>
-                </motion.div>
-              )}
-
-              {activeTab === "competitors" && (
-                <motion.div
-                  key="competitors"
-                  variants={tabContentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="w-full"
-                  layoutId="tab-content"
-                >
-                  <TabsContent value="competitors" className="mt-0 border-none shadow-none" forceMount>
-                    <SectionTab
-                      icon={<Target className="h-5 w-5 text-primary-700" />}
-                      title="Competitors"
-                      description="Track your competition to identify market gaps and opportunities."
-                      onCreate={handleAddCompetitor}
-                      count={data.competitors.length}
-                      helper={{
-                        icon: <Info className="h-5 w-5" />,
-                        title: "Competitive Analysis",
-                        content: (
-                          <div className="space-y-3">
-                            <p className="text-dark-700">
-                              Focus on these aspects when analyzing competitors:
-                            </p>
-                            <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Core features and differentiators</li>
-                              <li>Pricing strategy and positioning</li>
-                              <li>Target customer segments</li>
-                              <li>Strengths to learn from</li>
-                              <li>Weaknesses you can exploit</li>
-                            </ul>
-            </div>
-                        )
-                      }}
-                      hasItems={data.competitors.length > 0}
-                      emptyState={{
-                        description: "Add competitors to analyze market positioning and identify opportunities."
-                      }}
-                    >
-                      <div className="pt-2">
-            <CompetitorTable
-              competitors={data.competitors}
-              onAdd={handleAddCompetitor}
-                          onUpdate={handleUpdateCompetitor}
-                          onDelete={handleDeleteCompetitor}
-            />
+                          <span className="font-medium">{Math.round(completionStatus.market)}%</span>
+                        </div>
+                        <Progress value={completionStatus.market} className="h-2" />
                       </div>
-                    </SectionTab>
-        </TabsContent>
-                </motion.div>
-              )}
-
-              {activeTab === "trends" && (
-                <motion.div
-                  key="trends"
-                  variants={tabContentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  className="w-full"
-                  layoutId="tab-content"
-                >
-                  <TabsContent value="trends" className="mt-0 border-none shadow-none" forceMount>
-                    <SectionTab
-                      icon={<TrendingUp className="h-5 w-5 text-primary-700" />}
-                      title="Market Trends"
-                      description="Track industry trends that could impact your product strategy."
-                      onCreate={handleAddTrend}
-                      count={data.trends.length}
-                      helper={{
-                        icon: <Info className="h-5 w-5" />,
-                        title: "Identifying Market Trends",
-                        content: (
-                          <div className="space-y-3">
-                            <p className="text-dark-700">
-                              How to identify and analyze market trends:
-                            </p>
-                            <ul className="list-disc list-inside text-dark-600 space-y-1">
-                              <li>Follow industry news and reports</li>
-                              <li>Monitor technological advancements</li>
-                              <li>Observe changes in customer behavior</li>
-                              <li>Evaluate as opportunities or threats</li>
-                              <li>Assess potential impact on your business</li>
-                            </ul>
-            </div>
-                        )
-                      }}
-                      hasItems={data.trends.length > 0}
-                      emptyState={{
-                        description: "Monitor industry trends to stay ahead of market changes that could affect your product."
-                      }}
-                    >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {data.trends.map((trend) => (
-                          <motion.div
-                  key={trend.id}
-                            variants={itemVariants}
-                          >
-                            <EnhancedMarketTrendCard
-                  trend={trend}
-                              onUpdate={handleUpdateTrend}
-                              onDelete={handleDeleteTrend}
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <TrendingUp className="h-4 w-4 mr-2 text-blue-500" />
+                            <span>Market Trends</span>
+                          </div>
+                          <span className="font-medium">{Math.round(completionStatus.trends)}%</span>
+                        </div>
+                        <Progress value={completionStatus.trends} className="h-2" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Users className="h-4 w-4 mr-2 text-purple-500" />
+                            <span>Customers</span>
+                          </div>
+                          <span className="font-medium">{Math.round(completionStatus.customers)}%</span>
+                        </div>
+                        <Progress value={completionStatus.customers} className="h-2" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Target className="h-4 w-4 mr-2 text-red-500" />
+                            <span>Competitors</span>
+                          </div>
+                          <span className="font-medium">{Math.round(completionStatus.competitors)}%</span>
+                        </div>
+                        <Progress value={completionStatus.competitors} className="h-2" />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Users className="h-4 w-4 mr-2 text-green-500" />
+                            <span>Partners</span>
+                          </div>
+                          <span className="font-medium">{Math.round(completionStatus.partners)}%</span>
+                        </div>
+                        <Progress value={completionStatus.partners} className="h-2" />
+                      </div>
+                      
+                      <div className="pt-2 mt-4 border-t">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Overall Completion</span>
+                          <Badge variant="outline" className="font-medium">
+                            {Math.round(completionStatus.overall)}%
+                          </Badge>
+                        </div>
+                        <Progress value={completionStatus.overall} className="h-2.5 mt-2" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div> */}
+            </>
+          )}
+          
+          {/* Market Definition Section */}
+          {currentSection === 'market' && (
+            <>
+              <motion.div variants={itemVariants}>
+                <MarketOverview 
+                  data={marketData.overview}
+                  onUpdate={readOnly ? undefined : (data) => {
+                    // Handle updating overview data
+                  }}
                 />
-                          </motion.div>
-              ))}
+              </motion.div>
+            </>
+          )}
+          
+          {/* Trends Section */}
+          {currentSection === 'trends' && (
+            <>
+              <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle className="text-base font-medium flex items-center">
+                        <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
+                        Market Trends
+                      </CardTitle>
+                      <CardDescription>
+                        Track emerging market trends that could impact your business
+                      </CardDescription>
+                    </div>
+                    
+                    {!readOnly && (
+                      <Button size="sm" onClick={handleAddTrend}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add Trend
+                      </Button>
+                    )}
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {marketData.trends.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No market trends added yet</p>
+                        {!readOnly && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-4"
+                            onClick={handleAddTrend}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add your first trend
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {marketData.trends.map(trend => (
+                          <EnhancedMarketTrendCard
+                            key={trend.id}
+                            trend={trend}
+                            onEdit={readOnly ? undefined : () => {}}
+                            onUpdate={readOnly ? undefined : updateTrend}
+                            onDelete={readOnly ? undefined : deleteTrend}
+                            readOnly={readOnly}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </>
+          )}
+          
+          {/* Customers Section */}
+          {currentSection === 'customers' && (
+            <div className="flex flex-col lg:flex-row gap-6">
+              <motion.div variants={itemVariants} className="lg:w-1/2">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle className="text-base font-medium flex items-center">
+                        <Users className="h-5 w-5 mr-2 text-purple-500" />
+                        Customer Personas
+                      </CardTitle>
+                      <CardDescription>
+                        Define your key customer archetypes and their needs
+                      </CardDescription>
+                    </div>
+                    
+                    {!readOnly && (
+                      <Button size="sm" onClick={handleAddPersona}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add Persona
+                      </Button>
+                    )}
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {marketData.personas.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No customer personas added yet</p>
+                        {!readOnly && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-4"
+                            onClick={handleAddPersona}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add your first persona
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4">
+                        {marketData.personas.map(persona => (
+                          <EnhancedCustomerPersonaCard
+                            key={persona.id}
+                            persona={persona}
+                            onUpdate={readOnly ? undefined : updatePersona}
+                            onDelete={readOnly ? undefined : deletePersona}
+                            readOnly={readOnly}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+              
+              <motion.div variants={itemVariants} className="lg:w-1/2">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle className="text-base font-medium flex items-center">
+                        <UserSearch className="h-5 w-5 mr-2 text-purple-500" />
+                        Customer Interviews
+                      </CardTitle>
+                      <CardDescription>
+                        Record insights from customer conversations
+                      </CardDescription>
+                    </div>
+                    
+                    {!readOnly && (
+                      <Button size="sm" onClick={handleAddInterview}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add Interview
+                      </Button>
+                    )}
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {marketData.interviews.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <UserSearch className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No customer interviews added yet</p>
+                        {!readOnly && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-4"
+                            onClick={handleAddInterview}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add your first interview
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-4">
+                        {marketData.interviews.map(interview => (
+                          <EnhancedCustomerInterviewCard
+                            key={interview.id}
+                            interview={interview}
+                            onUpdate={readOnly ? undefined : updateInterview}
+                            onDelete={readOnly ? undefined : deleteInterview}
+                            readOnly={readOnly}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
             </div>
-                    </SectionTab>
-        </TabsContent>
-                </motion.div>
-              )}
-            </AnimatePresence>
-      </Tabs>
-        </div>
-      </LayoutGroup>
+          )}
+          
+          {/* Competitors Section */}
+          {currentSection === 'competitors' && (
+            <>
+              <motion.div variants={itemVariants}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <div>
+                      <CardTitle className="text-base font-medium flex items-center">
+                        <Target className="h-5 w-5 mr-2 text-red-500" />
+                        Competitor Analysis
+                      </CardTitle>
+                      <CardDescription>
+                        Track and analyze your main competitors
+                      </CardDescription>
+                    </div>
+                    
+                    {!readOnly && (
+                      <Button size="sm" onClick={handleAddCompetitor}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add Competitor
+                      </Button>
+                    )}
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {marketData.competitors.length === 0 ? (
+                      <div className="text-center py-10 text-muted-foreground">
+                        <Target className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No competitors added yet</p>
+                        {!readOnly && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-4"
+                            onClick={handleAddCompetitor}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add your first competitor
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <CompetitorTable
+                        competitors={marketData.competitors}
+                        onAdd={readOnly ? undefined : handleAddCompetitor}
+                        onUpdate={readOnly ? undefined : updateCompetitor}
+                        onDelete={readOnly ? undefined : deleteCompetitor}
+                        readOnly={readOnly}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </>
+          )}
+          
+          {/* Partners Section */}
+          {currentSection === 'partners' && (
+            <>
+              <motion.div variants={itemVariants}>
+                <PartnerWrapper 
+                  partners={marketData.partners || []}
+                  addPartner={readOnly ? undefined : addPartner}
+                  updatePartner={readOnly ? undefined : updatePartner}
+                  deletePartner={readOnly ? undefined : deletePartner}
+                  readOnly={readOnly}
+                />
+              </motion.div>
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

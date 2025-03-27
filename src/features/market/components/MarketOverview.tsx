@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MarketSizingCalculator } from './MarketSizingCalculator';
 import { motion } from 'framer-motion';
 import { 
   BarChart, Target, Globe, LineChart, 
-  TrendingUp, PieChart, Info, Layers, Map
+  TrendingUp, PieChart, Info, Layers, Map,
+  FileQuestion, ArrowRight, CheckCircle, AlertCircle, Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { MarketSizeFunnel } from './MarketSizeFunnel';
+import { MarketMaturityCurve } from './MarketMaturityCurve';
+import { SegmentationChart, SegmentCard } from './SegmentationChart';
+import { AssumptionTracker, MarketAssumption } from './AssumptionTracker';
+import { generateId } from '@/lib/utils';
+import { MarketSizeInsights } from './MarketSizeInsights';
+import { MarketSizingModal } from './MarketSizingModal';
 
 interface MarketOverviewProps {
   data?: MarketOverviewData;
@@ -48,9 +56,32 @@ const itemVariants = {
   }
 };
 
+// Mock data for assumptions
+const mockAssumptions: MarketAssumption[] = [
+  {
+    id: '1',
+    text: 'Early adopters will pay at least $50/month for this solution',
+    status: 'unverified',
+    createdAt: new Date(),
+  },
+  {
+    id: '2',
+    text: 'The target market is growing at 15%+ annually',
+    status: 'validated',
+    createdAt: new Date(),
+    validationMethod: 'Industry report'
+  },
+  {
+    id: '3',
+    text: 'Current alternatives are too expensive for SMBs',
+    status: 'unverified',
+    createdAt: new Date(),
+  }
+];
+
 export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('sizing');
+  const [activeTab, setActiveTab] = useState('market');
   const [marketDefinition, setMarketDefinition] = useState<MarketDefinition>(
     data?.marketDefinition || {
       industry: '',
@@ -59,8 +90,30 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
     }
   );
   
+  // State for market segments
+  const [segments, setSegments] = useState<Array<{name: string; size: number; growth: number}>>(
+    data?.segments || []
+  );
+  
+  // State for editing segments
+  const [isAddingSegment, setIsAddingSegment] = useState(false);
+  const [editingSegment, setEditingSegment] = useState<{name: string; size: number; growth: number} | null>(null);
+  
+  // State for assumptions
+  const [assumptions, setAssumptions] = useState<MarketAssumption[]>(mockAssumptions);
+  
   // Calculate completion percentage for market research
   const marketResearchCompletion = calculateCompletionPercentage(data);
+  
+  // Update local state when props change
+  useEffect(() => {
+    if (data?.marketDefinition) {
+      setMarketDefinition(data.marketDefinition);
+    }
+    if (data?.segments) {
+      setSegments(data.segments);
+    }
+  }, [data]);
   
   const handleMarketSizeUpdate = (marketSize: MarketSize) => {
     if (onUpdate) {
@@ -83,6 +136,65 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
         marketDefinition: updatedDefinition
       });
     }
+  };
+  
+  // Handlers for segments
+  const handleAddSegment = () => {
+    const newSegment = {
+      name: 'New Segment',
+      size: 25,
+      growth: 10
+    };
+    const updatedSegments = [...segments, newSegment];
+    setSegments(updatedSegments);
+    setEditingSegment(newSegment);
+    
+    if (onUpdate) {
+      onUpdate({
+        segments: updatedSegments
+      });
+    }
+  };
+  
+  const handleEditSegment = (segment: {name: string; size: number; growth: number}) => {
+    setEditingSegment(segment);
+  };
+  
+  const handleDeleteSegment = (name: string) => {
+    const updatedSegments = segments.filter(s => s.name !== name);
+    setSegments(updatedSegments);
+    
+    if (onUpdate) {
+      onUpdate({
+        segments: updatedSegments
+      });
+    }
+    
+    toast({
+      title: "Segment deleted",
+      description: `"${name}" segment has been removed.`
+    });
+  };
+  
+  // Handlers for assumptions
+  const handleAddAssumption = (assumption: Omit<MarketAssumption, 'id' | 'createdAt'>) => {
+    const newAssumption: MarketAssumption = {
+      ...assumption,
+      id: generateId(),
+      createdAt: new Date()
+    };
+    setAssumptions([...assumptions, newAssumption]);
+  };
+  
+  const handleUpdateAssumption = (id: string, updates: Partial<MarketAssumption>) => {
+    const updatedAssumptions = assumptions.map(a => 
+      a.id === id ? { ...a, ...updates, updatedAt: new Date() } : a
+    );
+    setAssumptions(updatedAssumptions);
+  };
+  
+  const handleDeleteAssumption = (id: string) => {
+    setAssumptions(assumptions.filter(a => a.id !== id));
   };
   
   function calculateCompletionPercentage(data?: MarketOverviewData): number {
@@ -112,91 +224,28 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
       initial="hidden"
       animate="visible"
     >
-      {/* Market Overview Header Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div variants={itemVariants} className="col-span-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Market Research Completion
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <BarChart className="h-5 w-5 text-blue-600 mr-2" />
-                  <span className="text-2xl font-bold">
-                    {marketResearchCompletion}%
-                  </span>
-                </div>
-                <HoverCard>
-                  <HoverCardTrigger>
-                    <Info className="h-4 w-4 text-gray-400" />
-                  </HoverCardTrigger>
-                  <HoverCardContent className="w-80">
-                    <p className="text-sm">
-                      Complete all sections of your market overview to enhance your understanding
-                      of your market opportunity. This score tracks your progress.
-                    </p>
-                  </HoverCardContent>
-                </HoverCard>
-              </div>
-              <Progress value={marketResearchCompletion} className="mt-2" />
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Industry
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col">
-                <span className="text-xl font-semibold truncate">
-                  {marketDefinition.industry || 'Not defined'}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {marketDefinition.geography === 'global' ? 'Global market' : marketDefinition.geography}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-        
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">
-                Market Maturity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <LineChart className="h-5 w-5 mr-2 text-primary" />
-                <div className="flex items-center space-x-2">
-                  <span className="text-xl font-semibold capitalize">
-                    {marketDefinition.maturity || 'Not defined'}
-                  </span>
-                  <Badge 
-                    variant={marketDefinition.maturity === 'growing' ? 'default' : 
-                          marketDefinition.maturity === 'emerging' ? 'outline' :
-                          marketDefinition.maturity === 'mature' ? 'secondary' : 'destructive'}>
-                    {marketDefinition.maturity === 'growing' ? 'High Growth' : 
-                     marketDefinition.maturity === 'emerging' ? 'Early Stage' :
-                     marketDefinition.maturity === 'mature' ? 'Stable' : 'Declining'}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+
       
-      {/* Market Definition Section */}
+      {/* Tabs for different sections */}
       <motion.div variants={itemVariants}>
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="market" className="flex items-center">
+              <Globe className="h-4 w-4 mr-2" />
+              Market Definition
+            </TabsTrigger>
+            <TabsTrigger value="sizing" className="flex items-center">
+              <Target className="h-4 w-4 mr-2" />
+              Market Sizing
+            </TabsTrigger>
+            <TabsTrigger value="segments" className="flex items-center">
+              <PieChart className="h-4 w-4 mr-2" />
+              Segmentation
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Market Definition Tab */}
+          <TabsContent value="market" className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -247,62 +296,10 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="maturity">Market Maturity</Label>
-                  <Select 
-                    value={marketDefinition.maturity} 
-                    onValueChange={(value: any) => handleMarketDefinitionChange('maturity', value)}
-                  >
-                    <SelectTrigger id="maturity">
-                      <SelectValue placeholder="Select market maturity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="emerging">
-                        <div className="flex items-center">
-                          <span>Emerging</span>
-                          <Badge variant="outline" className="ml-2">Early Stage</Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="growing">
-                        <div className="flex items-center">
-                          <span>Growing</span>
-                          <Badge className="ml-2">High Growth</Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="mature">
-                        <div className="flex items-center">
-                          <span>Mature</span>
-                          <Badge variant="secondary" className="ml-2">Stable</Badge>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="declining">
-                        <div className="flex items-center">
-                          <span>Declining</span>
-                          <Badge variant="destructive" className="ml-2">Contracting</Badge>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Assess what stage your target market is in currently
-                  </p>
-                </div>
-                
-                <div className="flex items-center space-x-4 pt-4">
-                  <div className="flex-1 h-2 bg-muted rounded-full relative overflow-hidden">
-                    <div 
-                      className={`absolute inset-y-0 left-0 ${
-                        marketDefinition.maturity === 'emerging' ? 'w-1/4 bg-blue-400' : 
-                        marketDefinition.maturity === 'growing' ? 'w-2/4 bg-green-400' :
-                        marketDefinition.maturity === 'mature' ? 'w-3/4 bg-yellow-400' : 
-                        'w-full bg-red-400'
-                      }`}
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {marketDefinition.maturity === 'emerging' ? 'Early opportunities, high risk' : 
-                     marketDefinition.maturity === 'growing' ? 'Rapid growth phase' :
-                     marketDefinition.maturity === 'mature' ? 'Stable, competitive' : 
-                     'Limited growth, consolidation'}
-                  </span>
+                      <MarketMaturityCurve 
+                        currentMaturity={marketDefinition.maturity}
+                        onChange={(maturity) => handleMarketDefinitionChange('maturity', maturity)}
+                      />
                 </div>
               </div>
             </div>
@@ -320,19 +317,149 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
             </Button>
           </CardFooter>
         </Card>
-      </motion.div>
-      
-      {/* Market Sizing Calculator */}
-      <motion.div variants={itemVariants}>
-        <MarketSizingCalculator 
-          initialData={data?.marketSize} 
-          onSave={handleMarketSizeUpdate} 
-        />
-      </motion.div>
-      
-      {/* Placeholder for future sections */}
-      <motion.div variants={itemVariants}>
-        <Card className="border-dashed">
+            
+            {/* Key Assumptions section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileQuestion className="h-5 w-5 mr-2 text-primary" />
+                  Key Market Assumptions
+                </CardTitle>
+                <CardDescription>
+                  Track and validate your critical market assumptions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AssumptionTracker 
+                  assumptions={assumptions}
+                  onAddAssumption={handleAddAssumption}
+                  onUpdateAssumption={handleUpdateAssumption}
+                  onDeleteAssumption={handleDeleteAssumption}
+                  maxHeight="300px"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Market Sizing Tab */}
+          <TabsContent value="sizing" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Target className="h-5 w-5 mr-2 text-primary" />
+                  Market Sizing
+                </CardTitle>
+                <CardDescription>
+                  Estimate the size of your Total Addressable Market (TAM), Serviceable Addressable Market (SAM), and Serviceable Obtainable Market (SOM)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  <div className="md:col-span-6 h-full flex items-center justify-center">
+                    <MarketSizeFunnel 
+                      tam={data?.marketSize?.tam || 0} 
+                      sam={data?.marketSize?.sam || 0} 
+                      som={data?.marketSize?.som || 0}
+                      samPercentage={data?.marketSize?.samPercentage || 0}
+                      somPercentage={data?.marketSize?.somPercentage || 0}
+                      className="max-w-md mx-auto"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-6">
+                    <div className="bg-muted/30 rounded-lg p-5 h-full flex flex-col">
+                      <h3 className="text-lg font-medium mb-3">Market Size Summary</h3>
+                      
+                      {data?.marketSize?.tam ? (
+                        <div className="space-y-6">
+                          {/* <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-white rounded-md p-3 shadow-sm">
+                              <div className="text-xs text-muted-foreground mb-1">Total Addressable Market</div>
+                              <div className="text-lg font-medium">
+                                {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: 'USD',
+                                  notation: 'compact',
+                                  maximumFractionDigits: 1
+                                }).format(data?.marketSize?.tam || 0)}
+                              </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-md p-3 shadow-sm">
+                              <div className="text-xs text-muted-foreground mb-1">Serviceable Market</div>
+                              <div className="text-lg font-medium">
+                                {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: 'USD',
+                                  notation: 'compact',
+                                  maximumFractionDigits: 1
+                                }).format(data?.marketSize?.sam || 0)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {data?.marketSize?.samPercentage}% of TAM
+                              </div>
+                            </div>
+                            
+                            <div className="bg-white rounded-md p-3 shadow-sm">
+                              <div className="text-xs text-muted-foreground mb-1">Obtainable Market</div>
+                              <div className="text-lg font-medium">
+                                {new Intl.NumberFormat('en-US', {
+                                  style: 'currency',
+                                  currency: 'USD',
+                                  notation: 'compact',
+                                  maximumFractionDigits: 1
+                                }).format(data?.marketSize?.som || 0)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {data?.marketSize?.somPercentage}% of SAM
+                              </div>
+                            </div>
+                          </div> */}
+                          
+                          <MarketSizeInsights 
+                            tam={data?.marketSize?.tam || 0}
+                            sam={data?.marketSize?.sam || 0}
+                            som={data?.marketSize?.som || 0}
+                            industry={marketDefinition.industry}
+                            className="mt-4"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center flex-grow text-center">
+                          <Target className="h-12 w-12 text-muted-foreground mb-4" />
+                          <h3 className="text-lg font-medium mb-2">No market sizing data yet</h3>
+                          <p className="text-muted-foreground mb-6">
+                            Use the calculator to determine your market sizing values based on your target market and industry.
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="mt-auto pt-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Set realistic market size expectations by calculating TAM, SAM, and SOM values based on industry data and your unique market position.
+                        </p>
+                        
+                        <MarketSizingModal 
+                          initialData={data?.marketSize} 
+                          onSave={handleMarketSizeUpdate} 
+                          trigger={
+                            <Button className="w-full flex items-center justify-center gap-2">
+                              <Calculator className="h-4 w-4" />
+                              <span>{data?.marketSize?.tam ? "Recalculate Market Size" : "Calculate Market Size"}</span>
+                            </Button>
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Segmentation Tab */}
+          <TabsContent value="segments" className="space-y-4">
+            <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Layers className="h-5 w-5 mr-2 text-primary" />
@@ -342,20 +469,65 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
               Break down your market into addressable segments
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-center p-12">
-            <div className="text-center">
-              <Map className="h-12 w-12 mx-auto text-muted-foreground opacity-50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Market Segmentation Coming Soon</h3>
-              <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                This feature will allow you to define and analyze specific market segments 
-                based on demographics, behavior, needs, and more.
-              </p>
-              <Button className="mt-4" variant="outline">
-                Request early access
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-2">
+                    <div className="flex justify-between mb-4">
+                      <h3 className="text-sm font-medium">Segment Breakdown</h3>
+                      <Button size="sm" variant="outline" onClick={handleAddSegment}>
+                        <Layers className="h-4 w-4 mr-2" />
+                        Add Segment
+                      </Button>
+                    </div>
+                    
+                    <div className="h-[300px] border rounded-md">
+                      <SegmentationChart 
+                        segments={segments}
+                        onSegmentClick={handleEditSegment}
+                      />
+                    </div>
+                    
+                    <div className="mt-4 text-sm text-muted-foreground">
+                      <p>Click on any segment bubble to edit its details. Add segments that represent distinct customer groups or market categories.</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-sm font-medium mb-4">Segment Details</h3>
+                    <div className="space-y-4">
+                      {segments.length > 0 ? (
+                        segments.map(segment => (
+                          <SegmentCard 
+                            key={segment.name}
+                            name={segment.name}
+                            size={segment.size}
+                            growth={segment.growth}
+                            onEdit={() => handleEditSegment(segment)}
+                            onDelete={() => handleDeleteSegment(segment.name)}
+                          />
+                        ))
+                      ) : (
+                        <div className="text-center p-6 bg-gray-50 rounded-md">
+                          <Layers className="h-8 w-8 mx-auto text-muted-foreground opacity-30 mb-2" />
+                          <p className="text-muted-foreground">No segments defined yet</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-3"
+                            onClick={handleAddSegment}
+                          >
+                            <Layers className="h-4 w-4 mr-2" />
+                            Add Segment
               </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
       </motion.div>
     </motion.div>
   );

@@ -31,13 +31,16 @@ import {
   Palette,
   FileCode,
   UserPlus,
-  BookOpen
+  BookOpen,
+  GitFork,
+  Network
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { JOURNEY_STAGES } from '../constants';
 import { DataOutputPanel } from './DataOutputPanel';
 import { StageProgressTracker } from './StageProgressTracker';
+import { DECISION_TOOLS } from './DecisionSupportHub';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -45,6 +48,7 @@ interface NewJourneyOverviewProps {
   onStageSelect: (stageId: string) => void;
   onToolSelect: (stageId: string, toolId: string) => void;
   onDataOutputView: (outputId: string) => void;
+  onDecisionSupportOpen: (toolId?: string) => void;
   projectId: string;
 }
 
@@ -52,6 +56,7 @@ export function NewJourneyOverview({
   onStageSelect,
   onToolSelect,
   onDataOutputView,
+  onDecisionSupportOpen,
   projectId
 }: NewJourneyOverviewProps) {
   // Mock progress data - in a real app, this would come from API/store
@@ -81,7 +86,8 @@ export function NewJourneyOverview({
     journey: true,
     outputs: true,
     tools: true,
-    next: true
+    next: true,
+    decision: true
   });
   
   // Calculate overall journey progress
@@ -145,7 +151,7 @@ export function NewJourneyOverview({
   const nextRecommendation = getNextRecommendations();
 
   return (
-    <div className="grid grid-cols-3 gap-6 p-6 h-full">
+    <div className="grid grid-cols-3 gap-6 h-full">
       {/* Left Column: Progress and Journey Overview */}
       <div className="col-span-2 space-y-6">
         {/* Journey Progress Section */}
@@ -182,46 +188,143 @@ export function NewJourneyOverview({
               <div className="mt-6 grid grid-cols-2 gap-4">
                 {JOURNEY_STAGES.map((stage, index) => {
                   const stageComplete = (stageProgress[stage.id] || 0) === 100;
+                  const isActiveStage = activeStage === stage.id;
                   
                   return (
-                    <Card 
-                      key={stage.id} 
-                      className="cursor-pointer hover:shadow-md transition-shadow animate-slide-left-in" 
-                      onClick={() => onStageSelect(stage.id)}
-                      style={{ 
+                    <Card
+                      key={stage.id}
+                      className={cn(
+                        "cursor-pointer border overflow-hidden transition-all duration-200 animate-slide-left-in",
+                        isActiveStage
+                          ? "shadow-md ring-1 ring-offset-2 transform scale-[1.02]"
+                          : "hover:shadow-md hover:translate-y-[-2px]",
+                        stageComplete && "bg-green-50/30"
+                      )}
+                      style={{
                         animationDelay: `${index * 0.1}s`,
-                        animationFillMode: 'both'
+                        animationFillMode: "both",
+                        borderLeftWidth: "4px",
+                        ...(isActiveStage
+                          ? {
+                              ringColor: stage.color,
+                              borderLeftColor: stage.color,
+                            }
+                          : {}),
                       }}
+                      onClick={() => onStageSelect(stage.id)}
                     >
-                      <CardHeader 
-                        className="pb-1 flex items-center pt-4" 
-                        style={{ borderColor: `${stage.color}40` }}
-                      >
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
-                          style={{ backgroundColor: stage.color }}
-                        />
-                        <div>
-                          <h3 className="font-medium">{stage.title}</h3>
-                          <p className="text-sm text-gray-500 mt-1">{stage.description}</p>
+                      <div className="relative">
+                        {/* Stage number badge */}
+                        <div
+                          className="absolute top-3 right-3 h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold"
+                          style={{
+                            backgroundColor: `${stage.color}15`,
+                            color: stage.color,
+                          }}
+                        >
+                          {index + 1}
                         </div>
-                        {stageComplete ? (
-                          <CheckCircle className="h-5 w-5 text-green-500" />
-                        ) : (
-                          <div className="text-sm font-bold" style={{ color: stage.color }}>
-                            {stageProgress[stage.id] || 0}%
+
+                        {/* Stage content */}
+                        <CardHeader className="pt-5 pb-2">
+                          <div className="flex items-start gap-3">
+                            {/* Color indicator and icon */}
+                            <div className="mt-0.5 flex-shrink-0">
+                              <div
+                                className={cn(
+                                  "h-5 w-1 rounded-full",
+                                  stageComplete ? "bg-green-500" : ""
+                                )}
+                                style={{
+                                  backgroundColor: stageComplete
+                                    ? undefined
+                                    : stage.color,
+                                }}
+                              />
+                            </div>
+
+                            {/* Title and description */}
+                            <div className="space-y-1 flex-1">
+                              <h3
+                                className={cn(
+                                  "font-medium text-base transition-colors",
+                                  isActiveStage
+                                    ? "text-gray-900"
+                                    : "text-gray-700"
+                                )}
+                              >
+                                {stage.title}
+                              </h3>
+                              {/* <p className="text-sm text-gray-500 line-clamp-2">
+                                {stage.description}
+                              </p> */}
+                            </div>
+                          </div>
+                        </CardHeader>
+
+                        <CardContent className="pt-0 pb-4">
+                          <div className="mt-2">
+                            <div className="flex justify-between items-center mb-1.5 text-xs">
+                              <div className="flex items-center mt-3 text-xs text-gray-500">
+                                <div className="flex -space-x-1.5 mr-2">
+                                  {stage.tools.slice(0, 3).map((tool, idx) => (
+                                    <div
+                                      key={tool}
+                                      className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center bg-gray-100"
+                                      style={{ zIndex: 3 - idx }}
+                                    >
+                                      {getToolIcon(tool)}
+                                    </div>
+                                  ))}
+                                </div>
+                                <span>
+                                  {stage.tools.length} outil
+                                  {stage.tools.length > 1 ? "s" : ""}
+                                </span>
+                              </div>
+                              <span
+                                className={cn(
+                                  "font-bold",
+                                  stageComplete
+                                    ? "text-green-600"
+                                    : isActiveStage
+                                    ? "text-black"
+                                    : "text-gray-600"
+                                )}
+                              >
+                                {stageProgress[stage.id] || 0}%
+                              </span>
+                            </div>
+
+                            <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="absolute left-0 top-0 h-full transition-all duration-700 ease-out rounded-full"
+                                style={{
+                                  width: `${stageProgress[stage.id] || 0}%`,
+                                  backgroundColor: stageComplete
+                                    ? "#10b981"
+                                    : stage.color,
+                                }}
+                              />
+                            </div>
+
+                            {/* Tool count indicator */}
+                          
+                          </div>
+                        </CardContent>
+
+                        {/* Status indicator */}
+                        {stageComplete && (
+                          <div className="absolute top-0 right-0 p-1.5 bg-green-500 transform rotate-45 translate-x-[18px] translate-y-[-18px]">
+                            <CheckCircle className="h-3 w-3 text-white transform -rotate-45" />
                           </div>
                         )}
-                      </CardHeader>
-                      <CardContent className="pt-0 pb-4">
-                        <Progress 
-                          value={stageProgress[stage.id] || 0} 
-                          className="h-1 mt-3"
-                          style={{
-                            background: 'rgba(0,0,0,0.05)'
-                          }}
-                        />
-                      </CardContent>
+
+                        {/* Next active indicator */}
+                        {!stageComplete && isActiveStage && (
+                          <div className="absolute bottom-2 right-2 h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                        )}
+                      </div>
                     </Card>
                   );
                 })}
@@ -307,7 +410,7 @@ export function NewJourneyOverview({
       {/* Right Column: Data Outputs and Next Steps */}
       <div className="space-y-6">
         {/* Data Outputs Panel */}
-        <Card>
+        {/* <Card>
           <CardHeader className="pb-2 border-b">
             <div className="flex justify-between items-center">
               <CardTitle className="text-xl font-semibold">Données du projet</CardTitle>
@@ -331,6 +434,67 @@ export function NewJourneyOverview({
                 onViewOutput={onDataOutputView}
                 className="border-0 shadow-none"
               />
+            </CardContent>
+          )}
+        </Card> */}
+        
+        {/* Decision Support Tools */}
+        <Card className="animate-slide-right-in" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>
+          <CardHeader className="pb-2 border-b">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl font-semibold">Outils d'aide à la décision</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => toggleSection('decision')}
+                className="h-8 px-2"
+              >
+                <ChevronDown 
+                  className={`h-4 w-4 transition-transform ${expanded.decision ? '' : 'transform rotate-180'}`} 
+                />
+              </Button>
+            </div>
+          </CardHeader>
+          
+          {expanded.decision && (
+            <CardContent className="pt-4">
+              <div className="text-gray-600 mb-3 text-sm">
+                Des outils puissants pour guider vos décisions stratégiques à chaque étape de votre parcours.
+              </div>
+              <div className="space-y-3">
+                {DECISION_TOOLS.slice(0, 3).map((tool, index) => (
+                  <div 
+                    key={tool.id}
+                    className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer flex items-center justify-between animate-slide-right-in"
+                    style={{ 
+                      animationDelay: `${0.4 + index * 0.1}s`,
+                      animationFillMode: 'both'
+                    }}
+                    onClick={() => onDecisionSupportOpen(tool.id)}
+                  >
+                    <div className="flex items-center">
+                      <div className="p-2 rounded-md mr-3" style={{ backgroundColor: tool.colorLight, color: tool.color }}>
+                        {tool.icon}
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-sm">{tool.name}</h3>
+                      </div>
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                ))}
+              </div>
+              <Button 
+                variant="outline" 
+                className="w-full mt-3 animate-slide-right-in"
+                style={{ 
+                  animationDelay: '0.7s',
+                  animationFillMode: 'both'
+                }}
+                onClick={() => onDecisionSupportOpen()}
+              >
+                Voir tous les outils d'aide à la décision
+              </Button>
             </CardContent>
           )}
         </Card>

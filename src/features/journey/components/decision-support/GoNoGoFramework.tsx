@@ -162,9 +162,10 @@ const STAGES: Record<string, GoNoGoStage> = {
 
 interface GoNoGoFrameworkProps {
   stageId: string;
+  projectId: string;
 }
 
-export function GoNoGoFramework({ stageId = 'validity' }: GoNoGoFrameworkProps) {
+export function GoNoGoFramework({ stageId = 'validity', projectId }: GoNoGoFrameworkProps) {
   const [expandedCriteria, setExpandedCriteria] = useState<string[]>([]);
   
   // Get stage data

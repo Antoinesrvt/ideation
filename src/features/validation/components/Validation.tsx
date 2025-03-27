@@ -397,7 +397,7 @@ export function Validation() {
 
   return (
     <div className="container mx-auto py-6 space-y-8 h-full w-full">
-      {isFirstTimeUser && (
+      {/* {isFirstTimeUser && ( // TODO: show only if new and 0 data, and only show that, then after onboarding never show again
         <div className="bg-muted/30 rounded-lg p-6 text-center">
           <h3 className="text-lg font-medium mb-2">Welcome to Validation!</h3>
           <p className="text-muted-foreground mb-4 max-w-md mx-auto">
@@ -408,7 +408,7 @@ export function Validation() {
             Learn How Validation Works
           </Button>
         </div>
-      )}
+      )} */}
 
       {/* Forms */}
       <EnhancedHypothesisForm

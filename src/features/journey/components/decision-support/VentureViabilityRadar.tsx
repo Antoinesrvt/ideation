@@ -21,11 +21,13 @@ const mockBenchmarks = {
 interface VentureViabilityRadarProps {
   dimensions?: Array<{ id: string; name: string; score: number }>;
   benchmarks?: Record<string, number[]>;
+  projectId: string;
 }
 
 export function VentureViabilityRadar({ 
   dimensions = mockDimensions, 
-  benchmarks = mockBenchmarks 
+  benchmarks = mockBenchmarks,
+  projectId
 }: VentureViabilityRadarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   

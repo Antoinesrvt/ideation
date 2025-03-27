@@ -13,9 +13,72 @@ import type {
 } from '@/store/types';
 import { marketAnalysisService } from '@/lib/services';
 import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
+import { v4 as uuidv4 } from 'uuid';
+import { MarketPartner } from '@/features/market/types';
+
+// Mock partner data
+const mockPartners: MarketPartner[] = [
+  {
+    id: '1',
+    name: 'TechSupply Co',
+    type: 'supplier',
+    description: 'Key technology component supplier with competitive pricing',
+    potential_value: 4,
+    potential_challenges: ['Long lead times', 'Minimum order quantities'],
+    contact_info: 'contact@techsupply.co',
+    website: 'https://techsupply.co',
+    notes: 'Established relationship since 2020',
+  },
+  {
+    id: '2',
+    name: 'DistributeNow',
+    type: 'distributor',
+    description: 'Nationwide distribution network with excellent reach',
+    potential_value: 5,
+    potential_challenges: ['High commission rates', 'Exclusivity requirements'],
+    contact_info: 'partners@distributenow.com',
+    website: 'https://distributenow.com',
+  },
+  {
+    id: '3',
+    name: 'MarketBoost Agency',
+    type: 'marketing',
+    description: 'Digital marketing agency specializing in SaaS products',
+    potential_value: 3,
+    potential_challenges: ['High retainer fees', 'Performance metrics clarity'],
+    contact_info: 'hello@marketboost.co',
+    website: 'https://marketboost.co',
+    notes: 'Good industry connections',
+  },
+];
+
+// Extend the interface to include MarketOverview data and partners
+export interface ExtendedMarketAnalysisData extends MarketAnalysisData {
+  partners: MarketPartner[];
+  overview?: {
+    marketDefinition?: {
+      industry: string;
+      geography: string;
+      maturity: 'emerging' | 'growing' | 'mature' | 'declining';
+    };
+    marketSize?: {
+      tam: number;
+      sam: number;
+      som: number;
+      tamMethod: 'top-down' | 'bottom-up' | 'value-theory';
+      samPercentage: number;
+      somPercentage: number;
+    };
+    segments?: Array<{
+      name: string;
+      size: number;
+      growth: number;
+    }>;
+  };
+}
 
 export interface UseMarketAnalysisReturn {
-  data: MarketAnalysisData;
+  data: ExtendedMarketAnalysisData;
   isLoading: boolean;
   error: Error | null;
 
@@ -39,11 +102,17 @@ export interface UseMarketAnalysisReturn {
   updateTrend: (params: { id: string; data: Update<'market_trends'> }) => Promise<MarketTrend | null>;
   deleteTrend: (id: string) => Promise<boolean>;
 
+  // Partners (mock implementation)
+  addPartner: (partner: Omit<MarketPartner, 'id'>) => Promise<MarketPartner | null>;
+  updatePartner: (params: { id: string; data: Partial<Omit<MarketPartner, 'id'>> }) => Promise<MarketPartner | null>;
+  deletePartner: (id: string) => Promise<boolean>;
+
   // Diff helpers
   getPersonaChangeType: (id: string) => ChangeType;
   getInterviewChangeType: (id: string) => ChangeType;
   getCompetitorChangeType: (id: string) => ChangeType;
   getTrendChangeType: (id: string) => ChangeType;
+  getPartnerChangeType: (id: string) => ChangeType;
   isDiffMode: boolean;
 }
 
@@ -91,6 +160,9 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   const store = useProjectStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  
+  // Mock partners state
+  const [partners, setPartners] = useState<MarketPartner[]>(mockPartners);
 
   // Create stable, memoized query keys
   const queryKeys = useMemo(() => ({
@@ -183,20 +255,86 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   }, [store.currentData, store.stagedData, store.comparisonMode]);
 
   // Use either store data or query data based on comparison mode
-  const data = useMemo((): MarketAnalysisData => {
+  const data = useMemo((): ExtendedMarketAnalysisData => {
     if (store.comparisonMode) {
       return {
         personas: storeData.marketPersonas,
         interviews: storeData.marketInterviews,
         competitors: storeData.marketCompetitors,
-        trends: storeData.marketTrends
+        trends: storeData.marketTrends,
+        partners: partners, // Add mock partners
+        overview: {
+          marketDefinition: {
+            industry: 'Software as a Service',
+            geography: 'global',
+            maturity: 'growing'
+          },
+          marketSize: {
+            tam: 150000000000, // $150B
+            sam: 45000000000, // $45B
+            som: 4500000000, // $4.5B
+            tamMethod: 'top-down',
+            samPercentage: 30,
+            somPercentage: 10
+          },
+          segments: [
+            {
+              name: 'Enterprise',
+              size: 60,
+              growth: 15
+            },
+            {
+              name: 'Mid-market',
+              size: 30,
+              growth: 22
+            },
+            {
+              name: 'Small Business',
+              size: 10,
+              growth: 18
+            }
+          ]
+        }
       };
     } else {
       return {
         personas: personasData || [],
         interviews: interviewsData || [],
         competitors: competitorsData || [],
-        trends: trendsData || []
+        trends: trendsData || [],
+        partners: partners, // Add mock partners
+        overview: {
+          marketDefinition: {
+            industry: 'Software as a Service',
+            geography: 'global',
+            maturity: 'growing'
+          },
+          marketSize: {
+            tam: 150000000000, // $150B
+            sam: 45000000000, // $45B
+            som: 4500000000, // $4.5B
+            tamMethod: 'top-down',
+            samPercentage: 30,
+            somPercentage: 10
+          },
+          segments: [
+            {
+              name: 'Enterprise',
+              size: 60,
+              growth: 15
+            },
+            {
+              name: 'Mid-market',
+              size: 30,
+              growth: 22
+            },
+            {
+              name: 'Small Business',
+              size: 10,
+              growth: 18
+            }
+          ]
+        }
       };
     }
   }, [
@@ -205,7 +343,8 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     personasData,
     interviewsData,
     competitorsData,
-    trendsData
+    trendsData,
+    partners // Add partners dependency
   ]);
 
   // Compute loading and error states
@@ -420,6 +559,82 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     return deleteTrendOptimistic(id);
   }, [deleteTrendOptimistic]);
 
+  // Mock partners operations
+  const addPartner = useCallback(async (partner: Omit<MarketPartner, 'id'>): Promise<MarketPartner | null> => {
+    try {
+      setSubmitting(true);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const newPartner: MarketPartner = {
+        ...partner,
+        id: uuidv4(),
+        project_id: projectId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      setPartners(prev => [...prev, newPartner]);
+      return newPartner;
+    } catch (err) {
+      console.error('Error adding partner:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error adding partner'));
+      return null;
+    } finally {
+      setSubmitting(false);
+    }
+  }, [projectId]);
+
+  const updatePartner = useCallback(async (params: { id: string; data: Partial<Omit<MarketPartner, 'id'>> }): Promise<MarketPartner | null> => {
+    try {
+      setSubmitting(true);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      let updatedPartner: MarketPartner | null = null;
+      
+      setPartners(prev => {
+        const newPartners = prev.map(p => {
+          if (p.id === params.id) {
+            updatedPartner = {
+              ...p,
+              ...params.data,
+              updated_at: new Date().toISOString()
+            };
+            return updatedPartner;
+          }
+          return p;
+        });
+        return newPartners;
+      });
+      
+      return updatedPartner;
+    } catch (err) {
+      console.error('Error updating partner:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error updating partner'));
+      return null;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  const deletePartner = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      setSubmitting(true);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setPartners(prev => prev.filter(p => p.id !== id));
+      return true;
+    } catch (err) {
+      console.error('Error deleting partner:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error deleting partner'));
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
   // Diff helpers
   const getPersonaChangeType = useCallback((id: string): ChangeType => 
     store.getItemChangeType('marketPersonas', id), [store]);
@@ -432,6 +647,12 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
 
   const getTrendChangeType = useCallback((id: string): ChangeType => 
     store.getItemChangeType('marketTrends', id), [store]);
+
+  // For partner change type (mock implementation)
+  const getPartnerChangeType = useCallback((id: string): ChangeType => {
+    // In a real implementation, this would check the diff between staged and current data
+    return 'unchanged';
+  }, []);
 
   return {
     data,
@@ -457,12 +678,18 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     addTrend,
     updateTrend,
     deleteTrend,
+    
+    // Partners
+    addPartner,
+    updatePartner,
+    deletePartner,
 
     // Diff helpers
     getPersonaChangeType,
     getInterviewChangeType,
     getCompetitorChangeType,
     getTrendChangeType,
+    getPartnerChangeType,
     isDiffMode: store.comparisonMode
   };
 }

@@ -7,7 +7,6 @@ import { JourneyStageCard } from './JourneyStageCard';
 import { JourneyHeader } from './JourneyHeader';
 import { ProjectInsights } from './ProjectInsights';
 import { RecommendedSteps } from './RecommendedSteps';
-import { DependencyMatrix } from './decision-support/DependencyMatrix';
 import { GoNoGoFramework } from './decision-support/GoNoGoFramework';
 import { VentureViabilityRadar } from './decision-support/VentureViabilityRadar';
 import { DecisionJournal } from './decision-support/DecisionJournal';
@@ -226,15 +225,13 @@ export function JourneyDashboard({ projectId }: JourneyDashboardProps) {
   const renderDecisionSupport = () => {
     switch (activeDecisionView) {
       case 'go-no-go':
-        return <GoNoGoFramework stageId="validity" />;
+        return <GoNoGoFramework stageId="validity" projectId={projectId} />;
       case 'risk-assessment':
-        return <RiskAssessmentDashboard />;
+        return <RiskAssessmentDashboard projectId={projectId} />;
       case 'viability-radar':
-        return <VentureViabilityRadar />;
+        return <VentureViabilityRadar projectId={projectId} />;
       case 'decision-journal':
-        return <DecisionJournal />;
-      case 'dependency-matrix':
-        return <DependencyMatrix stages={JOURNEY_STAGES} completion={stageCompletion} />;
+        return <DecisionJournal projectId={projectId} />;
       default:
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

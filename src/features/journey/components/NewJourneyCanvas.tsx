@@ -6,6 +6,7 @@ import { JOURNEY_STAGES } from '../constants';
 import { NewJourneyOverview } from './NewJourneyOverview';
 import { DataOutputPanel } from './DataOutputPanel';
 import { StageProgressTracker } from './StageProgressTracker';
+import { DecisionSupportHub } from './DecisionSupportHub';
 import { 
   ChevronRight,
   HomeIcon,
@@ -15,15 +16,20 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import StageComponent from './StageComponent';
+import MarketTool from './market/MarketTool';
+import ToolComponent from './ToolComponent';
+import ValidationTool from './validation/ValidationTool';
 
 // Types for managing focus
-export type FocusType = 'overview' | 'stage' | 'tool' | 'output';
+export type FocusType = 'overview' | 'stage' | 'tool' | 'output' | 'decision-support';
 
 export interface Focus {
   type: FocusType;
   stageId?: string;
   toolId?: string;
   outputId?: string;
+  decisionToolId?: string; // New property for decision tools
 }
 
 export interface NewJourneyCanvasProps {
@@ -81,6 +87,15 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
     });
   }, []);
   
+  // Handle decision support hub open
+  const handleDecisionSupportOpen = useCallback((decisionToolId?: string) => {
+    setTransitionDirection('forward');
+    setFocus({
+      type: 'decision-support',
+      decisionToolId
+    });
+  }, []);
+  
   // Handle back to overview
   const handleBackToOverview = useCallback(() => {
     setTransitionDirection('backward');
@@ -128,6 +143,7 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
             onStageSelect={handleStageSelect}
             onToolSelect={handleToolSelect}
             onDataOutputView={handleDataOutputView}
+            onDecisionSupportOpen={handleDecisionSupportOpen}
           />
         );
         
@@ -137,171 +153,56 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
         if (!stage) return null;
         
         return (
-          <div className="p-6">
-            <Card>
-              <CardHeader 
-                className="flex-row items-center justify-between p-4 border-b space-y-0"
-                style={{ borderColor: `${stage.color}40` }} // Add transparency to color
-              >
-                {/* Left side with breadcrumb */}
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={handleBackToOverview}
-                    className="flex-shrink-0"
-                    title="Retour au parcours"
-                  >
-                    <HomeIcon className="h-4 w-4" />
-                  </Button>
-                  
-                  <Separator orientation="vertical" className="h-4" />
-                  
-                  <div className="flex items-center">
-                    <div 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: stage.color }}
-                    ></div>
-                    <CardTitle className="text-base whitespace-nowrap">
-                      {stage.title}
-                    </CardTitle>
-                  </div>
-                </div>
-                
-                {/* Right side with progress */}
-                <div className="text-sm font-medium whitespace-nowrap">
-                  {stageProgress[stage.id] || 0}% complété
-                </div>
-              </CardHeader>
-              
-              <CardContent className="p-6">
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="col-span-2">
-                    <p className="text-gray-700 mb-6 animate-slide-right-in" style={{ animationDelay: '0.15s', animationFillMode: 'both' }}>{stage.description}</p>
-                    
-                    <h2 className="text-xl font-medium mb-4 animate-slide-right-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>Outils disponibles</h2>
-                    <div className="grid grid-cols-2 gap-4">
-                      {stage.tools.map((toolId, index) => {
-                        const toolName = toolId.split('-').map(word => 
-                          word.charAt(0).toUpperCase() + word.slice(1)
-                        ).join(' ');
-                        
-                        return (
-                          <Card 
-                            key={toolId}
-                            className="cursor-pointer hover:shadow-md transition-shadow animate-slide-right-in"
-                            style={{ 
-                              animationDelay: `${0.2 + (index * 0.1)}s`,
-                              animationFillMode: 'both'
-                            }}
-                            onClick={() => handleToolSelect(stage.id, toolId)}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-center">
-                                <h3 className="font-medium">{toolName}</h3>
-                                <ChevronRight className="h-4 w-4 text-gray-400" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                    
-                    <h2 className="text-xl font-medium mb-4 mt-6 animate-slide-right-in" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>Critères de validation</h2>
-                    <ul className="list-disc pl-5 space-y-2">
-                      {stage.validationCriteria.map((criteria, index) => (
-                        <li 
-                          key={criteria.id} 
-                          className="text-gray-700 animate-slide-left-in"
-                          style={{ 
-                            animationDelay: `${0.3 + (index * 0.1)}s`,
-                            animationFillMode: 'both'
-                          }}
-                        >
-                          {criteria.name} (seuil: {criteria.threshold * 100}%)
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div>
-                    <DataOutputPanel 
-                      stageId={stage.id}
-                      onViewOutput={handleDataOutputView}
-                      className="animate-slide-left-in"
-                      style={{ animationDelay: '0.2s', animationFillMode: 'both' }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <StageComponent
+            stage={stage}
+            handleToolSelect={handleToolSelect}
+            handleDataOutputView={handleDataOutputView}
+            handleBackToOverview={handleBackToOverview}
+            stageProgress={stageProgress}
+          />
         );
         
       case 'tool':
         if (!focus.stageId || !focus.toolId) return null;
-        const toolStage = JOURNEY_STAGES.find(s => s.id === focus.stageId);
-        if (!toolStage) return null;
         
-        // This would normally load the actual tool component
-        // For now, we'll just render a placeholder
-        return (
-          <div className="p-6">
-            <Card>
-              <CardHeader className="flex-row items-center justify-between p-4 border-b space-y-0">
-                {/* Left side with breadcrumb */}
-                <div className="flex items-center space-x-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={handleBackToOverview}
-                    className="flex-shrink-0"
-                    title="Retour au parcours"
-                  >
-                    <HomeIcon className="h-4 w-4" />
-                  </Button>
-                  
-                  <Separator orientation="vertical" className="h-4" />
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleBackToStage}
-                    className="h-8 px-2 flex items-center"
-                  >
-                    <div 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: toolStage.color }}
-                    ></div>
-                    <span className="truncate max-w-[120px]">{toolStage.title}</span>
-                  </Button>
-                  
-                  <Separator orientation="vertical" className="h-4" />
-                  
-                  <CardTitle className="text-base whitespace-nowrap">
-                    {focus.toolId.split('-').map(word => 
-                      word.charAt(0).toUpperCase() + word.slice(1)
-                    ).join(' ')}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="p-6">
-                <div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-lg">
-                  <div className="text-center">
-                    <h2 className="text-xl font-medium mb-2">Outil: {focus.toolId}</h2>
-                    <p className="text-gray-500">
-                      Cet outil vous aide à compléter l'étape: {toolStage.title}
-                    </p>
-                    <p className="text-sm text-gray-400 mt-4">
-                      Dans une implémentation réelle, le composant de l'outil serait chargé ici.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        // Render the appropriate tool based on toolId
+        switch (focus.toolId) {
+          case 'market':
+            return (
+              <MarketTool
+                stageId={focus.stageId}
+                toolId={focus.toolId}
+                onBackToOverview={handleBackToOverview}
+                onBackToStage={handleBackToStage}
+                projectId={projectId}
+              />
+            );
+            
+          case 'validation':
+            return (
+              <ValidationTool
+                stageId={focus.stageId}
+                toolId={focus.toolId}
+                onBackToOverview={handleBackToOverview}
+                onBackToStage={handleBackToStage}
+                projectId={projectId}
+              />
+            );
+          
+          default:
+            const toolStage = JOURNEY_STAGES.find(s => s.id === focus.stageId);
+            if (!toolStage) return null;
+            
+            // Default tool rendering using ToolComponent
+            return (
+              <ToolComponent
+                stageId={focus.stageId}
+                toolId={focus.toolId}
+                onBackToOverview={handleBackToOverview}
+                onBackToStage={handleBackToStage}
+              />
+            );
+        }
         
       case 'output':
         if (!focus.outputId) return null;
@@ -388,13 +289,22 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
           </div>
         );
         
+      case 'decision-support':
+        return (
+          <DecisionSupportHub
+            projectId={projectId}
+            onBackToOverview={handleBackToOverview}
+            initialToolId={focus.decisionToolId}
+          />
+        );
+        
       default:
         return null;
     }
   };
 
   return (
-    <div className="w-full h-full bg-gray-50">
+    <ScrollArea className="w-full h-full bg-gray-50">
       <div className="container mx-auto py-6">
         <div className={`transition-all duration-300 ${
           transitionDirection === 'forward' 
@@ -404,6 +314,6 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
           {renderContent()}
         </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 } 

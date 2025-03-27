@@ -1,5 +1,21 @@
 import { MarketPersona, MarketInterview, MarketCompetitor, MarketTrend } from '@/store/types';
 
+// Partner type definitions
+export interface MarketPartner {
+  id: string;
+  project_id?: string;
+  name: string;
+  type: 'supplier' | 'distributor' | 'technology' | 'marketing' | 'financial' | 'other';
+  description: string;
+  potential_value: number; // 1-5 scale
+  potential_challenges: string[];
+  contact_info?: string;
+  website?: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Market Overview and TAM/SAM/SOM types
 export interface MarketSize {
   tam: number;
@@ -43,13 +59,18 @@ export interface ExtendedMarketTrend extends MarketTrend {
   status?: 'new' | 'modified' | 'unchanged' | 'removed';
 }
 
+export interface ExtendedMarketPartner extends MarketPartner {
+  status?: 'new' | 'modified' | 'unchanged' | 'removed';
+}
+
 // Define UI data structure
 export interface MarketAnalysisUIData {
   personas: ExtendedMarketPersona[];
   interviews: ExtendedMarketInterview[];
   competitors: ExtendedMarketCompetitor[];
   trends: ExtendedMarketTrend[];
-  overview?: MarketOverviewData; // Add overview to the data structure
+  partners?: ExtendedMarketPartner[]; // Add partners to the data structure
+  overview?: MarketOverviewData; 
 }
 
 // Component Props Types
@@ -82,6 +103,14 @@ export interface MarketTrendCardProps {
   trend: ExtendedMarketTrend;
   onEdit?: (id: string) => void;
   onUpdate?: (params: { id: string; data: Partial<Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>> }) => void;
+  onDelete?: (id: string) => void;
+  readOnly?: boolean;
+}
+
+export interface PartnerCardProps {
+  partner: ExtendedMarketPartner;
+  onEdit?: (id: string) => void;
+  onUpdate?: (params: { id: string; data: Partial<Omit<MarketPartner, 'id' | 'created_at' | 'updated_at'>> }) => void;
   onDelete?: (id: string) => void;
   readOnly?: boolean;
 }
@@ -122,4 +151,15 @@ export interface TrendFormValues {
   description: string;
   tags: string[];
   sources: string[];
+}
+
+export interface PartnerFormValues {
+  name: string;
+  type: 'supplier' | 'distributor' | 'technology' | 'marketing' | 'financial' | 'other';
+  description: string;
+  potential_value: number;
+  potential_challenges: string[];
+  contact_info?: string;
+  website?: string;
+  notes?: string;
 } 
