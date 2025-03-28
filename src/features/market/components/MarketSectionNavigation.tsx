@@ -1,9 +1,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, LayoutDashboard, Users, Building2, Handshake, TrendingUp, FileText } from 'lucide-react';
+import { ChevronRight, LayoutDashboard, Users, Building2, Handshake, TrendingUp, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type MarketSection = 'overview' | 'market' | 'trends' | 'customers' | 'competitors' | 'partners';
+export type MarketSection = 'overview' | 'business' | 'trends' | 'customers' | 'competitors' | 'partners';
 
 interface MarketSectionNavigationProps {
   currentSection: MarketSection;
@@ -27,10 +27,10 @@ export function MarketSectionNavigation({ currentSection, onSectionSelect, class
       description: 'Market landscape visualization',
     },
     {
-      id: 'market',
-      label: 'Market Definition',
-      icon: <FileText className="h-5 w-5" />,
-      description: 'Define your target market and segments',
+      id: 'business',
+      label: 'Your Business',
+      icon: <Building className="h-5 w-5" />,
+      description: 'Define your business position in the market',
     },
     {
       id: 'trends',

@@ -95,40 +95,8 @@ export function CompetitorTable({
   
   return (
     <>
-      <Card className="shadow-sm">
-        <CardHeader className="px-5 py-4 flex flex-row items-center justify-between">
-          <div>
-            <h3 className="text-base font-medium flex items-center">
-              Competitor Analysis
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                    <span><Info className="h-3.5 w-3.5 ml-1 text-primary-400" /></span>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                    <p className="text-xs">Track your competitors, their features, strengths, and weaknesses</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-            </h3>
-            <p className="text-sm text-dark-500">Compare your product against competitors</p>
-        </div>
-          
-        {!readOnly && onAdd && (
-          <Button 
-              variant="default" 
-            size="sm" 
-              className="bg-primary-600 hover:bg-primary-700"
-              onClick={handleAddCompetitor}
-          >
-              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
-            Add Competitor
-          </Button>
-        )}
-        </CardHeader>
-        
-        <CardContent className="px-0 pb-1">
-          <div className="overflow-auto">
+
+        <div className="overflow-auto py-2">
         <Table>
           <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -253,8 +221,7 @@ export function CompetitorTable({
           </TableBody>
         </Table>
       </div>
-        </CardContent>
-      </Card>
+
       
       {/* Dialog for viewing or editing a competitor */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

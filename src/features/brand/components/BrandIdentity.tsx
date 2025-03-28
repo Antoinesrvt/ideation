@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { BrandData, ValueItem, AudienceSegment } from '../types/brand-essentials.types';
 import { BrandEssentials as OtherBrandEssentials } from './otherBrandEssentials';
+import { Separator } from '@/components/ui/separator';
 
 export function BrandIdentity() {
   const [activeTab, setActiveTab] = useState("essentials");
@@ -581,70 +582,15 @@ export function BrandIdentity() {
 
   return (
     <div className="space-y-8">
-      
       {/* Brand Analytics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Brand Health Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
-                <span className="text-2xl font-bold">
-                  {brandMetrics.overallScore}%
-                </span>
-              </div>
-              <HoverCard>
-                <HoverCardTrigger>
-                  <Info className="h-4 w-4 text-gray-400" />
-                </HoverCardTrigger>
-                <HoverCardContent className="w-80">
-                  <p className="text-sm">
-                    Your brand health score measures the completeness and consistency of your brand identity elements. 
-                    Complete all sections to improve your score.
-                  </p>
-                </HoverCardContent>
-              </HoverCard>
-            </div>
-            <Progress 
-              value={brandMetrics.overallScore} 
-              className="mt-2" 
-              indicatorClassName={`${
-                brandMetrics.overallScore > 80 
-                  ? "bg-green-500" 
-                  : brandMetrics.overallScore > 50 
-                    ? "bg-yellow-500" 
-                    : "bg-red-500"
-              }`}
-            />
-            {brandMetrics.improvements.length > 0 && (
-              <div className="mt-3">
-                <div className="text-xs text-gray-500 mb-2">Top Improvement:</div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full justify-start text-xs h-7"
-                  onClick={() => setActiveTab(brandMetrics.improvements[0].component)}
-                >
-                  <AlertTriangle className="h-3 w-3 mr-1 text-amber-500" />
-                  {brandMetrics.improvements[0].message}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">
               Brand Consistency
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 {brandMetrics.consistencyIssues === 0 ? (
@@ -675,10 +621,12 @@ export function BrandIdentity() {
               </Badge>
             </div>
             <div className="mt-2 text-sm text-gray-500">
-              {brandMetrics.consistencyIssues === 0 
-                ? "All brand elements are consistent." 
+              {brandMetrics.consistencyIssues === 0
+                ? "All brand elements are consistent."
                 : `${brandMetrics.consistencyIssues} consistency issues need your attention.`}
             </div>
+            <Separator className="my-2" />
+
             <div className="mt-3 flex flex-wrap gap-2">
               <Button
                 variant="outline"
@@ -708,7 +656,7 @@ export function BrandIdentity() {
               Brand Assets
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-2">
             <div className="grid grid-cols-3 gap-2">
               <div className="text-center p-2 bg-gray-50 rounded">
                 <FileImage className="h-4 w-4 text-blue-600 mx-auto mb-1" />
@@ -732,74 +680,17 @@ export function BrandIdentity() {
                 <div className="text-xs text-gray-500">Images</div>
               </div>
             </div>
+            <Separator className="my-2" />
             <div className="mt-2 text-sm text-gray-500 flex justify-between items-center">
               <span>Total: {brandMetrics.totalAssets} assets</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="flex items-center text-xs h-7"
-                onClick={() => setActiveTab('assets')}
+                onClick={() => setActiveTab("assets")}
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
                 Manage Assets
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Completion By Section
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center">
-                  <BookOpen className="h-4 w-4 text-blue-600 mr-1" />
-                  <span>Essentials</span>
-                </div>
-                <span className="font-medium">{brandMetrics.essentialsCompletion}%</span>
-              </div>
-              <Progress value={brandMetrics.essentialsCompletion} className="h-1" />
-              
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center">
-                  <Palette className="h-4 w-4 text-purple-600 mr-1" />
-                  <span>Visual Identity</span>
-                </div>
-                <span className="font-medium">{brandMetrics.visualCompletion}%</span>
-              </div>
-              <Progress value={brandMetrics.visualCompletion} className="h-1" />
-              
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center">
-                  <MessageSquare className="h-4 w-4 text-green-600 mr-1" />
-                  <span>Voice & Tone</span>
-                </div>
-                <span className="font-medium">{brandMetrics.voiceCompletion}%</span>
-              </div>
-              <Progress value={brandMetrics.voiceCompletion} className="h-1" />
-              
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center">
-                  <FileText className="h-4 w-4 text-amber-600 mr-1" />
-                  <span>Guidelines</span>
-                </div>
-                <span className="font-medium">{brandMetrics.guidelinesCompletion}%</span>
-              </div>
-              <Progress value={brandMetrics.guidelinesCompletion} className="h-1" />
-            </div>
-            <div className="mt-3 text-center">
-              <Button 
-                variant="link" 
-                size="sm" 
-                className="text-xs p-0 h-6"
-                onClick={() => setActiveTab(brandMetrics.leastCompleteSection)}
-              >
-                Focus on {brandMetrics.leastCompleteSection} next
-                <AlertTriangle className="h-3 w-3 ml-1 text-amber-500" />
               </Button>
             </div>
           </CardContent>
@@ -830,7 +721,7 @@ export function BrandIdentity() {
               // Handle save
               toast({
                 title: "Changes saved",
-                description: "Your brand essentials have been updated."
+                description: "Your brand essentials have been updated.",
               });
             }}
           />
@@ -859,10 +750,11 @@ export function BrandIdentity() {
           <DialogHeader>
             <DialogTitle>Export Brand Style Guide</DialogTitle>
             <DialogDescription>
-              Generate a comprehensive brand style guide that includes all your brand elements in one document.
+              Generate a comprehensive brand style guide that includes all your
+              brand elements in one document.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-6 space-y-4">
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Export Format</h4>
@@ -878,82 +770,115 @@ export function BrandIdentity() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="text-sm font-medium">What to include</h4>
               <div className="grid grid-cols-2 gap-2">
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="include-essentials" 
-                    className="rounded border-gray-300" 
+                  <input
+                    type="checkbox"
+                    id="include-essentials"
+                    className="rounded border-gray-300"
                     defaultChecked
                   />
-                  <label htmlFor="include-essentials" className="text-sm">Brand Essentials</label>
+                  <label htmlFor="include-essentials" className="text-sm">
+                    Brand Essentials
+                  </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="include-visual" 
-                    className="rounded border-gray-300" 
+                  <input
+                    type="checkbox"
+                    id="include-visual"
+                    className="rounded border-gray-300"
                     defaultChecked
                   />
-                  <label htmlFor="include-visual" className="text-sm">Visual Identity</label>
+                  <label htmlFor="include-visual" className="text-sm">
+                    Visual Identity
+                  </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="include-voice" 
-                    className="rounded border-gray-300" 
+                  <input
+                    type="checkbox"
+                    id="include-voice"
+                    className="rounded border-gray-300"
                     defaultChecked
                   />
-                  <label htmlFor="include-voice" className="text-sm">Voice & Tone</label>
+                  <label htmlFor="include-voice" className="text-sm">
+                    Voice & Tone
+                  </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="include-assets" 
-                    className="rounded border-gray-300" 
+                  <input
+                    type="checkbox"
+                    id="include-assets"
+                    className="rounded border-gray-300"
                     defaultChecked
                   />
-                  <label htmlFor="include-assets" className="text-sm">Brand Assets</label>
+                  <label htmlFor="include-assets" className="text-sm">
+                    Brand Assets
+                  </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="include-guidelines" 
-                    className="rounded border-gray-300" 
+                  <input
+                    type="checkbox"
+                    id="include-guidelines"
+                    className="rounded border-gray-300"
                     defaultChecked
                   />
-                  <label htmlFor="include-guidelines" className="text-sm">Guidelines</label>
+                  <label htmlFor="include-guidelines" className="text-sm">
+                    Guidelines
+                  </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="include-examples" 
-                    className="rounded border-gray-300" 
+                  <input
+                    type="checkbox"
+                    id="include-examples"
+                    className="rounded border-gray-300"
                     defaultChecked
                   />
-                  <label htmlFor="include-examples" className="text-sm">Usage Examples</label>
+                  <label htmlFor="include-examples" className="text-sm">
+                    Usage Examples
+                  </label>
                 </div>
               </div>
             </div>
           </div>
-          
+
           <DialogFooter className="flex items-center justify-between">
             <div className="text-xs text-gray-500">
-              Generates a {exportFormat.toUpperCase()} document with all your brand identity elements.
+              Generates a {exportFormat.toUpperCase()} document with all your
+              brand identity elements.
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowExportDialog(false)} disabled={isExporting}>
+              <Button
+                variant="outline"
+                onClick={() => setShowExportDialog(false)}
+                disabled={isExporting}
+              >
                 Cancel
               </Button>
               <Button onClick={handleExport} disabled={isExporting}>
                 {isExporting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Generating...
                   </>

@@ -3,15 +3,15 @@ import dynamic from 'next/dynamic';
 import { Metadata } from 'next';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
-// Dynamically import the New JourneyCanvas component to avoid SSR issues with canvas
-const NewJourneyCanvas = dynamic(
-  () => import('@/features/journey/components/NewJourneyCanvas').then(mod => ({ default: mod.NewJourneyCanvas })),
+// Dynamically import the AppCanvas component to avoid SSR issues with canvas
+const AppCanvas = dynamic(
+  () => import('@/features/journey/components/AppCanvas').then(mod => ({ default: mod.default })),
   { 
     ssr: false,
     loading: () => (
       <div className="flex justify-center items-center min-h-[calc(100vh-56px)]">
         <LoadingSpinner size="lg" />
-        <span className="ml-3 text-gray-600">Chargement du parcours entrepreneurial...</span>
+        <span className="ml-3 text-gray-600">Chargement de l'espace de travail...</span>
       </div>
     )
   }
@@ -24,8 +24,8 @@ interface CanvasPageProps {
 }
 
 export const metadata: Metadata = {
-  title: 'Parcours Entrepreneurial | Ideation',
-  description: 'Parcours interactif pour la validation et le développement de votre idée business',
+  title: 'Espace de Travail | Ideation',
+  description: 'Espace interactif pour le développement et la validation de votre projet',
 };
 
 export default function CanvasPage({ params }: CanvasPageProps) {
@@ -34,12 +34,12 @@ export default function CanvasPage({ params }: CanvasPageProps) {
       <Suspense fallback={
         <div className="flex justify-center items-center h-full">
           <LoadingSpinner size="lg" />
-          <span className="ml-3 text-gray-600">Préparation de votre parcours entrepreneurial...</span>
+          <span className="ml-3 text-gray-600">Préparation de votre espace de travail...</span>
         </div>
       }>
-        <NewJourneyCanvas 
+        <AppCanvas 
           projectId={params.id}
-          initialFocus={{ type: 'overview' }}
+          initialApp={null} // Start with the dashboard view
         />
       </Suspense>
     </main>

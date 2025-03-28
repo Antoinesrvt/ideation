@@ -2,14 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import ToolComponent from '../ToolComponent';
-import { MarketAnalysis } from '@/features/market/components/MarketAnalysis';
-import { MarketSection } from '@/features/market/components/MarketSectionNavigation';
-import { MarketInsights } from '@/features/market/components/MarketInsights';
-import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
+import { FinancialProjections } from '@/features/financials/components/FinancialProjections';
+import { useFinancials } from '@/hooks/features/useFinancials';
 import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
-import { MarketAnalysisUIData } from '@/features/market/types';
 import { PanelType, PanelConfig } from '@/features/common/components/CyclingSidebar';
-import { BarChart2, FileText, Bot, CheckSquare, BarChart, StickyNote } from 'lucide-react';
+import { CreditCard, FileText, Bot, CheckSquare, BarChart, StickyNote } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 // Import panel components from common directory
@@ -19,92 +16,47 @@ import { ValidationPanel } from '@/features/common/components/ValidationPanel';
 import { MetricsPanel } from '@/features/common/components/MetricsPanel';
 import { NotesPanel } from '@/features/common/components/NotesPanel';
 
-// Define section navigation options
-const MARKET_SECTIONS = [
+// Define sections based on the financial tabs
+const FINANCIAL_SECTIONS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'business', label: 'Your Business' },
-  { id: 'trends', label: 'Trends' },
-  { id: 'customers', label: 'Customers' },
-  { id: 'competitors', label: 'Competitors' },
-  { id: 'partners', label: 'Partners' },
+  { id: 'revenue', label: 'Revenue' },
+  { id: 'costs', label: 'Costs' },
+  { id: 'pricing', label: 'Pricing' },
+  { id: 'breakeven', label: 'Break-even' },
+  { id: 'projections', label: 'Projections' },
 ];
 
-interface MarketToolProps {
-  stageId?: string; // Making this optional for compatibility
+interface FinancialsToolProps {
   toolId: string;
   title: string;
   icon?: React.ReactNode;
   color?: string;
   onBackToDashboard: () => void;
-  onBackToOverview?: () => void; // Optional for backward compatibility
-  onBackToStage?: () => void; // Optional for backward compatibility
   projectId: string;
   onContentChange?: (hasChanges: boolean) => void;
 }
 
-const MarketTool: React.FC<MarketToolProps> = ({
-  stageId = 'validate-idea', // Default to first stage for backward compatibility
+const FinancialsTool: React.FC<FinancialsToolProps> = ({
   toolId,
   title,
-  icon = <BarChart2 className="h-5 w-5" />,
-  color = '#0EA5E9',
+  icon = <CreditCard className="h-5 w-5" />,
+  color = '#F59E0B',
   onBackToDashboard,
-  onBackToOverview = onBackToDashboard, // Default to dashboard if not provided
-  onBackToStage = onBackToDashboard, // Default to dashboard if not provided
   projectId,
   onContentChange
 }) => {
   // Hold the current section just for navigation
-  const [currentSection, setCurrentSection] = useState<MarketSection>('overview');
+  const [currentSection, setCurrentSection] = useState<string>('overview');
   // Track whether there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
-  // Get market data for the sidebar and queryClient for mutation
+  // Get financial data and queryClient for mutation
   const queryClient = useQueryClient();
   const { 
-    data: marketRawData,
+    data: financialsData,
     isLoading,
     error
-  } = useMarketAnalysis(projectId);
-  
-  // Format data for the sidebar component
-  const marketData = React.useMemo((): MarketAnalysisUIData => {
-    if (!marketRawData) {
-      // Return a default empty data structure
-      return {
-        personas: [],
-        interviews: [],
-        competitors: [],
-        trends: [],
-        partners: [],
-        overview: undefined
-      };
-    }
-    
-    return {
-      personas: marketRawData.personas || [],
-      interviews: marketRawData.interviews || [],
-      competitors: marketRawData.competitors || [],
-      trends: marketRawData.trends || [],
-      partners: marketRawData.partners || [],
-      overview: marketRawData.overview ? {
-        marketDefinition: marketRawData.overview.marketDefinition || {
-          industry: '',
-          geography: '',
-          maturity: 'emerging'
-        },
-        marketSize: marketRawData.overview.marketSize || {
-          tam: 0,
-          sam: 0,
-          som: 0,
-          tamMethod: 'top-down',
-          samPercentage: 0,
-          somPercentage: 0
-        },
-        segments: marketRawData.overview.segments || []
-      } : undefined
-    };
-  }, [marketRawData]);
+  } = useFinancials(projectId);
 
   // Update parent component when changes occur
   useEffect(() => {
@@ -113,22 +65,10 @@ const MarketTool: React.FC<MarketToolProps> = ({
     }
   }, [hasUnsavedChanges, onContentChange]);
 
-  // Handle section change
-  const handleSectionChange = (section: MarketSection) => {
-    console.log(`MarketTool: Section changed to ${section}`); // Debug log
-    setCurrentSection(section);
-  };
-  
   // Handle section selection from header tabs
   const handleSectionSelect = (sectionId: string) => {
-    console.log(`MarketTool: Section selected from header: ${sectionId}`); // Debug log
-    // Convert string to MarketSection type
-    setCurrentSection(sectionId as MarketSection);
-  };
-  
-  // Handle going back to overview
-  const handleSectionBack = () => {
-    setCurrentSection('overview');
+    console.log(`FinancialsTool: Section selected from header: ${sectionId}`);
+    setCurrentSection(sectionId);
   };
 
   // Handle data changes
@@ -140,7 +80,7 @@ const MarketTool: React.FC<MarketToolProps> = ({
   const handleSaveComplete = () => {
     setHasUnsavedChanges(false);
     queryClient.invalidateQueries({
-      queryKey: ['marketAnalysis', projectId]
+      queryKey: ['financials', projectId]
     }); // Refresh the data
   };
 
@@ -180,24 +120,22 @@ const MarketTool: React.FC<MarketToolProps> = ({
 
   // Get section info for the active section
   const sectionInfo = React.useMemo(() => {
-    const iconMap: Record<MarketSection, React.ReactNode> = {
-      'overview': <FileText className="h-4 w-4" />,
-      'business': <FileText className="h-4 w-4" />,
-      'trends': <BarChart className="h-4 w-4" />,
-      'customers': <FileText className="h-4 w-4" />,
-      'competitors': <FileText className="h-4 w-4" />,
-      'partners': <FileText className="h-4 w-4" />
+    const iconMap: Record<string, React.ReactNode> = {
+      'overview': <CreditCard className="h-4 w-4" />,
+      'revenue': <BarChart className="h-4 w-4" />,
+      'costs': <CreditCard className="h-4 w-4" />,
+      'pricing': <BarChart className="h-4 w-4" />,
+      'breakeven': <BarChart className="h-4 w-4" />,
+      'projections': <BarChart className="h-4 w-4" />
     };
 
-    const sectionName = currentSection === 'overview' 
-      ? 'Market Analysis' 
-      : MARKET_SECTIONS.find(s => s.id === currentSection)?.label || 'Market Analysis';
+    const sectionName = FINANCIAL_SECTIONS.find(s => s.id === currentSection)?.label || 'Financial Projections';
     
     return {
       id: currentSection,
       name: sectionName,
-      icon: iconMap[currentSection] || <FileText className="h-4 w-4" />,
-      color: 'text-blue-500'
+      icon: iconMap[currentSection] || <CreditCard className="h-4 w-4" />,
+      color: 'text-amber-500'
     };
   }, [currentSection]);
 
@@ -252,21 +190,21 @@ const MarketTool: React.FC<MarketToolProps> = ({
   };
 
   // If we're loading or have an error, show appropriate state
-  if (isLoading) return <LoadingState message="Loading market analysis data..." />;
+  if (isLoading) return <LoadingState message="Loading financial data..." />;
   if (error) return <ErrorState error={error.message} />;
 
   return (
     <ToolComponent
-      stageId={stageId}
       toolId={toolId}
       title={title}
       icon={icon}
       color={color}
-      onBackToOverview={onBackToOverview}
-      onBackToStage={onBackToStage}
-      sections={MARKET_SECTIONS}
+      onBackToOverview={onBackToDashboard}
+      onBackToStage={onBackToDashboard}
+      sections={FINANCIAL_SECTIONS}
       activeSection={currentSection}
       onSectionSelect={handleSectionSelect}
+      stageId="financials"
       sidebarConfig={{
         projectId,
         sectionId: currentSection,
@@ -274,13 +212,9 @@ const MarketTool: React.FC<MarketToolProps> = ({
         customPanels: panelConfigs
       }}
     >
-      <MarketAnalysis
-        projectId={projectId}
-        currentSection={currentSection}
-        onSectionClick={handleSectionChange}
-      />
+      <FinancialProjections />
     </ToolComponent>
   );
 };
 
-export default MarketTool; 
+export default FinancialsTool; 

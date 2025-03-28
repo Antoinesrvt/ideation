@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import { JOURNEY_STAGES } from '../constants';
 import { NewJourneyOverview } from './NewJourneyOverview';
 import { DataOutputPanel } from './DataOutputPanel';
-import { StageProgressTracker } from './StageProgressTracker';
 import { DecisionSupportHub } from './DecisionSupportHub';
 import { 
   ChevronRight,
@@ -20,6 +19,7 @@ import StageComponent from './StageComponent';
 import MarketTool from './market/MarketTool';
 import ToolComponent from './ToolComponent';
 import ValidationTool from './validation/ValidationTool';
+import { PanelType } from '@/features/common/components/CyclingSidebar';
 
 // Types for managing focus
 export type FocusType = 'overview' | 'stage' | 'tool' | 'output' | 'decision-support';
@@ -113,25 +113,6 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
     });
   }, [focus.stageId]);
   
-  // Get stage information
-  const getCurrentStage = () => {
-    if (!focus.stageId) return null;
-    return JOURNEY_STAGES.find(stage => stage.id === focus.stageId) || null;
-  };
-  
-  // Get tool information
-  const getCurrentTool = () => {
-    if (!focus.toolId) return null;
-    
-    // For a real implementation, you would have a mapping of tool IDs to tool info
-    // For now, we'll just create a simple representation
-    return {
-      id: focus.toolId,
-      name: focus.toolId.split('-').map(word => 
-        word.charAt(0).toUpperCase() + word.slice(1)
-      ).join(' ')
-    };
-  };
   
   // Render content based on current focus
   const renderContent = () => {
@@ -165,6 +146,10 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
       case 'tool':
         if (!focus.stageId || !focus.toolId) return null;
         
+        // Dummy functions for side panel functionality
+        const handleToggleSidePanel = () => console.log('Toggle side panel');
+        const handleSidePanelOpen = (panelId: PanelType) => console.log('Open side panel', panelId);
+        
         // Render the appropriate tool based on toolId
         switch (focus.toolId) {
           case 'market':
@@ -172,8 +157,10 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
               <MarketTool
                 stageId={focus.stageId}
                 toolId={focus.toolId}
+                title="Market Analysis"
                 onBackToOverview={handleBackToOverview}
                 onBackToStage={handleBackToStage}
+                onBackToDashboard={handleBackToOverview}
                 projectId={projectId}
               />
             );
@@ -198,6 +185,7 @@ export function NewJourneyCanvas({ projectId, initialFocus }: NewJourneyCanvasPr
               <ToolComponent
                 stageId={focus.stageId}
                 toolId={focus.toolId}
+                title={focus.toolId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                 onBackToOverview={handleBackToOverview}
                 onBackToStage={handleBackToStage}
               />

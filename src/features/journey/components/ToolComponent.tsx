@@ -2,15 +2,19 @@
 
 import React from 'react';
 import { JOURNEY_STAGES } from '../constants';
+import { APP_CONFIG, AppType } from './ToolRouter';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { HomeIcon, ChevronRight } from 'lucide-react';
 import { CyclingSidebar, PanelType, PanelConfig } from '@/features/common/components/CyclingSidebar';
+import { cn } from '@/lib/utils';
 
 interface ToolComponentProps {
   stageId: string;
-  toolId: string;
+  toolId: string; 
+  icon?: React.ReactNode;
+  color?: string;
   onBackToOverview: () => void;
   onBackToStage: () => void;
   title?: string; // Optional custom title
@@ -33,6 +37,8 @@ interface ToolComponentProps {
 const ToolComponent: React.FC<ToolComponentProps> = ({
   stageId,
   toolId,
+  icon,
+  color,
   onBackToOverview,
   onBackToStage,
   title,
@@ -45,9 +51,24 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
   sidebarContent,
   sidebarConfig
 }) => {
-  const toolStage = JOURNEY_STAGES.find(s => s.id === stageId);
+  // Check if we're in app mode (new approach) or stage mode (old approach)
+  const isAppMode = ['market', 'brand', 'product', 'financials'].includes(stageId);
   
-  if (!toolStage) {
+  // For app mode, use the APP_CONFIG, otherwise find the stage from JOURNEY_STAGES
+  const appConfig = isAppMode ? APP_CONFIG[stageId as AppType] : null;
+  const toolStage = isAppMode ? null : JOURNEY_STAGES.find(s => s.id === stageId);
+  
+  // Get stage information, either from app config or journey stage
+  const stageInfo = isAppMode 
+    ? { 
+        id: appConfig?.id || stageId, 
+        title: appConfig?.title || stageId.charAt(0).toUpperCase() + stageId.slice(1), 
+        color: appConfig?.color || '#666666' 
+      } 
+    : toolStage;
+  
+  // If no stage info is available, show error
+  if (!stageInfo) {
     return (
       <div className="p-6">
         <Card>
@@ -71,9 +92,9 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
   const toolName = title || defaultToolName;
 
   return (
-    <div>
-      <Card>
-        <CardHeader className="flex-row items-center justify-between p-4 border-b space-y-0">
+    <div className="h-full flex flex-col">
+      <Card className="flex flex-col h-full overflow-hidden">
+        <CardHeader className="flex-row items-center justify-between p-4 border-b space-y-0 flex-shrink-0">
           {/* Left side with breadcrumb */}
           <div className="flex items-center space-x-2">
             <Button
@@ -91,7 +112,7 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
             <div className="flex items-center">
               <div
                 className="w-3 h-3 rounded-full mr-2"
-                style={{ backgroundColor: toolStage.color }}
+                style={{ backgroundColor: stageInfo.color }}
               ></div>
               <Button
                 variant="ghost"
@@ -101,9 +122,9 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
               >
                 <span
                   className="truncate max-w-[120px]"
-                  style={{ color: toolStage.color }}
+                  style={{ color: stageInfo.color }}
                 >
-                  {toolStage.title}
+                  {stageInfo.title}
                 </span>
               </Button>
             </div>
@@ -136,7 +157,7 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
 
           {/* Right side with section tabs if provided */}
           {sections && sections.length > 0 && (
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1 overflow-x-auto">
               {sections.map((section) => (
                 <Button
                   key={section.id}
@@ -152,18 +173,25 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
           )}
         </CardHeader>
 
-        <CardContent className="p-6">
+        <CardContent className="p-4 flex-grow flex flex-col overflow-hidden">
           {/* Use new CyclingSidebar if config is provided, otherwise use legacy layout */}
           {children || sidebarContent || sidebarConfig ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Main content area */}
-              <div className={sidebarConfig ? "md:col-span-2 space-y-6" : (sidebarContent ? "md:col-span-2 space-y-6" : "col-span-full space-y-6")}>
-                {children ? children : (
-                  <div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-lg">
+            <div className="flex flex-col md:flex-row gap-4 h-full overflow-hidden">
+              {/* Main content area - takes 2/3 width and full height with scrolling */}
+              <div 
+                className={cn(
+                  "flex-grow overflow-y-auto scrollbar-hide", 
+                  sidebarConfig || sidebarContent ? "md:w-2/3" : "w-full"
+                )}
+              >
+                {children ? (
+                  <div className="h-full">{children}</div>
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg">
                     <div className="text-center">
                       <h2 className="text-xl font-medium mb-2">Tool: {toolId}</h2>
                       <p className="text-gray-500">
-                        This tool helps you complete the stage: {toolStage.title}
+                        This tool helps you with: {stageInfo.title}
                       </p>
                       <p className="text-sm text-gray-400 mt-4">
                         In a real implementation, the tool component would be loaded here.
@@ -173,9 +201,9 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
                 )}
               </div>
               
-              {/* Right sidebar - use new CyclingSidebar if config is provided */}
+              {/* Right sidebar - fixed width and full height with sticky positioning */}
               {sidebarConfig ? (
-                <div className="md:col-span-1 h-[calc(100vh-220px)]">
+                <div className="h-full md:w-1/3 md:flex-shrink-0">
                   <CyclingSidebar 
                     toolId={toolId}
                     projectId={sidebarConfig.projectId}
@@ -183,20 +211,21 @@ const ToolComponent: React.FC<ToolComponentProps> = ({
                     renderPanelContent={sidebarConfig.renderPanelContent}
                     customPanels={sidebarConfig.customPanels}
                     defaultPanel={sidebarConfig.defaultPanel}
+                    className="h-full"
                   />
                 </div>
               ) : sidebarContent ? (
-                <div className="md:col-span-1 space-y-4">
+                <div className="h-full md:w-1/3 md:flex-shrink-0 overflow-auto">
                   {sidebarContent}
                 </div>
               ) : null}
             </div>
           ) : (
-            <div className="h-[600px] flex items-center justify-center bg-gray-50 rounded-lg">
+            <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg">
               <div className="text-center">
                 <h2 className="text-xl font-medium mb-2">Tool: {toolId}</h2>
                 <p className="text-gray-500">
-                  This tool helps you complete the stage: {toolStage.title}
+                  This tool helps you with: {stageInfo.title}
                 </p>
                 <p className="text-sm text-gray-400 mt-4">
                   In a real implementation, the tool component would be loaded here.

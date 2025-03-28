@@ -5,7 +5,8 @@ import {
   ArrowUpRight, BarChart2, ChevronRight, Info, PlusCircle, 
   Users, UserSearch, Search, TrendingUp, Activity, AlertCircle,
   Target, ScaleIcon, LineChart, HelpCircle, ArrowLeft, FileText,
-  BarChart, UserRound, MessageSquare, Handshake, AppWindow, LayoutDashboard
+  BarChart, UserRound, MessageSquare, Handshake, AppWindow, LayoutDashboard,
+  Building
 } from 'lucide-react';
 import { EnhancedCustomerPersonaCard } from './EnhancedCustomerPersonaCard';
 import { EnhancedCustomerInterviewCard } from './EnhancedCustomerInterviewCard';
@@ -32,6 +33,7 @@ import { PartnerWrapper } from './PartnerWrapper';
 import { Button } from '@/components/ui/button';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { MarketDefinition, MarketSize } from '../types';
+import { BusinessSection } from './BusinessSection';
 
 const marketTabs = [
   {
@@ -199,7 +201,7 @@ export function MarketAnalysis({
       : 0;
     
     return {
-      'market': marketDefinitionScore,
+      'business': marketDefinitionScore,
       'trends': trendsScore,
       'customers': customersScore,
       'competitors': competitorsScore,
@@ -212,7 +214,7 @@ export function MarketAnalysis({
   useEffect(() => {
     if (currentSection === 'customers') {
       setActiveTab('personas');
-    } else if (currentSection === 'market') {
+    } else if (currentSection === 'business') {
       setActiveTab('overview');
     }
   }, [currentSection]);
@@ -229,20 +231,20 @@ export function MarketAnalysis({
       onSectionClick(section);
     }
   };
-  
+
   const handleAddPersona = async () => {
     if (!projectId) return;
     
     try {
       await addPersona({
-        name: 'New Persona',
+      name: 'New Persona',
         role: '',
         demographics: '',
         pain_points: [],
         goals: [],
-        project_id: projectId,
-        created_by: null
-      });
+      project_id: projectId,
+      created_by: null
+    });
       
       toast({
         title: 'Success',
@@ -263,14 +265,14 @@ export function MarketAnalysis({
     
     try {
       await addInterview({
-        name: 'New Interview',
+      name: 'New Interview',
         company: '',
-        interview_date: new Date().toISOString(),
+      interview_date: new Date().toISOString(),
         sentiment: 'neutral',
         notes: '',
         key_insights: [],
         tags: [],
-        project_id: projectId,
+      project_id: projectId,
         created_by: null
       });
       
@@ -293,16 +295,16 @@ export function MarketAnalysis({
     
     try {
       await addCompetitor({
-        name: 'New Competitor',
+      name: 'New Competitor',
         website: '',
         strengths: [],
         weaknesses: [],
         price: '',
         market_share: '',
         notes: '',
-        project_id: projectId,
-        created_by: null
-      });
+      project_id: projectId,
+      created_by: null
+    });
       
       toast({
         title: 'Success',
@@ -329,9 +331,9 @@ export function MarketAnalysis({
         description: '',
         tags: [],
         sources: [],
-        project_id: projectId,
-        created_by: null
-      });
+      project_id: projectId,
+      created_by: null
+    });
       
       toast({
         title: 'Success',
@@ -369,7 +371,7 @@ export function MarketAnalysis({
   const getSectionTitle = (section: MarketSection): string => {
     switch (section) {
       case 'overview': return 'Overview';
-      case 'market': return 'Market Definition';
+      case 'business': return 'Your Business';
       case 'trends': return 'Market Trends';
       case 'customers': return 'Customers';
       case 'competitors': return 'Competitors';
@@ -396,7 +398,7 @@ export function MarketAnalysis({
   );
 
   return (
-    <div className="w-full">
+    <div className="h-full w-full overflow-auto">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentSection}
@@ -404,378 +406,297 @@ export function MarketAnalysis({
           animate="visible"
           exit="exit"
           variants={sectionContentVariants}
-          className="space-y-6"
+          className="space-y-6 w-full h-full"
         >
           {/* Overview Section */}
           {currentSection === 'overview' && (
-            <>
-              <motion.div variants={itemVariants}>
-                <MarketLandscape 
-                  data={marketData}
-                  onSectionClick={(section) => {
-                    // Make sure onSectionClick is provided
-                    if (onSectionClick) {
-                      switch(section) {
-                        case 'market':
-                        case 'trends':
-                        case 'customers':
-                        case 'competitors':
-                        case 'partners':
-                        case 'overview':
-                          // These are all valid sections in our MarketSection type
-                          handleSectionClick(section as MarketSection);
-                          break;
-                        default:
-                          console.warn(`Invalid section: ${section}`);
-                          break;
+            <motion.div variants={itemVariants} className="w-full h-full">
+              <Card className="h-full overflow-hidden">
+                <CardContent className="p-4 h-full">
+                  <MarketLandscape 
+                    data={marketData}
+                    onSectionClick={(section) => {
+                      // Make sure onSectionClick is provided
+                      if (onSectionClick) {
+                        switch(section) {
+                          case 'business':
+                          case 'trends':
+                          case 'customers':
+                          case 'competitors':
+                          case 'partners':
+                          case 'overview':
+                            // These are all valid sections in our MarketSection type
+                            handleSectionClick(section as MarketSection);
+                            break;
+                          default:
+                            console.warn(`Invalid section: ${section}`);
+                            break;
+                        }
                       }
-                    }
-                  }}
-                  currentSection={currentSection}
-                />
-              </motion.div>
-              
-              {/* <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-medium">Market Completion Status</CardTitle>
-                    <CardDescription>Overall progress on your market analysis</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2 text-blue-500" />
-                            <span>Market Definition</span>
-                          </div>
-                          <span className="font-medium">{Math.round(completionStatus.market)}%</span>
-                        </div>
-                        <Progress value={completionStatus.market} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <TrendingUp className="h-4 w-4 mr-2 text-blue-500" />
-                            <span>Market Trends</span>
-                          </div>
-                          <span className="font-medium">{Math.round(completionStatus.trends)}%</span>
-                        </div>
-                        <Progress value={completionStatus.trends} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-2 text-purple-500" />
-                            <span>Customers</span>
-                          </div>
-                          <span className="font-medium">{Math.round(completionStatus.customers)}%</span>
-                        </div>
-                        <Progress value={completionStatus.customers} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <Target className="h-4 w-4 mr-2 text-red-500" />
-                            <span>Competitors</span>
-                          </div>
-                          <span className="font-medium">{Math.round(completionStatus.competitors)}%</span>
-                        </div>
-                        <Progress value={completionStatus.competitors} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-2 text-green-500" />
-                            <span>Partners</span>
-                          </div>
-                          <span className="font-medium">{Math.round(completionStatus.partners)}%</span>
-                        </div>
-                        <Progress value={completionStatus.partners} className="h-2" />
-                      </div>
-                      
-                      <div className="pt-2 mt-4 border-t">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Overall Completion</span>
-                          <Badge variant="outline" className="font-medium">
-                            {Math.round(completionStatus.overall)}%
-                          </Badge>
-                        </div>
-                        <Progress value={completionStatus.overall} className="h-2.5 mt-2" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div> */}
-            </>
+                    }}
+                    currentSection={currentSection}
+                  />
+          </CardContent>
+        </Card>
+            </motion.div>
           )}
           
-          {/* Market Definition Section */}
-          {currentSection === 'market' && (
-            <>
-              <motion.div variants={itemVariants}>
-                <MarketOverview 
-                  data={marketData.overview}
-                  onUpdate={readOnly ? undefined : (data) => {
-                    // Handle updating overview data
-                  }}
-                />
-              </motion.div>
-            </>
+          {/* Business Section (replacing Market Definition) */}
+          {currentSection === 'business' && (
+            <motion.div variants={itemVariants} className="w-full h-full">
+              <BusinessSection 
+                data={marketData.overview}
+                onUpdate={readOnly ? undefined : (data) => {
+                  // Handle updating overview data
+                }}
+              />
+            </motion.div>
           )}
           
           {/* Trends Section */}
           {currentSection === 'trends' && (
-            <>
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div>
-                      <CardTitle className="text-base font-medium flex items-center">
-                        <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
-                        Market Trends
-                      </CardTitle>
-                      <CardDescription>
-                        Track emerging market trends that could impact your business
-                      </CardDescription>
-                    </div>
-                    
-                    {!readOnly && (
-                      <Button size="sm" onClick={handleAddTrend}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Trend
-                      </Button>
-                    )}
-                  </CardHeader>
+            <motion.div variants={itemVariants} className="w-full h-full">
+        <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-base font-medium flex items-center">
+                      <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
+              Market Trends
+            </CardTitle>
+                    <CardDescription>
+                      Track emerging market trends that could impact your business
+                    </CardDescription>
+                  </div>
                   
-                  <CardContent>
-                    {marketData.trends.length === 0 ? (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p>No market trends added yet</p>
-                        {!readOnly && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-4"
-                            onClick={handleAddTrend}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add your first trend
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {marketData.trends.map(trend => (
-                          <EnhancedMarketTrendCard
-                            key={trend.id}
-                            trend={trend}
-                            onEdit={readOnly ? undefined : () => {}}
-                            onUpdate={readOnly ? undefined : updateTrend}
-                            onDelete={readOnly ? undefined : deleteTrend}
-                            readOnly={readOnly}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </>
+                  {!readOnly && (
+                    <Button size="sm" onClick={handleAddTrend}>
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add Trend
+                    </Button>
+                  )}
+          </CardHeader>
+                
+          <CardContent>
+                  {marketData.trends.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No market trends added yet</p>
+                      {!readOnly && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-4"
+                          onClick={handleAddTrend}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add your first trend
+                        </Button>
+                      )}
+                </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {marketData.trends.map(trend => (
+                        <EnhancedMarketTrendCard
+                          key={trend.id}
+                          trend={trend}
+                          onEdit={readOnly ? undefined : () => {}}
+                          onUpdate={readOnly ? undefined : updateTrend}
+                          onDelete={readOnly ? undefined : deleteTrend}
+                          readOnly={readOnly}
+                        />
+                      ))}
+              </div>
+                  )}
+          </CardContent>
+        </Card>
+            </motion.div>
           )}
           
           {/* Customers Section */}
           {currentSection === 'customers' && (
-            <div className="flex flex-col lg:flex-row gap-6">
-              <motion.div variants={itemVariants} className="lg:w-1/2">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div>
-                      <CardTitle className="text-base font-medium flex items-center">
-                        <Users className="h-5 w-5 mr-2 text-purple-500" />
-                        Customer Personas
-                      </CardTitle>
-                      <CardDescription>
-                        Define your key customer archetypes and their needs
-                      </CardDescription>
-                    </div>
+            <motion.div variants={itemVariants} className="w-full h-full">
+              <div className="flex flex-col lg:flex-row gap-6 h-full">
+                <motion.div variants={itemVariants} className="lg:w-1/2 h-full">
+                  <Card className="h-full">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div>
+                        <CardTitle className="text-base font-medium flex items-center">
+                          <Users className="h-5 w-5 mr-2 text-purple-500" />
+                          Customer Personas
+                        </CardTitle>
+                        <CardDescription>
+                          Define your key customer archetypes and their needs
+                        </CardDescription>
+      </div>
+
+                      {!readOnly && (
+                        <Button size="sm" onClick={handleAddPersona}>
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Persona
+                        </Button>
+                      )}
+                    </CardHeader>
                     
-                    {!readOnly && (
-                      <Button size="sm" onClick={handleAddPersona}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Persona
-                      </Button>
-                    )}
-                  </CardHeader>
-                  
-                  <CardContent>
-                    {marketData.personas.length === 0 ? (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p>No customer personas added yet</p>
-                        {!readOnly && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-4"
-                            onClick={handleAddPersona}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add your first persona
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-4">
-                        {marketData.personas.map(persona => (
-                          <EnhancedCustomerPersonaCard
-                            key={persona.id}
-                            persona={persona}
-                            onUpdate={readOnly ? undefined : updatePersona}
-                            onDelete={readOnly ? undefined : deletePersona}
-                            readOnly={readOnly}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-              
-              <motion.div variants={itemVariants} className="lg:w-1/2">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div>
-                      <CardTitle className="text-base font-medium flex items-center">
-                        <UserSearch className="h-5 w-5 mr-2 text-purple-500" />
-                        Customer Interviews
-                      </CardTitle>
-                      <CardDescription>
-                        Record insights from customer conversations
-                      </CardDescription>
-                    </div>
-                    
-                    {!readOnly && (
-                      <Button size="sm" onClick={handleAddInterview}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Interview
-                      </Button>
-                    )}
-                  </CardHeader>
-                  
-                  <CardContent>
-                    {marketData.interviews.length === 0 ? (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <UserSearch className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p>No customer interviews added yet</p>
-                        {!readOnly && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-4"
-                            onClick={handleAddInterview}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add your first interview
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 gap-4">
-                        {marketData.interviews.map(interview => (
-                          <EnhancedCustomerInterviewCard
-                            key={interview.id}
-                            interview={interview}
-                            onUpdate={readOnly ? undefined : updateInterview}
-                            onDelete={readOnly ? undefined : deleteInterview}
-                            readOnly={readOnly}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
+                    <CardContent className="h-[calc(100%-70px)] overflow-auto">
+                      {marketData.personas.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                          <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                          <p>No customer personas added yet</p>
+                          {!readOnly && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-4"
+                              onClick={handleAddPersona}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Add your first persona
+                            </Button>
+                          )}
+                          </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                          {marketData.personas.map(persona => (
+                            <EnhancedCustomerPersonaCard
+                              key={persona.id}
+                  persona={persona}
+                              onUpdate={readOnly ? undefined : updatePersona}
+                              onDelete={readOnly ? undefined : deletePersona}
+                              readOnly={readOnly}
+                />
+              ))}
             </div>
-          )}
-          
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+                
+                <motion.div variants={itemVariants} className="lg:w-1/2 h-full">
+                  <Card className="h-full">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div>
+                        <CardTitle className="text-base font-medium flex items-center">
+                          <MessageSquare className="h-5 w-5 mr-2 text-blue-500" />
+                          Customer Interviews
+                        </CardTitle>
+                        <CardDescription>
+                          Document insights from your customer conversations
+                        </CardDescription>
+                      </div>
+                      
+                      {!readOnly && (
+                        <Button size="sm" onClick={handleAddInterview}>
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Interview
+                        </Button>
+                      )}
+                    </CardHeader>
+                    
+                    <CardContent className="h-[calc(100%-70px)] overflow-auto">
+                      {marketData.interviews.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground">
+                          <UserSearch className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                          <p>No customer interviews added yet</p>
+                          {!readOnly && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-4"
+                              onClick={handleAddInterview}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Add your first interview
+                            </Button>
+                          )}
+            </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                          {marketData.interviews.map(interview => (
+                            <EnhancedCustomerInterviewCard
+                              key={interview.id}
+                  interview={interview}
+                              onUpdate={readOnly ? undefined : updateInterview}
+                              onDelete={readOnly ? undefined : deleteInterview}
+                              readOnly={readOnly}
+                />
+              ))}
+            </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </div>
+                </motion.div>
+              )}
+
           {/* Competitors Section */}
           {currentSection === 'competitors' && (
-            <>
-              <motion.div variants={itemVariants}>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div>
-                      <CardTitle className="text-base font-medium flex items-center">
-                        <Target className="h-5 w-5 mr-2 text-red-500" />
-                        Competitor Analysis
-                      </CardTitle>
-                      <CardDescription>
-                        Track and analyze your main competitors
-                      </CardDescription>
-                    </div>
-                    
-                    {!readOnly && (
-                      <Button size="sm" onClick={handleAddCompetitor}>
-                        <PlusCircle className="h-4 w-4 mr-2" />
-                        Add Competitor
-                      </Button>
-                    )}
-                  </CardHeader>
+            <motion.div variants={itemVariants} className="w-full h-full">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-base font-medium flex items-center">
+                      <Target className="h-5 w-5 mr-2 text-red-500" />
+                      Competitor Analysis
+                    </CardTitle>
+                    <CardDescription>
+                      Track and analyze your main competitors
+                    </CardDescription>
+                  </div>
                   
-                  <CardContent>
-                    {marketData.competitors.length === 0 ? (
-                      <div className="text-center py-10 text-muted-foreground">
-                        <Target className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                        <p>No competitors added yet</p>
-                        {!readOnly && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-4"
-                            onClick={handleAddCompetitor}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add your first competitor
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <CompetitorTable
-                        competitors={marketData.competitors}
-                        onAdd={readOnly ? undefined : handleAddCompetitor}
-                        onUpdate={readOnly ? undefined : updateCompetitor}
-                        onDelete={readOnly ? undefined : deleteCompetitor}
-                        readOnly={readOnly}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </>
-          )}
-          
+                  {!readOnly && (
+                    <Button size="sm" onClick={handleAddCompetitor}>
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add Competitor
+                    </Button>
+                  )}
+                </CardHeader>
+                
+                <CardContent>
+                  {marketData.competitors.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <Target className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>No competitors added yet</p>
+                      {!readOnly && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-4"
+                          onClick={handleAddCompetitor}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add your first competitor
+                        </Button>
+                      )}
+            </div>
+                  ) : (
+            <CompetitorTable
+                      competitors={marketData.competitors}
+                      onAdd={readOnly ? undefined : handleAddCompetitor}
+                      onUpdate={readOnly ? undefined : updateCompetitor}
+                      onDelete={readOnly ? undefined : deleteCompetitor}
+                      readOnly={readOnly}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+                </motion.div>
+              )}
+
           {/* Partners Section */}
           {currentSection === 'partners' && (
-            <>
-              <motion.div variants={itemVariants}>
-                <PartnerWrapper 
-                  partners={marketData.partners || []}
-                  addPartner={readOnly ? undefined : addPartner}
-                  updatePartner={readOnly ? undefined : updatePartner}
-                  deletePartner={readOnly ? undefined : deletePartner}
-                  readOnly={readOnly}
+            <motion.div variants={itemVariants} className="w-full h-full">
+              <PartnerWrapper 
+                partners={marketData.partners || []}
+                addPartner={readOnly ? undefined : addPartner}
+                updatePartner={readOnly ? undefined : updatePartner}
+                deletePartner={readOnly ? undefined : deletePartner}
+                readOnly={readOnly}
                 />
-              </motion.div>
-            </>
+                          </motion.div>
           )}
-        </motion.div>
-      </AnimatePresence>
+                </motion.div>
+            </AnimatePresence>
     </div>
   );
 }

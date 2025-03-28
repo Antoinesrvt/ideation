@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   FileText, 
   Bot, 
@@ -150,8 +151,8 @@ export function CyclingSidebar({
   const activeConfig = panels.find(p => p.id === activePanel) || panels[0];
 
   return (
-    <Card className={cn("w-full shadow-sm", className)}>
-      <CardHeader className="px-4 py-3 flex flex-row items-center justify-between space-y-0 border-b">
+    <Card className={cn("w-full shadow-sm flex flex-col h-full", className)}>
+      <CardHeader className="px-4 py-3 flex flex-row items-center justify-between space-y-0 border-b flex-shrink-0 sticky top-0 z-10 bg-card">
         <div className="flex items-center space-x-1.5">
           <span className={activeConfig.color}>{activeConfig.icon}</span>
           <CardTitle className="text-sm font-medium">
@@ -211,11 +212,11 @@ export function CyclingSidebar({
       </CardHeader>
 
       {/* Mobile dot indicators - only show on small screens */}
-      <div className="sm:hidden py-1 border-b">
+      <div className="sm:hidden py-1 border-b flex-shrink-0">
         <PanelIndicators />
       </div>
 
-      <CardContent className="p-0 overflow-hidden">
+      <CardContent className="p-0 flex-grow overflow-hidden">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activePanel}
@@ -225,7 +226,9 @@ export function CyclingSidebar({
             variants={slideVariants}
             className="h-full"
           >
-            {renderPanelContent(activePanel)}
+            <ScrollArea className="h-full">
+              {renderPanelContent(activePanel)}
+            </ScrollArea>
           </motion.div>
         </AnimatePresence>
       </CardContent>
