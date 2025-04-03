@@ -80,50 +80,6 @@ const MarketTool: React.FC<MarketToolProps> = ({
     error
   } = useMarketAnalysis(projectId);
   
-  // Format data for the sidebar component
-  const marketData = React.useMemo((): MarketAnalysisUIData => {
-    if (!marketRawData) {
-      // Return a default empty data structure
-      return {
-        personas: [],
-        interviews: [],
-        competitors: [],
-        trends: [],
-        partners: [],
-        overview: undefined
-      };
-    }
-    
-    // Convert regular interviews to ExtendedMarketInterview by adding the status field
-    const extendedInterviews = marketRawData.interviews.map(interview => ({
-      ...interview,
-      status: interview.status as "new" | "modified" | "unchanged" | "removed" | undefined
-    }));
-    
-    return {
-      personas: marketRawData.personas || [],
-      interviews: extendedInterviews,
-      competitors: marketRawData.competitors || [],
-      trends: marketRawData.trends || [],
-      partners: marketRawData.partners || [],
-      overview: marketRawData.overview ? {
-        marketDefinition: marketRawData.overview.marketDefinition || {
-          industry: '',
-          geography: '',
-          maturity: 'emerging'
-        },
-        marketSize: marketRawData.overview.marketSize || {
-          tam: 0,
-          sam: 0,
-          som: 0,
-          tamMethod: 'top-down',
-          samPercentage: 0,
-          somPercentage: 0
-        },
-        segments: marketRawData.overview.segments || []
-      } : undefined
-    };
-  }, [marketRawData]);
 
   // Update parent component when changes occur
   useEffect(() => {

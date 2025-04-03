@@ -5,7 +5,6 @@ import type {
   MarketInterview, 
   InterviewTemplate, 
   InterviewInsight, 
-  InterviewQuestion, 
   Insert, 
   Update 
 } from '@/store/types';
@@ -326,63 +325,6 @@ export function useInterviewService(projectId?: string) {
     }
   }, [interviewService, queryClient, queryKeys.insights]);
 
-  // === Questions ===
-  // Use individual query functions for questions since they're per-interview
-  const fetchQuestions = useCallback(async (interviewId: string) => {
-    setSubmitting(true);
-    
-    try {
-      const questions = await interviewService.getQuestions(interviewId);
-      return questions;
-    } catch (err) {
-      console.error('Error fetching questions:', err);
-      return [];
-    } finally {
-      setSubmitting(false);
-    }
-  }, [interviewService]);
-
-  const createQuestion = useCallback(async (interviewId: string, questionData: Insert<'interview_questions'>) => {
-    setSubmitting(true);
-    
-    try {
-      const newQuestion = await interviewService.addQuestion(interviewId, questionData);
-      return newQuestion;
-    } catch (err) {
-      console.error('Error creating question:', err);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [interviewService]);
-
-  const updateQuestion = useCallback(async (id: string, questionData: Update<'interview_questions'>) => {
-    setSubmitting(true);
-    
-    try {
-      const updatedQuestion = await interviewService.updateQuestion(id, questionData);
-      return updatedQuestion;
-    } catch (err) {
-      console.error('Error updating question:', err);
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [interviewService]);
-
-  const deleteQuestion = useCallback(async (id: string) => {
-    setSubmitting(true);
-    
-    try {
-      await interviewService.deleteQuestion(id);
-      return true;
-    } catch (err) {
-      console.error('Error deleting question:', err);
-      return false;
-    } finally {
-      setSubmitting(false);
-    }
-  }, [interviewService]);
 
   // === Interviews ===
   const fetchInterviews = useCallback(async (pid: string) => {
@@ -541,11 +483,6 @@ export function useInterviewService(projectId?: string) {
     createInsight,
     updateInsight,
     deleteInsight,
-    // Questions
-    fetchQuestions,
-    createQuestion,
-    updateQuestion,
-    deleteQuestion,
     // Interviews
     fetchInterviews,
     fetchInterview,

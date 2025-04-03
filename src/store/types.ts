@@ -28,7 +28,6 @@ export type MarketTrend = TablesRow<'market_trends'>;
 // Interview System types
 export type InterviewTemplate = TablesRow<'interview_templates'>;
 export type InterviewInsight = TablesRow<'interview_insights'>;
-export type InterviewQuestion = TablesRow<'interview_questions'>;
 
 // Product Design types
 export type ProductWireframe = TablesRow<'product_wireframes'>;
@@ -110,7 +109,6 @@ export interface ProjectState {
     // Interview System
     interviewTemplates: InterviewTemplate[];
     interviewInsights: InterviewInsight[];
-    interviewQuestions: InterviewQuestion[];
     // Product Design
     productWireframes: ProductWireframe[];
     productFeatures: ProductFeature[];
@@ -169,7 +167,6 @@ export interface ProjectState {
     // Interview System
     interviewTemplates: InterviewTemplate[];
     interviewInsights: InterviewInsight[];
-    interviewQuestions: InterviewQuestion[];
     // Product Design
     productWireframes: ProductWireframe[];
     productFeatures: ProductFeature[];
@@ -293,10 +290,6 @@ export interface ProjectActions {
   updateInterviewInsight: (id: string, updates: Partial<InterviewInsight>) => void;
   deleteInterviewInsight: (id: string) => void;
 
-  setInterviewQuestions: (questions: InterviewQuestion[]) => void;
-  addInterviewQuestion: (question: InterviewQuestion) => void;
-  updateInterviewQuestion: (id: string, updates: Partial<InterviewQuestion>) => void;
-  deleteInterviewQuestion: (id: string) => void;
 
   // Product Design actions
   setProductWireframes: (wireframes: ProductWireframe[]) => void;

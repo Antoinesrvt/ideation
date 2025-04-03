@@ -37,6 +37,8 @@ import { BusinessSection } from './BusinessSection';
 import { MarketPersonas } from './MarketPersonas';
 import { marketAnalysisService } from '@/lib/services';
 import type { MarketPersona } from '@/store/types';
+import { MarketCompetitors } from './MarketCompetitors';
+import { CompetitorAnalysis } from './CompetitorAnalysis';
 
 const marketTabs = [
   {
@@ -364,18 +366,11 @@ export function MarketAnalysis({
   if (isLoading) return <LoadingState message="Loading market analysis data..." />;
   if (error) return <ErrorState error={error.message} />;
   
-  // Convert interviews to ExtendedMarketInterview type
-  const extendedInterviews = useMemo(() => {
-    return data.interviews.map(interview => ({
-      ...interview,
-      status: undefined  // Add the status field required by ExtendedMarketInterview
-    }));
-  }, [data.interviews]);
   
   // Set default overview data if none exists yet
   const marketData: MarketAnalysisUIData = {
     personas: data.personas,
-    interviews: extendedInterviews,
+    interviews: data.interviews,
     competitors: data.competitors,
     trends: data.trends,
     partners: data.partners,
@@ -553,67 +548,89 @@ export function MarketAnalysis({
           {/* Competitors Section */}
           {currentSection === 'competitors' && (
             <motion.div variants={itemVariants} className="w-full h-full">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div>
-                    <CardTitle className="text-base font-medium flex items-center">
-                      <Target className="h-5 w-5 mr-2 text-red-500" />
-                      Competitor Analysis
-                    </CardTitle>
-                    <CardDescription>
-                      Track and analyze your main competitors
-                    </CardDescription>
-                  </div>
-                  
-                  {!readOnly && (
-                    <Button size="sm" onClick={handleAddCompetitor}>
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Add Competitor
-                    </Button>
-                  )}
-                </CardHeader>
-                
-                <CardContent>
-                  {marketData.competitors.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <Target className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p>No competitors added yet</p>
-                      {!readOnly && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-4"
-                          onClick={handleAddCompetitor}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-2" />
-                          Add your first competitor
-                        </Button>
-                      )}
-            </div>
-                  ) : (
-            <CompetitorTable
-                      competitors={marketData.competitors}
-                      onAdd={readOnly ? undefined : handleAddCompetitor}
-                      onUpdate={readOnly ? undefined : updateCompetitor}
-                      onDelete={readOnly ? undefined : deleteCompetitor}
-                      readOnly={readOnly}
-                    />
-                  )}
-                </CardContent>
-              </Card>
+              <CompetitorAnalysis 
+                projectId={projectId.toString()} 
+                competitors={marketData.competitors || []}
+                onAddCompetitor={!readOnly ? 
+                  async (competitor) => {
+                    // Convert from CompetitorAnalysis type to database type
+                    const result = await addCompetitor({
+                      name: competitor.name,
+                      website: competitor.website,
+                      market_share: competitor.market_share,
+                      price: competitor.price,
+                      strengths: competitor.strengths,
+                      weaknesses: competitor.weaknesses,
+                      notes: competitor.notes,
+                      positioning: competitor.positioning,
+                      customer_sentiment: competitor.customer_sentiment,
+                      // Map any other fields that exist in both types
+                      ...Object.entries(competitor)
+                        .filter(([key]) => !['name', 'website', 'market_share', 'price', 'strengths', 'weaknesses', 'notes', 'positioning', 'customer_sentiment'].includes(key))
+                        .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})
+                    });
+
+                    if (!result) {
+                      throw new Error("Failed to add competitor");
+                    }
+                    
+                    // Convert from database type back to CompetitorAnalysis Competitor type
+                    return {
+                      ...result,
+                      // Ensure required fields are present with default values if needed
+                      name: result.name || "",
+                    };
+                  } : undefined
+                }
+                onUpdateCompetitor={!readOnly ? 
+                  async (competitor) => {
+                    // Convert from CompetitorAnalysis type to database type update format
+                    await updateCompetitor({
+                      id: competitor.id,
+                      data: {
+                        name: competitor.name,
+                        website: competitor.website,
+                        market_share: competitor.market_share,
+                        price: competitor.price,
+                        strengths: competitor.strengths,
+                        weaknesses: competitor.weaknesses,
+                        notes: competitor.notes,
+                        positioning: competitor.positioning,
+                        customer_sentiment: competitor.customer_sentiment,
+                        // Map any other fields that exist in both types
+                        ...Object.entries(competitor)
+                          .filter(([key]) => !['id', 'name', 'website', 'market_share', 'price', 'strengths', 'weaknesses', 'notes', 'positioning', 'customer_sentiment'].includes(key))
+                          .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {})
+                      }
+                    });
+                    // Return void as expected by CompetitorAnalysis
+                  } : undefined
+                }
+                onDeleteCompetitor={!readOnly ? 
+                  async (id) => {
+                    // Convert boolean return to void
+                    await deleteCompetitor(id);
+                    // Return void as expected by CompetitorAnalysis
+                  } : undefined
+                }
+                isLoading={isLoading}
+                isReadOnly={readOnly}
+              />
                 </motion.div>
               )}
 
           {/* Partners Section */}
           {currentSection === 'partners' && (
             <motion.div variants={itemVariants} className="w-full h-full">
-              <PartnerWrapper 
-                partners={marketData.partners || []}
-                addPartner={readOnly ? undefined : addPartner}
-                updatePartner={readOnly ? undefined : updatePartner}
-                deletePartner={readOnly ? undefined : deletePartner}
-                readOnly={readOnly}
+              {PartnerWrapper && (
+                <PartnerWrapper
+                  partners={marketData.partners || []}
+                  addPartner={!readOnly ? addPartner : undefined}
+                  updatePartner={!readOnly ? updatePartner : undefined}
+                  deletePartner={!readOnly ? deletePartner : undefined}
+                  readOnly={readOnly}
                 />
+              )}
                           </motion.div>
           )}
                 </motion.div>

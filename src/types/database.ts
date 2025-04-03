@@ -1052,47 +1052,6 @@ export type Database = {
           },
         ]
       }
-      interview_questions: {
-        Row: {
-          answer: string | null
-          created_at: string | null
-          id: string
-          interview_id: string
-          is_template_question: boolean | null
-          question: string
-          question_order: number
-          template_question_id: string | null
-        }
-        Insert: {
-          answer?: string | null
-          created_at?: string | null
-          id?: string
-          interview_id: string
-          is_template_question?: boolean | null
-          question: string
-          question_order: number
-          template_question_id?: string | null
-        }
-        Update: {
-          answer?: string | null
-          created_at?: string | null
-          id?: string
-          interview_id?: string
-          is_template_question?: boolean | null
-          question?: string
-          question_order?: number
-          template_question_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interview_questions_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "market_interviews"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       interview_templates: {
         Row: {
           category: string | null
@@ -1145,43 +1104,100 @@ export type Database = {
       }
       market_competitors: {
         Row: {
+          company_size: string | null
           created_at: string | null
           created_by: string | null
+          customer_reviews_summary: string | null
+          customer_sentiment: number | null
+          differentiators: string[] | null
+          distribution_channels: string[] | null
+          founded_year: number | null
+          funding_amount: number | null
+          funding_status: string | null
+          geographic_reach: string[] | null
+          growth_rate: number | null
           id: string
           market_share: string | null
+          marketing_channels: string[] | null
           name: string
           notes: string | null
+          partner_strategy: string | null
+          positioning: string | null
           price: string | null
+          pricing_model: string | null
+          pricing_tiers: Json | null
+          product_roadmap: string | null
           project_id: string | null
+          revenue_range: string | null
           strengths: string[] | null
+          target_segments: string[] | null
+          tech_stack: string[] | null
           updated_at: string | null
           weaknesses: string[] | null
           website: string | null
         }
         Insert: {
+          company_size?: string | null
           created_at?: string | null
           created_by?: string | null
+          customer_reviews_summary?: string | null
+          customer_sentiment?: number | null
+          differentiators?: string[] | null
+          distribution_channels?: string[] | null
+          founded_year?: number | null
+          funding_amount?: number | null
+          funding_status?: string | null
+          geographic_reach?: string[] | null
+          growth_rate?: number | null
           id?: string
           market_share?: string | null
+          marketing_channels?: string[] | null
           name: string
           notes?: string | null
+          partner_strategy?: string | null
+          positioning?: string | null
           price?: string | null
+          pricing_model?: string | null
+          pricing_tiers?: Json | null
+          product_roadmap?: string | null
           project_id?: string | null
+          revenue_range?: string | null
           strengths?: string[] | null
+          target_segments?: string[] | null
+          tech_stack?: string[] | null
           updated_at?: string | null
           weaknesses?: string[] | null
           website?: string | null
         }
         Update: {
+          company_size?: string | null
           created_at?: string | null
           created_by?: string | null
+          customer_reviews_summary?: string | null
+          customer_sentiment?: number | null
+          differentiators?: string[] | null
+          distribution_channels?: string[] | null
+          founded_year?: number | null
+          funding_amount?: number | null
+          funding_status?: string | null
+          geographic_reach?: string[] | null
+          growth_rate?: number | null
           id?: string
           market_share?: string | null
+          marketing_channels?: string[] | null
           name?: string
           notes?: string | null
+          partner_strategy?: string | null
+          positioning?: string | null
           price?: string | null
+          pricing_model?: string | null
+          pricing_tiers?: Json | null
+          product_roadmap?: string | null
           project_id?: string | null
+          revenue_range?: string | null
           strengths?: string[] | null
+          target_segments?: string[] | null
+          tech_stack?: string[] | null
           updated_at?: string | null
           weaknesses?: string[] | null
           website?: string | null
@@ -1211,11 +1227,13 @@ export type Database = {
           interview_date: string | null
           interview_guide_url: string | null
           key_insights: string[] | null
+          location: string | null
           name: string
           notes: string | null
           persona_id: string | null
           project_id: string | null
           recording_url: string | null
+          responses: Json | null
           scheduled_date: string | null
           sentiment: string | null
           status: string | null
@@ -1223,8 +1241,6 @@ export type Database = {
           template_id: string | null
           transcript: string | null
           updated_at: string | null
-          location: string | null
-          responses: Json | null
         }
         Insert: {
           analysis?: Json | null
@@ -1240,11 +1256,13 @@ export type Database = {
           interview_date?: string | null
           interview_guide_url?: string | null
           key_insights?: string[] | null
+          location?: string | null
           name: string
           notes?: string | null
           persona_id?: string | null
           project_id?: string | null
           recording_url?: string | null
+          responses?: Json | null
           scheduled_date?: string | null
           sentiment?: string | null
           status?: string | null
@@ -1252,8 +1270,6 @@ export type Database = {
           template_id?: string | null
           transcript?: string | null
           updated_at?: string | null
-          location?: string | null
-          responses?: Json | null
         }
         Update: {
           analysis?: Json | null
@@ -1269,11 +1285,13 @@ export type Database = {
           interview_date?: string | null
           interview_guide_url?: string | null
           key_insights?: string[] | null
+          location?: string | null
           name?: string
           notes?: string | null
           persona_id?: string | null
           project_id?: string | null
           recording_url?: string | null
+          responses?: Json | null
           scheduled_date?: string | null
           sentiment?: string | null
           status?: string | null
@@ -1281,8 +1299,6 @@ export type Database = {
           template_id?: string | null
           transcript?: string | null
           updated_at?: string | null
-          location?: string | null
-          responses?: Json | null
         }
         Relationships: [
           {

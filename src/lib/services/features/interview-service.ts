@@ -3,7 +3,6 @@ import type {
   MarketInterview,
   InterviewTemplate,
   InterviewInsight,
-  InterviewQuestion,
   Insert,
   Update
 } from '@/store/types';
@@ -21,7 +20,6 @@ export interface InterviewData {
   interviews: MarketInterview[];
   templates: RuntimeTemplate[];
   insights: InterviewInsight[];
-  questions: InterviewQuestion[];
 }
 
 export class InterviewService {
@@ -87,12 +85,7 @@ export class InterviewService {
       } catch (error) {
         interviewInsightsExists = false;
       }
-      
-      try {
-        await this.supabase.from('interview_questions').select('id').limit(1);
-      } catch (error) {
-        interviewQuestionsExists = false;
-      }
+
       
       try {
         await this.supabase.from('market_interviews').select('id').limit(1);
@@ -343,49 +336,6 @@ export class InterviewService {
     if (error) this.handleError(error, 'deleteInsight');
   }
 
-  // === Questions ===
-  async getQuestions(interviewId: string): Promise<InterviewQuestion[]> {
-    const { data, error } = await this.supabase
-      .from('interview_questions')
-      .select('*')
-      .eq('interview_id', interviewId)
-      .order('question_order', { ascending: true });
-
-    if (error) this.handleError(error, 'getQuestions');
-    return data || [];
-  }
-
-  async addQuestion(interviewId: string, data: Insert<'interview_questions'>): Promise<InterviewQuestion> {
-    const { data: question, error } = await this.supabase
-      .from('interview_questions')
-      .insert({ ...data, interview_id: interviewId })
-      .select()
-      .single();
-
-    if (error) this.handleError(error, 'addQuestion');
-    return question;
-  }
-
-  async updateQuestion(id: string, data: Update<'interview_questions'>): Promise<InterviewQuestion> {
-    const { data: question, error } = await this.supabase
-      .from('interview_questions')
-      .update(data)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) this.handleError(error, 'updateQuestion');
-    return question;
-  }
-
-  async deleteQuestion(id: string): Promise<void> {
-    const { error } = await this.supabase
-      .from('interview_questions')
-      .delete()
-      .eq('id', id);
-
-    if (error) this.handleError(error, 'deleteQuestion');
-  }
 
   // === Interviews ===
   async getInterviews(projectId: string): Promise<MarketInterview[]> {
@@ -510,7 +460,6 @@ export class InterviewService {
       interviews,
       templates,
       insights,
-      questions: [] // We don't fetch questions in bulk
     };
   }
 } 

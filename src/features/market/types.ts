@@ -48,7 +48,7 @@ export interface ExtendedMarketPersona extends MarketPersona {
 }
 
 export interface ExtendedMarketInterview extends MarketInterview {
-  status?: 'new' | 'modified' | 'unchanged' | 'removed';
+  status: 'new' | 'modified' | 'unchanged' | 'removed' | string | null;
 }
 
 export interface ExtendedMarketCompetitor extends MarketCompetitor {
