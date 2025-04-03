@@ -1001,6 +1001,148 @@ export type Database = {
           },
         ]
       }
+      interview_insights: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          insight: string
+          interview_id: string
+          is_highlighted: boolean | null
+          project_id: string
+          source_text: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          insight: string
+          interview_id: string
+          is_highlighted?: boolean | null
+          project_id: string
+          source_text?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          insight?: string
+          interview_id?: string
+          is_highlighted?: boolean | null
+          project_id?: string
+          source_text?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_insights_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "market_interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_questions: {
+        Row: {
+          answer: string | null
+          created_at: string | null
+          id: string
+          interview_id: string
+          is_template_question: boolean | null
+          question: string
+          question_order: number
+          template_question_id: string | null
+        }
+        Insert: {
+          answer?: string | null
+          created_at?: string | null
+          id?: string
+          interview_id: string
+          is_template_question?: boolean | null
+          question: string
+          question_order: number
+          template_question_id?: string | null
+        }
+        Update: {
+          answer?: string | null
+          created_at?: string | null
+          id?: string
+          interview_id?: string
+          is_template_question?: boolean | null
+          question?: string
+          question_order?: number
+          template_question_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_questions_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "market_interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_templates: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          estimated_duration: number | null
+          id: string
+          is_default: boolean | null
+          name: string
+          project_id: string
+          questions: Json
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          estimated_duration?: number | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          project_id: string
+          questions: Json
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          estimated_duration?: number | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          project_id?: string
+          questions?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_competitors: {
         Row: {
           created_at: string | null
@@ -1056,51 +1198,100 @@ export type Database = {
       }
       market_interviews: {
         Row: {
+          analysis: Json | null
           company: string | null
+          completed_date: string | null
           contact_email: string | null
           created_at: string | null
           created_by: string | null
+          duration: number | null
+          follow_up_notes: string | null
+          follow_up_required: boolean | null
           id: string
           interview_date: string | null
+          interview_guide_url: string | null
           key_insights: string[] | null
           name: string
           notes: string | null
+          persona_id: string | null
           project_id: string | null
+          recording_url: string | null
+          scheduled_date: string | null
           sentiment: string | null
+          status: string | null
           tags: string[] | null
+          template_id: string | null
+          transcript: string | null
           updated_at: string | null
+          location: string | null
+          responses: Json | null
         }
         Insert: {
+          analysis?: Json | null
           company?: string | null
+          completed_date?: string | null
           contact_email?: string | null
           created_at?: string | null
           created_by?: string | null
+          duration?: number | null
+          follow_up_notes?: string | null
+          follow_up_required?: boolean | null
           id?: string
           interview_date?: string | null
+          interview_guide_url?: string | null
           key_insights?: string[] | null
           name: string
           notes?: string | null
+          persona_id?: string | null
           project_id?: string | null
+          recording_url?: string | null
+          scheduled_date?: string | null
           sentiment?: string | null
+          status?: string | null
           tags?: string[] | null
+          template_id?: string | null
+          transcript?: string | null
           updated_at?: string | null
+          location?: string | null
+          responses?: Json | null
         }
         Update: {
+          analysis?: Json | null
           company?: string | null
+          completed_date?: string | null
           contact_email?: string | null
           created_at?: string | null
           created_by?: string | null
+          duration?: number | null
+          follow_up_notes?: string | null
+          follow_up_required?: boolean | null
           id?: string
           interview_date?: string | null
+          interview_guide_url?: string | null
           key_insights?: string[] | null
           name?: string
           notes?: string | null
+          persona_id?: string | null
           project_id?: string | null
+          recording_url?: string | null
+          scheduled_date?: string | null
           sentiment?: string | null
+          status?: string | null
           tags?: string[] | null
+          template_id?: string | null
+          transcript?: string | null
           updated_at?: string | null
+          location?: string | null
+          responses?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "market_interviews_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "market_personas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "market_interviews_project_id_fkey"
             columns: ["project_id"]
@@ -1108,41 +1299,63 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "market_interviews_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "interview_templates"
+            referencedColumns: ["id"]
+          },
         ]
       }
       market_personas: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           created_by: string | null
           demographics: string | null
+          empathy_map: Json | null
           goals: string[] | null
           id: string
+          influence_score: number | null
           name: string
           pain_points: string[] | null
+          persona_segments: string[] | null
+          priority: string | null
           project_id: string | null
           role: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           created_by?: string | null
           demographics?: string | null
+          empathy_map?: Json | null
           goals?: string[] | null
           id?: string
+          influence_score?: number | null
           name: string
           pain_points?: string[] | null
+          persona_segments?: string[] | null
+          priority?: string | null
           project_id?: string | null
           role?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           created_by?: string | null
           demographics?: string | null
+          empathy_map?: Json | null
           goals?: string[] | null
           id?: string
+          influence_score?: number | null
           name?: string
           pain_points?: string[] | null
+          persona_segments?: string[] | null
+          priority?: string | null
           project_id?: string | null
           role?: string | null
           updated_at?: string | null
@@ -2684,6 +2897,47 @@ export type Database = {
           },
         ]
       }
+      validation_decisions: {
+        Row: {
+          affected_areas: string[]
+          created_at: string
+          decision_type: string
+          description: string
+          id: string
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          affected_areas: string[]
+          created_at?: string
+          decision_type: string
+          description: string
+          id?: string
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          affected_areas?: string[]
+          created_at?: string
+          decision_type?: string
+          description?: string
+          id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_decisions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       validation_experiments: {
         Row: {
           created_at: string | null
@@ -2835,6 +3089,174 @@ export type Database = {
           },
         ]
       }
+      validation_insight_decision: {
+        Row: {
+          decision_id: string
+          insight_id: string
+        }
+        Insert: {
+          decision_id: string
+          insight_id: string
+        }
+        Update: {
+          decision_id?: string
+          insight_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_insight_decision_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "validation_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "validation_insight_decision_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "validation_insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_insights: {
+        Row: {
+          actionability: string
+          business_impact: string
+          created_at: string
+          description: string
+          id: string
+          project_id: string
+          source_id: string
+          source_type: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actionability: string
+          business_impact: string
+          created_at?: string
+          description: string
+          id?: string
+          project_id: string
+          source_id: string
+          source_type: string
+          status: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          actionability?: string
+          business_impact?: string
+          created_at?: string
+          description?: string
+          id?: string
+          project_id?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_milestones: {
+        Row: {
+          completion_criteria: string
+          created_at: string
+          dependencies: string[] | null
+          description: string
+          id: string
+          project_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completion_criteria: string
+          created_at?: string
+          dependencies?: string[] | null
+          description: string
+          id?: string
+          project_id: string
+          status: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completion_criteria?: string
+          created_at?: string
+          dependencies?: string[] | null
+          description?: string
+          id?: string
+          project_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      validation_relationships: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          relationship_type: string
+          source_id: string
+          source_type: string
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          relationship_type: string
+          source_id: string
+          source_type: string
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          relationship_type?: string
+          source_id?: string
+          source_type?: string
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_relationships_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       validation_user_feedback: {
         Row: {
           content: string
@@ -2887,211 +3309,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "validation_user_feedback_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      validation_relationships: {
-        Row: {
-          id: string;
-          source_type: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          source_id: string;
-          target_type: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          target_id: string;
-          relationship_type: 'tests' | 'validates' | 'invalidates' | 'supports';
-          created_at: string;
-          updated_at: string;
-          project_id: string;
-        }
-        Insert: {
-          id?: string;
-          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          source_id?: string;
-          target_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          target_id?: string;
-          relationship_type?: 'tests' | 'validates' | 'invalidates' | 'supports';
-          created_at?: string;
-          updated_at?: string;
-          project_id?: string;
-        }
-        Update: {
-          id?: string;
-          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          source_id?: string;
-          target_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          target_id?: string;
-          relationship_type?: 'tests' | 'validates' | 'invalidates' | 'supports';
-          updated_at?: string;
-          project_id?: string;
-        }
-        Relationships: [
-          {
-            foreignKeyName: "validation_relationships_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      validation_insights: {
-        Row: {
-          id: string;
-          title: string;
-          description: string;
-          source_type: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          source_id: string;
-          actionability: 'high' | 'medium' | 'low';
-          business_impact: 'high' | 'medium' | 'low';
-          status: 'new' | 'reviewed' | 'implemented';
-          created_at: string;
-          updated_at: string;
-          project_id: string;
-        }
-        Insert: {
-          id?: string;
-          title?: string;
-          description?: string;
-          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          source_id?: string;
-          actionability?: 'high' | 'medium' | 'low';
-          business_impact?: 'high' | 'medium' | 'low';
-          status?: 'new' | 'reviewed' | 'implemented';
-          created_at?: string;
-          updated_at?: string;
-          project_id?: string;
-        }
-        Update: {
-          id?: string;
-          title?: string;
-          description?: string;
-          source_type?: 'hypothesis' | 'experiment' | 'ab_test' | 'user_feedback';
-          source_id?: string;
-          actionability?: 'high' | 'medium' | 'low';
-          business_impact?: 'high' | 'medium' | 'low';
-          status?: 'new' | 'reviewed' | 'implemented';
-          updated_at?: string;
-          project_id?: string;
-        }
-        Relationships: [
-          {
-            foreignKeyName: "validation_insights_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      validation_decisions: {
-        Row: {
-          id: string;
-          title: string;
-          description: string;
-          decision_type: 'pivot' | 'persist' | 'stop';
-          affected_areas: string[];
-          created_at: string;
-          updated_at: string;
-          project_id: string;
-        }
-        Insert: {
-          id?: string;
-          title?: string;
-          description?: string;
-          decision_type?: 'pivot' | 'persist' | 'stop';
-          affected_areas?: string[];
-          created_at?: string;
-          updated_at?: string;
-          project_id?: string;
-        }
-        Update: {
-          id?: string;
-          title?: string;
-          description?: string;
-          decision_type?: 'pivot' | 'persist' | 'stop';
-          affected_areas?: string[];
-          updated_at?: string;
-          project_id?: string;
-        }
-        Relationships: [
-          {
-            foreignKeyName: "validation_decisions_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      validation_insight_decision: {
-        Row: {
-          insight_id: string;
-          decision_id: string;
-        }
-        Insert: {
-          insight_id?: string;
-          decision_id?: string;
-        }
-        Update: {
-          insight_id?: string;
-          decision_id?: string;
-        }
-        Relationships: [
-          {
-            foreignKeyName: "validation_insight_decision_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "validation_insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "validation_insight_decision_decision_id_fkey"
-            columns: ["decision_id"]
-            isOneToOne: false
-            referencedRelation: "validation_decisions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      validation_milestones: {
-        Row: {
-          id: string;
-          title: string;
-          description: string;
-          completion_criteria: string;
-          status: 'not_started' | 'in_progress' | 'completed';
-          dependencies: string[];
-          created_at: string;
-          updated_at: string;
-          project_id: string;
-        }
-        Insert: {
-          id?: string;
-          title?: string;
-          description?: string;
-          completion_criteria?: string;
-          status?: 'not_started' | 'in_progress' | 'completed';
-          dependencies?: string[];
-          created_at?: string;
-          updated_at?: string;
-          project_id?: string;
-        }
-        Update: {
-          id?: string;
-          title?: string;
-          description?: string;
-          completion_criteria?: string;
-          status?: 'not_started' | 'in_progress' | 'completed';
-          dependencies?: string[];
-          updated_at?: string;
-          project_id?: string;
-        }
-        Relationships: [
-          {
-            foreignKeyName: "validation_milestones_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

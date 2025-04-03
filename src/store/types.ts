@@ -25,6 +25,11 @@ export type MarketInterview = TablesRow<'market_interviews'>;
 export type MarketCompetitor = TablesRow<'market_competitors'>;
 export type MarketTrend = TablesRow<'market_trends'>;
 
+// Interview System types
+export type InterviewTemplate = TablesRow<'interview_templates'>;
+export type InterviewInsight = TablesRow<'interview_insights'>;
+export type InterviewQuestion = TablesRow<'interview_questions'>;
+
 // Product Design types
 export type ProductWireframe = TablesRow<'product_wireframes'>;
 export type ProductFeature = TablesRow<'product_features'>;
@@ -102,6 +107,10 @@ export interface ProjectState {
     marketInterviews: MarketInterview[];
     marketCompetitors: MarketCompetitor[];
     marketTrends: MarketTrend[];
+    // Interview System
+    interviewTemplates: InterviewTemplate[];
+    interviewInsights: InterviewInsight[];
+    interviewQuestions: InterviewQuestion[];
     // Product Design
     productWireframes: ProductWireframe[];
     productFeatures: ProductFeature[];
@@ -157,6 +166,10 @@ export interface ProjectState {
     marketInterviews: MarketInterview[];
     marketCompetitors: MarketCompetitor[];
     marketTrends: MarketTrend[];
+    // Interview System
+    interviewTemplates: InterviewTemplate[];
+    interviewInsights: InterviewInsight[];
+    interviewQuestions: InterviewQuestion[];
     // Product Design
     productWireframes: ProductWireframe[];
     productFeatures: ProductFeature[];
@@ -268,6 +281,22 @@ export interface ProjectActions {
   addMarketTrend: (trend: MarketTrend) => void;
   updateMarketTrend: (id: string, updates: Partial<MarketTrend>) => void;
   deleteMarketTrend: (id: string) => void;
+
+  // Interview System actions
+  setInterviewTemplates: (templates: InterviewTemplate[]) => void;
+  addInterviewTemplate: (template: InterviewTemplate) => void;
+  updateInterviewTemplate: (id: string, updates: Partial<InterviewTemplate>) => void;
+  deleteInterviewTemplate: (id: string) => void;
+
+  setInterviewInsights: (insights: InterviewInsight[]) => void;
+  addInterviewInsight: (insight: InterviewInsight) => void;
+  updateInterviewInsight: (id: string, updates: Partial<InterviewInsight>) => void;
+  deleteInterviewInsight: (id: string) => void;
+
+  setInterviewQuestions: (questions: InterviewQuestion[]) => void;
+  addInterviewQuestion: (question: InterviewQuestion) => void;
+  updateInterviewQuestion: (id: string, updates: Partial<InterviewQuestion>) => void;
+  deleteInterviewQuestion: (id: string) => void;
 
   // Product Design actions
   setProductWireframes: (wireframes: ProductWireframe[]) => void;
@@ -526,6 +555,10 @@ export interface DiffMetadata {
   marketInterviews?: FeatureDiff;
   marketCompetitors?: FeatureDiff;
   marketTrends?: FeatureDiff;
+  // Interview System
+  interviewTemplates?: FeatureDiff;
+  interviewInsights?: FeatureDiff;
+  interviewQuestions?: FeatureDiff;
   // Product Design
   productWireframes?: FeatureDiff;
   productFeatures?: FeatureDiff;

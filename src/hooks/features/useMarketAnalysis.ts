@@ -15,6 +15,7 @@ import { marketAnalysisService } from '@/lib/services';
 import { useOptimisticCreate, useOptimisticUpdate, useOptimisticDelete } from '../utils/optimistic-helpers';
 import { v4 as uuidv4 } from 'uuid';
 import { MarketPartner } from '@/features/market/types';
+import { toast } from '@/components/ui/use-toast';
 
 // Mock partner data
 const mockPartners: MarketPartner[] = [
@@ -114,6 +115,10 @@ export interface UseMarketAnalysisReturn {
   getTrendChangeType: (id: string) => ChangeType;
   getPartnerChangeType: (id: string) => ChangeType;
   isDiffMode: boolean;
+
+  // New methods for persona-interview linking
+  linkInterviewToPersona: (interviewId: string, personaId: string) => Promise<MarketInterview | null>;
+  getInterviewsByPersona: (personaId: string) => MarketInterview[];
 }
 
 const MAX_RETRIES = 3;
@@ -221,6 +226,7 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   // Update store when data changes, but only if data has actually changed
   useEffect(() => {
     if (personasData && !arraysEqual(personasData, store.currentData.marketPersonas)) {
+      console.log('Setting marketPersonas in store, received data:', personasData);
       store.setMarketPersonas(personasData);
     }
   }, [personasData, store]);
@@ -257,8 +263,21 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   // Use either store data or query data based on comparison mode
   const data = useMemo((): ExtendedMarketAnalysisData => {
     if (store.comparisonMode) {
+      // Map the personas data to ensure new fields are handled
+      const mappedPersonas = storeData.marketPersonas.map(persona => {
+        console.log('Mapping comparison mode persona:', persona);
+        return {
+          ...persona,
+          // Ensure new fields have defaults
+          influence_score: persona.influence_score || null,
+          priority: persona.priority || null,
+          persona_segments: persona.persona_segments || [],
+          empathy_map: persona.empathy_map || null
+        };
+      });
+      
       return {
-        personas: storeData.marketPersonas,
+        personas: mappedPersonas,
         interviews: storeData.marketInterviews,
         competitors: storeData.marketCompetitors,
         trends: storeData.marketTrends,
@@ -297,8 +316,21 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
         }
       };
     } else {
+      // Map the personas data to ensure new fields are handled
+      const mappedPersonas = (personasData || []).map(persona => {
+        console.log('Mapping query mode persona:', persona);
+        return {
+          ...persona,
+          // Ensure new fields have defaults
+          influence_score: persona.influence_score || null,
+          priority: persona.priority || null,
+          persona_segments: persona.persona_segments || [],
+          empathy_map: persona.empathy_map || null
+        };
+      });
+      
       return {
-        personas: personasData || [],
+        personas: mappedPersonas,
         interviews: interviewsData || [],
         competitors: competitorsData || [],
         trends: trendsData || [],
@@ -392,7 +424,26 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
 
   // Exposed persona operations with proper typing
   const addPersona = useCallback(async (persona: Insert<'market_personas'>): Promise<MarketPersona | null> => {
-    return addPersonaOptimistic(persona);
+    console.log('useMarketAnalysis - Adding persona:', persona);
+    
+    // Ensure all new fields have values
+    const personaWithDefaults = {
+      ...persona,
+      influence_score: persona.influence_score || null,
+      priority: persona.priority || null,
+      persona_segments: persona.persona_segments || [],
+      empathy_map: persona.empathy_map || null
+    };
+    
+    console.log('useMarketAnalysis - Sending to addPersonaOptimistic:', personaWithDefaults);
+    try {
+      const result = await addPersonaOptimistic(personaWithDefaults);
+      console.log('useMarketAnalysis - Add persona result:', result);
+      return result;
+    } catch (error) {
+      console.error('useMarketAnalysis - Error in addPersona:', error);
+      throw error;
+    }
   }, [addPersonaOptimistic]);
 
   const updatePersona = useCallback(async (params: { id: string; data: Update<'market_personas'> }): Promise<MarketPersona | null> => {
@@ -400,7 +451,13 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   }, [updatePersonaOptimistic]);
 
   const deletePersona = useCallback(async (id: string): Promise<boolean> => {
-    return deletePersonaOptimistic(id);
+    try {
+      await deletePersonaOptimistic(id);
+      return true;
+    } catch (error) {
+      console.error('Error deleting persona:', error);
+      return false;
+    }
   }, [deletePersonaOptimistic]);
 
   // === Interview Operations ===
@@ -452,8 +509,27 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
   }, [updateInterviewOptimistic]);
 
   const deleteInterview = useCallback(async (id: string): Promise<boolean> => {
-    return deleteInterviewOptimistic(id);
+    try {
+      await deleteInterviewOptimistic(id);
+      return true;
+    } catch (error) {
+      console.error('Error deleting interview:', error);
+      return false;
+    }
   }, [deleteInterviewOptimistic]);
+
+  // Function to link an interview to a persona
+  const linkInterviewToPersona = useCallback(async (interviewId: string, personaId: string): Promise<MarketInterview | null> => {
+    return updateInterview({
+      id: interviewId,
+      data: { persona_id: personaId }
+    });
+  }, [updateInterview]);
+
+  // Function to get interviews by persona
+  const getInterviewsByPersona = useCallback((personaId: string): MarketInterview[] => {
+    return data.interviews.filter(interview => interview.persona_id === personaId);
+  }, [data.interviews]);
 
   // === Competitor Operations ===
   // Use our optimistic helper hooks
@@ -690,6 +766,10 @@ export function useMarketAnalysis(projectId: string | undefined): UseMarketAnaly
     getCompetitorChangeType,
     getTrendChangeType,
     getPartnerChangeType,
-    isDiffMode: store.comparisonMode
+    isDiffMode: store.comparisonMode,
+    
+    // New methods for persona-interview linking
+    linkInterviewToPersona,
+    getInterviewsByPersona
   };
 }

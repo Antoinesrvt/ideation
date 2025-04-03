@@ -132,7 +132,7 @@ function ProjectCard({ project, onDeleted }: ProjectCardProps) {
   }
 
   const handleContinue = () => {
-    router.push(`/project/${project.id}`)
+    router.push(`/project/canvas/${project.id}`)
   }
 
   return (

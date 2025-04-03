@@ -34,6 +34,9 @@ import { Button } from '@/components/ui/button';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { MarketDefinition, MarketSize } from '../types';
 import { BusinessSection } from './BusinessSection';
+import { MarketPersonas } from './MarketPersonas';
+import { marketAnalysisService } from '@/lib/services';
+import type { MarketPersona } from '@/store/types';
 
 const marketTabs = [
   {
@@ -235,6 +238,8 @@ export function MarketAnalysis({
   const handleAddPersona = async () => {
     if (!projectId) return;
     
+    console.log('MarketAnalysis - Handle add persona called');
+    
     try {
       await addPersona({
       name: 'New Persona',
@@ -243,7 +248,12 @@ export function MarketAnalysis({
         pain_points: [],
         goals: [],
       project_id: projectId,
-      created_by: null
+        created_by: null,
+        // Add the new required fields with defaults
+        influence_score: null,
+        priority: null,
+        persona_segments: [],
+        empathy_map: null
     });
       
       toast({
@@ -252,9 +262,10 @@ export function MarketAnalysis({
         variant: 'default'
       });
     } catch (err) {
+      console.error('MarketAnalysis - Error adding persona:', err);
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to add persona',
+        description: `Failed to add persona: ${(err as Error).message}`,
         variant: 'destructive'
       });
     }
@@ -353,10 +364,18 @@ export function MarketAnalysis({
   if (isLoading) return <LoadingState message="Loading market analysis data..." />;
   if (error) return <ErrorState error={error.message} />;
   
+  // Convert interviews to ExtendedMarketInterview type
+  const extendedInterviews = useMemo(() => {
+    return data.interviews.map(interview => ({
+      ...interview,
+      status: undefined  // Add the status field required by ExtendedMarketInterview
+    }));
+  }, [data.interviews]);
+  
   // Set default overview data if none exists yet
   const marketData: MarketAnalysisUIData = {
     personas: data.personas,
-    interviews: data.interviews,
+    interviews: extendedInterviews,
     competitors: data.competitors,
     trends: data.trends,
     partners: data.partners,
@@ -396,6 +415,12 @@ export function MarketAnalysis({
       readOnly={readOnly}
     />
   );
+
+  // Add this after the component function declaration and state hooks
+  useEffect(() => {
+    console.log('MarketAnalysis - Market data:', marketData);
+    console.log('MarketAnalysis - Personas count:', marketData.personas?.length || 0);
+  }, [marketData]);
 
   return (
     <div className="h-full w-full overflow-auto">
@@ -509,123 +534,19 @@ export function MarketAnalysis({
                   )}
           </CardContent>
         </Card>
-            </motion.div>
-          )}
-          
+                </motion.div>
+              )}
+
           {/* Customers Section */}
           {currentSection === 'customers' && (
             <motion.div variants={itemVariants} className="w-full h-full">
-              <div className="flex flex-col lg:flex-row gap-6 h-full">
-                <motion.div variants={itemVariants} className="lg:w-1/2 h-full">
-                  <Card className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                      <div>
-                        <CardTitle className="text-base font-medium flex items-center">
-                          <Users className="h-5 w-5 mr-2 text-purple-500" />
-                          Customer Personas
-                        </CardTitle>
-                        <CardDescription>
-                          Define your key customer archetypes and their needs
-                        </CardDescription>
-      </div>
-
-                      {!readOnly && (
-                        <Button size="sm" onClick={handleAddPersona}>
-                          <PlusCircle className="h-4 w-4 mr-2" />
-                          Add Persona
-                        </Button>
-                      )}
-                    </CardHeader>
-                    
-                    <CardContent className="h-[calc(100%-70px)] overflow-auto">
-                      {marketData.personas.length === 0 ? (
-                        <div className="text-center py-10 text-muted-foreground">
-                          <Users className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                          <p>No customer personas added yet</p>
-                          {!readOnly && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="mt-4"
-                              onClick={handleAddPersona}
-                            >
-                              <PlusCircle className="h-4 w-4 mr-2" />
-                              Add your first persona
-                            </Button>
-                          )}
-                          </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-4">
-                          {marketData.personas.map(persona => (
-                            <EnhancedCustomerPersonaCard
-                              key={persona.id}
-                  persona={persona}
-                              onUpdate={readOnly ? undefined : updatePersona}
-                              onDelete={readOnly ? undefined : deletePersona}
-                              readOnly={readOnly}
+              <div className="h-full">
+                <MarketPersonas 
+                  personas={marketData.personas || []} 
+                  projectId={projectId}
+                  interviews={marketData.interviews || []}
                 />
-              ))}
             </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-                
-                <motion.div variants={itemVariants} className="lg:w-1/2 h-full">
-                  <Card className="h-full">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                      <div>
-                        <CardTitle className="text-base font-medium flex items-center">
-                          <MessageSquare className="h-5 w-5 mr-2 text-blue-500" />
-                          Customer Interviews
-                        </CardTitle>
-                        <CardDescription>
-                          Document insights from your customer conversations
-                        </CardDescription>
-                      </div>
-                      
-                      {!readOnly && (
-                        <Button size="sm" onClick={handleAddInterview}>
-                          <PlusCircle className="h-4 w-4 mr-2" />
-                          Add Interview
-                        </Button>
-                      )}
-                    </CardHeader>
-                    
-                    <CardContent className="h-[calc(100%-70px)] overflow-auto">
-                      {marketData.interviews.length === 0 ? (
-                        <div className="text-center py-10 text-muted-foreground">
-                          <UserSearch className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                          <p>No customer interviews added yet</p>
-                          {!readOnly && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="mt-4"
-                              onClick={handleAddInterview}
-                            >
-                              <PlusCircle className="h-4 w-4 mr-2" />
-                              Add your first interview
-                            </Button>
-                          )}
-            </div>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-4">
-                          {marketData.interviews.map(interview => (
-                            <EnhancedCustomerInterviewCard
-                              key={interview.id}
-                  interview={interview}
-                              onUpdate={readOnly ? undefined : updateInterview}
-                              onDelete={readOnly ? undefined : deleteInterview}
-                              readOnly={readOnly}
-                />
-              ))}
-            </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </div>
                 </motion.div>
               )}
 

@@ -185,7 +185,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
                   {activeSection === "business-model" && <BusinessModelWrapper />}
 
-                  {activeSection === "market" && <MarketAnalysis />}
+                  {activeSection === "market" && <MarketAnalysis projectId={projectId} />}
 
                   {activeSection === "product-design" && <ProductDesign />}
 

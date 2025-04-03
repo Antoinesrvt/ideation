@@ -11,6 +11,7 @@ import { MarketAnalysisUIData } from '@/features/market/types';
 import { PanelType, PanelConfig } from '@/features/common/components/CyclingSidebar';
 import { BarChart2, FileText, Bot, CheckSquare, BarChart, StickyNote } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/components/ui/use-toast';
 
 // Import panel components from common directory
 import { DocumentsPanel } from '@/features/common/components/DocumentsPanel';
@@ -18,6 +19,9 @@ import { AIAssistantPanel } from '@/features/common/components/AIAssistantPanel'
 import { ValidationPanel } from '@/features/common/components/ValidationPanel';
 import { MetricsPanel } from '@/features/common/components/MetricsPanel';
 import { NotesPanel } from '@/features/common/components/NotesPanel';
+import { InterviewPanel } from '@/features/market/components/interview/InterviewPanel';
+import { InterviewTemplateModal } from '@/features/market/components/interview/InterviewTemplateModal';
+import { InterviewViewModal } from '@/features/market/components/interview/InterviewViewModal';
 
 // Define section navigation options
 const MARKET_SECTIONS = [
@@ -59,8 +63,17 @@ const MarketTool: React.FC<MarketToolProps> = ({
   // Track whether there are unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
+  // Modal states
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | undefined>(undefined);
+  
+  // View interview modal state
+  const [isViewInterviewModalOpen, setIsViewInterviewModalOpen] = useState(false);
+  const [viewingInterviewId, setViewingInterviewId] = useState<string | undefined>(undefined);
+  
   // Get market data for the sidebar and queryClient for mutation
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { 
     data: marketRawData,
     isLoading,
@@ -81,9 +94,15 @@ const MarketTool: React.FC<MarketToolProps> = ({
       };
     }
     
+    // Convert regular interviews to ExtendedMarketInterview by adding the status field
+    const extendedInterviews = marketRawData.interviews.map(interview => ({
+      ...interview,
+      status: interview.status as "new" | "modified" | "unchanged" | "removed" | undefined
+    }));
+    
     return {
       personas: marketRawData.personas || [],
-      interviews: marketRawData.interviews || [],
+      interviews: extendedInterviews,
       competitors: marketRawData.competitors || [],
       trends: marketRawData.trends || [],
       partners: marketRawData.partners || [],
@@ -201,8 +220,167 @@ const MarketTool: React.FC<MarketToolProps> = ({
     };
   }, [currentSection]);
 
+  // Handlers for interview operations
+  const handleCreateTemplate = React.useCallback(() => {
+    console.log('Create new interview template');
+    setEditingTemplateId(undefined);
+    setIsTemplateModalOpen(true);
+  }, []);
+
+  const handleViewTemplate = React.useCallback((templateId: string) => {
+    console.log('View template', templateId);
+    // In a real implementation, this would open a template viewer
+    toast({
+      title: "View Template",
+      description: `Viewing template with ID: ${templateId}`,
+    });
+  }, [toast]);
+
+  const handleEditTemplate = React.useCallback((templateId: string) => {
+    console.log('Edit template', templateId);
+    setEditingTemplateId(templateId);
+    setIsTemplateModalOpen(true);
+  }, []);
+
+  const handleStartInterview = React.useCallback((templateId: string) => {
+    // Use window.location to navigate to the new interview conductor page
+    window.location.href = `/project/interview/${projectId}/${templateId}`;
+  }, [projectId]);
+
+  const handleViewInterview = React.useCallback((interviewId: string) => {
+    console.log('View interview', interviewId);
+    setViewingInterviewId(interviewId);
+    setIsViewInterviewModalOpen(true);
+  }, []);
+  
+  // Handle modal close events
+  const handleTemplateModalClose = React.useCallback(() => {
+    setIsTemplateModalOpen(false);
+    setEditingTemplateId(undefined);
+    // Refresh data after template operations
+    queryClient.invalidateQueries({
+      queryKey: ['interviewTemplates', projectId]
+    });
+  }, [projectId, queryClient]);
+  
+  const handleViewInterviewModalClose = React.useCallback(() => {
+    setIsViewInterviewModalOpen(false);
+    setViewingInterviewId(undefined);
+  }, []);
+  
+  // Actions for handling interview operations from the view modal
+  const handleEditInterviewFromModal = React.useCallback(() => {
+    if (!viewingInterviewId) return;
+    
+    // Close the view modal
+    setIsViewInterviewModalOpen(false);
+    
+    // Find the template ID for this interview using the correct query key
+    const interviews = queryClient.getQueryData(['interviewData', projectId, 'interviews']) as any[] || [];
+    const interview = interviews.find(
+      (interview) => interview.id === viewingInterviewId
+    );
+    
+    if (interview?.template_id) {
+      // Navigate to the interview conductor page with the interview ID in the query parameter
+      window.location.href = `/project/interview/${projectId}/${interview.template_id}?interviewId=${viewingInterviewId}`;
+    } else {
+      // If we couldn't find the template ID, show an error
+      toast({
+        title: "Error",
+        description: "Couldn't find template for this interview or the interview is missing a template ID",
+        variant: "destructive"
+      });
+    }
+    
+    // Clear the viewing ID
+    setViewingInterviewId(undefined);
+  }, [viewingInterviewId, projectId, queryClient, toast]);
+  
+  const handleConductInterviewFromModal = React.useCallback(() => {
+    if (!viewingInterviewId) return;
+    
+    // Close the view modal
+    setIsViewInterviewModalOpen(false);
+    
+    // Find the template ID for this interview using the correct query key
+    const interviews = queryClient.getQueryData(['interviewData', projectId, 'interviews']) as any[] || [];
+    const interview = interviews.find(
+      (interview) => interview.id === viewingInterviewId
+    );
+    
+    if (interview?.template_id) {
+      // Navigate to the interview conductor page with the interview ID in the query parameter
+      window.location.href = `/project/interview/${projectId}/${interview.template_id}?interviewId=${viewingInterviewId}`;
+    } else {
+      // If we couldn't find the template ID, show an error
+      toast({
+        title: "Error",
+        description: "Couldn't find template for this interview or the interview is missing a template ID",
+        variant: "destructive"
+      });
+    }
+    
+    // Clear the viewing ID
+    setViewingInterviewId(undefined);
+  }, [viewingInterviewId, projectId, queryClient, toast]);
+  
+  const handleAnalyzeInterviewFromModal = React.useCallback(() => {
+    if (!viewingInterviewId) return;
+    
+    // Close the view modal
+    setIsViewInterviewModalOpen(false);
+    
+    // Find the template ID for this interview using the correct query key
+    const interviews = queryClient.getQueryData(['interviewData', projectId, 'interviews']) as any[] || [];
+    const interview = interviews.find(
+      (interview) => interview.id === viewingInterviewId
+    );
+    
+    if (interview) {
+      // In a real implementation, this would open an analysis UI
+      // For now, update the interview to set it as 'analyzed' status
+      
+      // First, capture the ID before clearing the viewing ID
+      const interviewToAnalyze = viewingInterviewId;
+      
+      // Clear the viewing ID
+      setViewingInterviewId(undefined);
+      
+      toast({
+        title: "Analyze Interview",
+        description: "Interview analysis functionality would open here",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Couldn't find interview data",
+        variant: "destructive"
+      });
+      
+      // Clear the viewing ID
+      setViewingInterviewId(undefined);
+    }
+  }, [viewingInterviewId, projectId, queryClient, toast]);
+  
   // Render panel content based on active panel
   const renderPanelContent = (panelId: PanelType) => {
+    // If we're in the customers section and showing documents, include interviews
+    if (currentSection === 'customers' && panelId === 'documents') {
+      return (
+        <div className="p-4">
+          <InterviewPanel 
+            projectId={projectId}
+            onCreateTemplate={handleCreateTemplate}
+            onViewTemplate={handleViewTemplate}
+            onEditTemplate={handleEditTemplate}
+            onStartInterview={handleStartInterview}
+            onViewInterview={handleViewInterview}
+          />
+        </div>
+      );
+    }
+    
     switch (panelId) {
       case 'documents':
         return (
@@ -279,6 +457,29 @@ const MarketTool: React.FC<MarketToolProps> = ({
         currentSection={currentSection}
         onSectionClick={handleSectionChange}
       />
+      
+      {/* Interview Template Modal */}
+      {isTemplateModalOpen && (
+        <InterviewTemplateModal
+          isOpen={isTemplateModalOpen}
+          onClose={handleTemplateModalClose}
+          projectId={projectId}
+          templateId={editingTemplateId}
+        />
+      )}
+      
+      {/* Interview View Modal */}
+      {isViewInterviewModalOpen && viewingInterviewId && (
+        <InterviewViewModal
+          isOpen={isViewInterviewModalOpen}
+          onClose={handleViewInterviewModalClose}
+          interviewId={viewingInterviewId}
+          projectId={projectId}
+          onEdit={handleEditInterviewFromModal}
+          onConduct={handleConductInterviewFromModal}
+          onAnalyze={handleAnalyzeInterviewFromModal}
+        />
+      )}
     </ToolComponent>
   );
 };

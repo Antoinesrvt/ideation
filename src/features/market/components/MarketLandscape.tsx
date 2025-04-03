@@ -313,7 +313,7 @@ const NetworkNode: React.FC<NetworkNodeProps> = ({
   
   return (
     <div 
-      className={`m-2 absolute ${sizeMap[size]} rounded-full ${colors.bg} flex items-center justify-center z-20 cursor-pointer transition-all duration-200 border shadow-sm
+      className={` m-2 p-8 absolute ${sizeMap[size]} rounded-full ${colors.bg} flex items-center justify-center z-20 cursor-pointer transition-all duration-200 border shadow-sm
       ${isActive ? `border-2 ${colors.border} ring-2 ${colors.ring} ${colors.shadow}` : `border ${colors.border} ${colors.hover}`}`}
       style={{ 
         left: `${position.x}%`, 
@@ -328,9 +328,9 @@ const NetworkNode: React.FC<NetworkNodeProps> = ({
       <div className="flex flex-col items-center text-center">
         {React.cloneElement(icon as React.ReactElement, { 
           className: colors.text,
-          size: size === 'lg' ? 22 : size === 'md' ? 20 : 18 
+          size: size === 'lg' ? 26 : size === 'md' ? 24 : 22 
         })}
-        <div className="text-[10px] font-medium mt-1">{label}</div>
+        <div className="text-[14px] font-medium mt-1">{label}</div>
         {count > 0 && (
           <Badge className={`mt-0.5 text-[8px] py-0 px-1.5 ${colors.badgeBg} ${colors.badgeText}`}>
             {count}
