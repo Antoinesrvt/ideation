@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CompetitorTableProps } from '../types';
+import { CompetitorTableProps } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface EnhancedCompetitorTableProps extends CompetitorTableProps {

@@ -182,41 +182,16 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
       initial="hidden"
       animate="visible"
     >
-      {/* Page header with progress bar */}
-      <div className="mb-6 bg-white p-6 rounded-lg border shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold flex items-center">
-              <Building className="h-6 w-6 mr-2 text-primary" />
-              Your Business Position
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Define how your business fits in the market landscape
-            </p>
-          </div>
-          
-          <div className="flex flex-col justify-end items-end gap-1 min-w-48">
-            <div className="flex items-center gap-2 w-full justify-end">
-              <Progress value={marketResearchCompletion} className="w-32 h-2" />
-              <span className="text-sm font-medium w-10 text-right">{marketResearchCompletion}%</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {marketResearchCompletion < 50 ? "Just getting started" : 
-               marketResearchCompletion < 75 ? "Good progress" :
-               marketResearchCompletion < 100 ? "Almost there" :
-               "Complete"}
-            </p>
-          </div>
-        </div>
-      </div>
-      
       {/* Main content with workflow-based sections */}
       <div className="space-y-6">
         {/* Step 1: Value Proposition & Industry Definition */}
         <Card className="border shadow-sm overflow-hidden">
           <CardHeader className="bg-muted/30 pb-3">
             <div className="flex items-center">
-              <Badge variant="outline" className="mr-2 h-6 w-6 rounded-full flex items-center justify-center p-0 border-primary">
+              <Badge
+                variant="outline"
+                className="mr-2 h-6 w-6 rounded-full flex items-center justify-center p-0 border-primary"
+              >
                 1
               </Badge>
               <CardTitle className="text-lg">Define Your Business</CardTitle>
@@ -229,85 +204,110 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="industry" className="text-base font-medium">Industry</Label>
-                  <Input 
-                    id="industry" 
-                    placeholder="e.g., Healthcare Technology" 
+                  <Label htmlFor="industry" className="text-base font-medium">
+                    Industry
+                  </Label>
+                  <Input
+                    id="industry"
+                    placeholder="e.g., Healthcare Technology"
                     value={marketDefinition.industry}
-                    onChange={(e) => handleMarketDefinitionChange('industry', e.target.value)}
+                    onChange={(e) =>
+                      handleMarketDefinitionChange("industry", e.target.value)
+                    }
                     className="mt-1.5"
                   />
                   <p className="text-xs text-muted-foreground mt-1.5">
                     Specify the industry your product or service operates in
                   </p>
                 </div>
-                
+
                 <div>
-                  <Label htmlFor="geography" className="text-base font-medium">Geographic Focus</Label>
-                  <Select 
-                    value={marketDefinition.geography} 
-                    onValueChange={(value) => handleMarketDefinitionChange('geography', value)}
+                  <Label htmlFor="geography" className="text-base font-medium">
+                    Geographic Focus
+                  </Label>
+                  <Select
+                    value={marketDefinition.geography}
+                    onValueChange={(value) =>
+                      handleMarketDefinitionChange("geography", value)
+                    }
                   >
                     <SelectTrigger id="geography" className="mt-1.5">
                       <SelectValue placeholder="Select geographic focus" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="global">Global</SelectItem>
-                      <SelectItem value="north-america">North America</SelectItem>
+                      <SelectItem value="north-america">
+                        North America
+                      </SelectItem>
                       <SelectItem value="europe">Europe</SelectItem>
                       <SelectItem value="asia-pacific">Asia-Pacific</SelectItem>
-                      <SelectItem value="latin-america">Latin America</SelectItem>
-                      <SelectItem value="middle-east-africa">Middle East & Africa</SelectItem>
+                      <SelectItem value="latin-america">
+                        Latin America
+                      </SelectItem>
+                      <SelectItem value="middle-east-africa">
+                        Middle East & Africa
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              
-              <div className="space-y-4">
+
                 <div>
-                  <Label htmlFor="valueProposition" className="text-base font-medium">Value Proposition</Label>
-                  <Textarea 
-                    id="valueProposition" 
-                    placeholder="Describe your unique value proposition for this market..." 
+                  <Label
+                    htmlFor="valueProposition"
+                    className="text-base font-medium"
+                  >
+                    Value Proposition
+                  </Label>
+                  <Textarea
+                    id="valueProposition"
+                    placeholder="Describe your unique value proposition for this market..."
                     value={valueProposition}
                     onChange={(e) => setValueProposition(e.target.value)}
                     className="min-h-[120px] mt-1.5"
                   />
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    How does your business uniquely solve problems for customers in this market?
+                    How does your business uniquely solve problems for customers
+                    in this market?
                   </p>
                 </div>
-                
-                <div>
-                  <Label htmlFor="maturity" className="text-base font-medium">Market Maturity</Label>
-                  <MarketMaturityCurve
-                    currentMaturity={marketDefinition.maturity}
-                    onChange={(maturity) => handleMarketDefinitionChange('maturity', maturity)}
-                    className="mt-1.5"
-                  />
-                  <div className="mt-2 p-3 bg-muted/30 rounded-lg">
-                    <p className="text-xs text-muted-foreground">
-                      {marketDefinition.maturity === 'emerging' && 
-                        "In emerging markets, focus on education and building awareness. Early adopters will be key to your success."}
-                      {marketDefinition.maturity === 'growing' && 
-                        "Growing markets present opportunities for rapid expansion. Focus on gaining market share and scaling operations."}
-                      {marketDefinition.maturity === 'mature' && 
-                        "In mature markets, focus on differentiation and efficiency. Consider how to disrupt established players."}
-                      {marketDefinition.maturity === 'declining' && 
-                        "In declining markets, consider pivoting, focusing on niche segments, or exploring innovation opportunities."}
-                    </p>
-                  </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label htmlFor="maturity" className="text-base font-medium">
+                  Market Maturity
+                </Label>
+                <MarketMaturityCurve
+                  currentMaturity={marketDefinition.maturity}
+                  onChange={(maturity) =>
+                    handleMarketDefinitionChange("maturity", maturity)
+                  }
+                  className="mt-1.5"
+                />
+                <div className="mt-2 p-3 bg-muted/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    {marketDefinition.maturity === "emerging" &&
+                      "In emerging markets, focus on education and building awareness. Early adopters will be key to your success."}
+                    {marketDefinition.maturity === "growing" &&
+                      "Growing markets present opportunities for rapid expansion. Focus on gaining market share and scaling operations."}
+                    {marketDefinition.maturity === "mature" &&
+                      "In mature markets, focus on differentiation and efficiency. Consider how to disrupt established players."}
+                    {marketDefinition.maturity === "declining" &&
+                      "In declining markets, consider pivoting, focusing on niche segments, or exploring innovation opportunities."}
+                  </p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Step 2: Market Size & Growth */}
         <Card className="border shadow-sm overflow-hidden">
           <CardHeader className="bg-muted/30 pb-3">
             <div className="flex items-center">
-              <Badge variant="outline" className="mr-2 h-6 w-6 rounded-full flex items-center justify-center p-0 border-primary">
+              <Badge
+                variant="outline"
+                className="mr-2 h-6 w-6 rounded-full flex items-center justify-center p-0 border-primary"
+              >
                 2
               </Badge>
               <CardTitle className="text-lg">Market Size & Growth</CardTitle>
@@ -344,19 +344,42 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
                         industry={marketDefinition.industry}
                         className="mt-4"
                       />
-                      
+
                       <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="insights">
-                          <AccordionTrigger className="text-sm">Market Insights</AccordionTrigger>
+                          <AccordionTrigger className="text-sm">
+                            Market Insights
+                          </AccordionTrigger>
                           <AccordionContent>
                             <div className="space-y-3 text-sm">
                               <div>
-                                <p className="font-medium text-primary">Industry Trends</p>
-                                <p>The {marketDefinition.industry || 'selected'} industry is showing {data?.marketSize?.tam > 1000000000 ? 'significant' : 'moderate'} growth potential with opportunities for new entrants.</p>
+                                <p className="font-medium text-primary">
+                                  Industry Trends
+                                </p>
+                                <p>
+                                  The {marketDefinition.industry || "selected"}{" "}
+                                  industry is showing{" "}
+                                  {data?.marketSize?.tam > 1000000000
+                                    ? "significant"
+                                    : "moderate"}{" "}
+                                  growth potential with opportunities for new
+                                  entrants.
+                                </p>
                               </div>
                               <div>
-                                <p className="font-medium text-primary">Capture Strategy</p>
-                                <p>With your SOM representing {Math.round((data?.marketSize?.som || 0) / (data?.marketSize?.tam || 1) * 100)}% of the total market, a focused go-to-market strategy will be crucial.</p>
+                                <p className="font-medium text-primary">
+                                  Capture Strategy
+                                </p>
+                                <p>
+                                  With your SOM representing{" "}
+                                  {Math.round(
+                                    ((data?.marketSize?.som || 0) /
+                                      (data?.marketSize?.tam || 1)) *
+                                      100
+                                  )}
+                                  % of the total market, a focused go-to-market
+                                  strategy will be crucial.
+                                </p>
                               </div>
                             </div>
                           </AccordionContent>
@@ -397,12 +420,15 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Step 3: Customer Segments */}
         <Card className="border shadow-sm overflow-hidden">
           <CardHeader className="bg-muted/30 pb-3">
             <div className="flex items-center">
-              <Badge variant="outline" className="mr-2 h-6 w-6 rounded-full flex items-center justify-center p-0 border-primary">
+              <Badge
+                variant="outline"
+                className="mr-2 h-6 w-6 rounded-full flex items-center justify-center p-0 border-primary"
+              >
                 3
               </Badge>
               <CardTitle className="text-lg">Customer Segments</CardTitle>
@@ -454,15 +480,15 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
 
                 <div className="mt-4 text-sm text-muted-foreground">
                   <p>
-                    Click on any segment bubble to edit its details. Try to identify 2-5 key segments that represent your most valuable customer groups.
+                    Click on any segment bubble to edit its details. Try to
+                    identify 2-5 key segments that represent your most valuable
+                    customer groups.
                   </p>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-base font-medium mb-4">
-                  Segment Details
-                </h3>
+                <h3 className="text-base font-medium mb-4">Segment Details</h3>
                 <div className="space-y-4">
                   {segments.length > 0 ? (
                     segments.map((segment) => (
@@ -486,20 +512,21 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
               </div>
             </div>
           </CardContent>
-          
+
           <CardFooter className="bg-muted/20 px-6 py-4 flex justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 <Info className="h-4 w-4 inline-block mr-1" />
-                Use the Validation panel in the sidebar to track assumptions about your customer segments
+                Use the Validation panel in the sidebar to track assumptions
+                about your customer segments
               </p>
             </div>
-            <Button 
+            <Button
               variant="outline"
               onClick={() => {
                 toast({
                   title: "Segments saved",
-                  description: "Your market segments have been updated."
+                  description: "Your market segments have been updated.",
                 });
               }}
             >
@@ -507,7 +534,7 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
             </Button>
           </CardFooter>
         </Card>
-        
+
         {/* Bottom help section */}
         <div className="bg-primary-foreground border rounded-lg p-4 mb-8">
           <div className="flex items-start gap-3">
@@ -515,7 +542,10 @@ export function BusinessSection({ data, onUpdate, isLoading }: BusinessSectionPr
             <div>
               <h3 className="font-medium mb-1">What's Next?</h3>
               <p className="text-sm text-muted-foreground">
-                After defining your business position, explore the "Customers" and "Competitors" sections to complete your market analysis. Use the sidebar's Validation panel to track and verify your key market assumptions.
+                After defining your business position, explore the "Customers"
+                and "Competitors" sections to complete your market analysis. Use
+                the sidebar's Validation panel to track and verify your key
+                market assumptions.
               </p>
             </div>
           </div>

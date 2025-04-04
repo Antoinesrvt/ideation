@@ -55,7 +55,6 @@ export const EmpathyMap: React.FC<EmpathyMapProps> = ({
   // Setup state for the empathy map data
   const [mapData, setMapData] = useState<EmpathyMapData>(data);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('grid');
   const [newEntry, setNewEntry] = useState<Record<keyof EmpathyMapData, string>>({
     thinks: '',
     feels: '',
@@ -271,119 +270,11 @@ export const EmpathyMap: React.FC<EmpathyMapProps> = ({
   
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Empathy Map</h3>
-        
-        <div className="flex items-center gap-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-36">
-            <TabsList className="w-full">
-              <TabsTrigger value="grid" className="flex-1">Grid</TabsTrigger>
-              <TabsTrigger value="list" className="flex-1">List</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          
-          {!readOnly && (
-            <Button 
-              onClick={handleSave} 
-              disabled={isSaving}
-              className="gap-1"
-            >
-              <Save className="h-4 w-4" />
-              Save
-            </Button>
-          )}
-        </div>
-      </div>
       
-      {activeTab === 'grid' ? (
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {quadrants.map(quadrant => renderQuadrant(quadrant))}
         </div>
-      ) : (
-        <div className="space-y-6">
-          {quadrants.map(quadrant => {
-            const entries = mapData[quadrant.id] || [];
-            
-            return (
-              <Card key={quadrant.id} className="overflow-hidden">
-                <div className={cn("py-3 px-4 font-medium flex items-center gap-2", quadrant.color)}>
-                  {quadrant.icon}
-                  <span>{quadrant.title}</span>
-                  <span className="ml-1 text-xs opacity-60">({entries.length} entries)</span>
-                </div>
-                
-                <CardContent className="pt-4">
-                  {entries.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-3 text-center italic rounded-md bg-muted/30">
-                      No {quadrant.title.toLowerCase()} entries yet
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {entries.map((entry, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-start group gap-2 p-3 rounded-md border bg-card"
-                        >
-                          <div className="flex-grow">{entry}</div>
-                          
-                          {!readOnly && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => handleRemoveEntry(quadrant.id, index)}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="text-muted-foreground hover:text-destructive"
-                              >
-                                <path d="M18 6 6 18"></path>
-                                <path d="m6 6 12 12"></path>
-                              </svg>
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {!readOnly && (
-                    <div className="mt-3 space-y-2">
-                      <Textarea 
-                        placeholder={quadrant.placeholder}
-                        value={newEntry[quadrant.id]}
-                        onChange={(e) => setNewEntry(prev => ({
-                          ...prev,
-                          [quadrant.id]: e.target.value
-                        }))}
-                        className="text-sm resize-none"
-                      />
-                      
-                      <Button 
-                        variant="outline"
-                        className="w-full text-xs gap-1 h-8"
-                        onClick={() => handleAddEntry(quadrant.id)}
-                        disabled={!newEntry[quadrant.id].trim()}
-                      >
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        Add Entry
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 };

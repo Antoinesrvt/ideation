@@ -540,8 +540,7 @@ export const MarketPersonas: React.FC<MarketPersonasProps> = ({
           </TabsTrigger>
         </TabsList>
         
-        <div className="flex-1 overflow-auto">
-          <ScrollArea className="h-full w-full">
+        <div className="flex-1 overflow-hidden">
             <div className="p-6">
               {activeDetailTab === 'overview' && (
                 <div className="space-y-4">
@@ -575,7 +574,6 @@ export const MarketPersonas: React.FC<MarketPersonasProps> = ({
                 />
               )}
             </div>
-          </ScrollArea>
         </div>
       </Tabs>
     );

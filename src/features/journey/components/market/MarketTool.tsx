@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import ToolComponent from '../ToolComponent';
 import { MarketAnalysis } from '@/features/market/components/MarketAnalysis';
-import { MarketSection } from '@/features/market/components/MarketSectionNavigation';
+import { MarketSection } from '@/features/market/components/MarketAnalysis';
 import { MarketInsights } from '@/features/market/components/MarketInsights';
 import { useMarketAnalysis } from '@/hooks/features/useMarketAnalysis';
 import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';

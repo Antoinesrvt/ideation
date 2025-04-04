@@ -28,7 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { BarChart2, PlusCircle, Edit, Trash2, Share2, Download, HelpCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { CompetitorPositioningMatrix } from './CompetitorPositioningMatrix';
+import { CompetitorMatrix } from './CompetitorMatrix';
 import { FeatureComparisonTable } from './FeatureComparisonTable';
 import { CompetitorRadarChart, Dimension, CompetitorRating } from './CompetitorRadarChart';
 import { cn } from '@/lib/utils';
@@ -430,8 +430,8 @@ export function CompetitorAnalysis({
             </TabsList>
           </div>
           
-          <ScrollArea className="h-[600px] py-6">
-            <TabsContent value="positioning" className="m-0 p-6 data-[state=active]:pb-0">
+          <ScrollArea className="h-[600px] py-2">
+            <TabsContent value="positioning" className="m-0 p-2 data-[state=active]:pb-0">
               {competitors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -451,22 +451,28 @@ export function CompetitorAnalysis({
                   )}
                 </div>
               ) : (
-                <CompetitorPositioningMatrix 
+                <CompetitorMatrix 
                   competitors={competitors}
                   onPositionChange={
                     onUpdateCompetitor ? 
-                    (competitorId, position, dimensions) => {
+                    (competitorId, x, y) => {
                       // Find the competitor
                       const competitor = competitors.find(c => c.id === competitorId);
                       if (competitor && onUpdateCompetitor) {
                         // Update with new position
                         onUpdateCompetitor({
                           ...competitor,
-                          positioning_x: position.x,
-                          positioning_y: position.y,
-                          positioning_dimensions: dimensions
+                          positioning_x: x * 100, // Convert from 0-1 scale to 0-100 scale
+                          positioning_y: y * 100  // Convert from 0-1 scale to 0-100 scale
                         });
                       }
+                    } : undefined
+                  }
+                  onSavePositions={
+                    onUpdateCompetitor ?
+                    (positions, dimensions) => {
+                      // For bulk updates, could implement batch update functionality
+                      console.log('Saving all positions with dimensions:', dimensions);
                     } : undefined
                   }
                   readOnly={isReadOnly}
@@ -474,7 +480,7 @@ export function CompetitorAnalysis({
               )}
             </TabsContent>
             
-            <TabsContent value="features" className="m-0 p-6 data-[state=active]:pb-0">
+            <TabsContent value="features" className="m-0 p-2 data-[state=active]:pb-0">
               {competitors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -505,7 +511,7 @@ export function CompetitorAnalysis({
               )}
             </TabsContent>
             
-            <TabsContent value="radar" className="m-0 p-6 data-[state=active]:pb-0">
+            <TabsContent value="radar" className="m-0 p-2 data-[state=active]:pb-0">
               {competitors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -535,7 +541,7 @@ export function CompetitorAnalysis({
               )}
             </TabsContent>
             
-            <TabsContent value="stats" className="m-0 p-6 data-[state=active]:pb-0">
+            <TabsContent value="stats" className="m-0 p-2 data-[state=active]:pb-0">
               {competitors.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">

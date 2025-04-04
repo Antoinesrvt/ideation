@@ -154,25 +154,6 @@ const RECENT_ACTIVITIES = [
   }
 ];
 
-// Mock suggestions
-const SUGGESTIONS = [
-  {
-    id: '1',
-    text: 'Analysez vos concurrents',
-    description: 'Identifiez les forces et faiblesses de vos concurrents',
-    appId: 'market',
-    icon: <Target className="h-4 w-4" />,
-    color: '#7209B7'
-  },
-  {
-    id: '2',
-    text: 'Définissez votre proposition de valeur',
-    description: 'Clarifiez ce qui rend votre produit unique',
-    appId: 'brand',
-    icon: <Lightbulb className="h-4 w-4" />,
-    color: '#4361EE'
-  }
-];
 
 export function AppDashboard({ projectId, onAppSelect }: AppDashboardProps) {
   // Calculate mock progress percentages for each app

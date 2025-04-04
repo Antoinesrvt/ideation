@@ -2,71 +2,37 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  ArrowUpRight, BarChart2, ChevronRight, Info, PlusCircle, 
-  Users, UserSearch, Search, TrendingUp, Activity, AlertCircle,
-  Target, ScaleIcon, LineChart, HelpCircle, ArrowLeft, FileText,
-  BarChart, UserRound, MessageSquare, Handshake, AppWindow, LayoutDashboard,
-  Building
+  ArrowUpRight, BarChart2, ChevronRight, Info, PlusCircle,    
 } from 'lucide-react';
-import { EnhancedCustomerPersonaCard } from './EnhancedCustomerPersonaCard';
-import { EnhancedCustomerInterviewCard } from './EnhancedCustomerInterviewCard';
-import { CompetitorTable } from './CompetitorTable';
 import { EnhancedMarketTrendCard } from './EnhancedMarketTrendCard';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useProjectStore } from '@/store';
 import { useMarketAnalysis, ExtendedMarketAnalysisData } from '@/hooks/features/useMarketAnalysis';
-import { useParams } from 'next/navigation';
-import TabList from "@/features/common/components/TabList";
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { LoadingState, ErrorState } from '@/features/common/components/LoadingAndErrorState';
 import { SectionTab } from '@/components/ui/section-tab';
 import { MarketOverviewData, MarketAnalysisUIData, MarketPartner, PartnerFormValues } from '../types';
 import { MarketOverview } from './MarketOverview';
-import { MarketSectionNavigation, MarketSection } from './MarketSectionNavigation';
 import { MarketLandscape } from './MarketLandscape';
-import { MarketInsights } from './MarketInsights';
+import { MarketInsights } from './MarketInsights';  
 import { PartnerAnalysis } from './PartnerAnalysis';
-import { PartnerWrapper } from './PartnerWrapper';
 import { Button } from '@/components/ui/button';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { MarketDefinition, MarketSize } from '../types';
 import { BusinessSection } from './BusinessSection';
 import { MarketPersonas } from './MarketPersonas';
-import { marketAnalysisService } from '@/lib/services';
-import type { MarketPersona } from '@/store/types';
-import { MarketCompetitors } from './MarketCompetitors';
 import { CompetitorAnalysis } from './CompetitorAnalysis';
+import { TrendVisualizationDashboard } from './trends/TrendVisualizationDashboard';
+import { TrendForm } from './trends/TrendForm';
+import { TrendFormValues } from '../types';
+import { MarketTrend } from '@/store/types';
 
-const marketTabs = [
-  {
-    id: "overview",
-    label: "Market Overview",
-    icon: <BarChart2 className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "personas",
-    label: "Customer Personas",
-    icon: <Users className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "interviews",
-    label: "Customer Interviews",
-    icon: <UserSearch className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "competitors",
-    label: "Competitors",
-    icon: <Target className="h-4 w-4 mr-2" />,
-  },
-  {
-    id: "trends",
-    label: "Market Trends",
-    icon: <TrendingUp className="h-4 w-4 mr-2" />,
-  },
-];
+export type MarketSection =
+  | "overview"
+  | "business"
+  | "trends"
+  | "customers"
+  | "competitors"
+  | "partners";
+
 
 // Animation variants for the tab content
 const sectionContentVariants = {
@@ -149,6 +115,26 @@ export type MarketAnalysisProps = {
   onSectionClick?: (section: MarketSection) => void;
   readOnly?: boolean;
 }
+
+// Add a function to convert MarketTrend to TrendFormValues
+const mapTrendToFormValues = (trend: MarketTrend): Partial<TrendFormValues> => {
+  return {
+    name: trend.name || '',
+    description: trend.description || '',
+    trend_type: (trend.trend_type as 'opportunity' | 'threat' | 'neutral') || 'neutral',
+    direction: (trend.direction as 'upward' | 'downward' | 'stable') || 'stable',
+    tags: trend.tags || [],
+    sources: trend.sources || [],
+    impact_score: trend.impact_score !== null ? trend.impact_score : 5,
+    timeframe: (trend.timeframe as 'short' | 'medium' | 'long') || 'medium',
+    confidence: trend.confidence !== null ? trend.confidence : 3,
+    related_segments: trend.related_segments || [],
+    related_personas: trend.related_personas || [],
+    related_trends: trend.related_trends || [],
+    status: (trend.status as 'emerging' | 'established' | 'declining') || 'emerging',
+    opportunity_size: trend.opportunity_size !== null ? trend.opportunity_size : 0,
+  };
+};
 
 export function MarketAnalysis({ 
   projectId,
@@ -333,35 +319,41 @@ export function MarketAnalysis({
     }
   };
   
-  const handleAddTrend = async () => {
-    if (!projectId) return;
-    
-    try {
-      await addTrend({
-        name: 'New Market Trend',
-        direction: 'upward',
-        trend_type: 'opportunity',
-        description: '',
-        tags: [],
-        sources: [],
-      project_id: projectId,
-      created_by: null
-    });
-      
-      toast({
-        title: 'Success',
-        description: 'New trend has been added',
-        variant: 'default'
-      });
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to add trend',
-        variant: 'destructive'
-      });
+  // Add the state variables for trend form dialog
+  const [trendFormOpen, setTrendFormOpen] = useState(false);
+  const [currentTrend, setCurrentTrend] = useState<MarketTrend | null>(null);
+
+  // Update the handleAddTrend function to open the form dialog
+  const handleAddTrend = () => {
+    setCurrentTrend(null);
+    setTrendFormOpen(true);
+  };
+
+  // Add a function to handle trend edit
+  const handleEditTrend = (id: string) => {
+    const trend = data.trends.find(t => t.id === id);
+    if (trend) {
+      setCurrentTrend(trend);
+      setTrendFormOpen(true);
     }
   };
-  
+
+  // Add the trend form submission handler
+  const handleTrendFormSubmit = (formData: TrendFormValues) => {
+    if (currentTrend) {
+      // Update existing trend
+      updateTrend({
+        id: currentTrend.id,
+        data: {
+          ...formData
+        }
+      });
+    } else {
+      // Add new trend
+      addTrend(formData);
+    }
+  };
+
   // If we're loading or have an error, show appropriate state
   if (isLoading) return <LoadingState message="Loading market analysis data..." />;
   if (error) return <ErrorState error={error.message} />;
@@ -476,31 +468,66 @@ export function MarketAnalysis({
           {/* Trends Section */}
           {currentSection === 'trends' && (
             <motion.div variants={itemVariants} className="w-full h-full">
-        <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div>
-                    <CardTitle className="text-base font-medium flex items-center">
-                      <TrendingUp className="h-5 w-5 mr-2 text-blue-500" />
-              Market Trends
-            </CardTitle>
-                    <CardDescription>
-                      Track emerging market trends that could impact your business
-                    </CardDescription>
-                  </div>
-                  
-                  {!readOnly && (
-                    <Button size="sm" onClick={handleAddTrend}>
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Add Trend
-                    </Button>
-                  )}
-          </CardHeader>
+              <Tabs defaultValue="cards" className="w-full h-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="cards">Cards</TabsTrigger>
+                  <TabsTrigger value="visualization">Visualizations</TabsTrigger>
+                </TabsList>
                 
-          <CardContent>
+                <TabsContent value="cards" className="mt-0 h-[calc(100%-48px)]">
+                  <Card className="h-full">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <div>
+                        <CardTitle>Market Trends</CardTitle>
+                        <CardDescription>
+                          Track market trends that could impact your business
+                        </CardDescription>
+                      </div>
+                      {!readOnly && (
+                        <Button size="sm" onClick={handleAddTrend}>
+                          <PlusCircle className="h-4 w-4 mr-2" />
+                          Add Trend
+                        </Button>
+                      )}
+                    </CardHeader>
+                    <CardContent className="overflow-y-auto h-[calc(100%-88px)]">
+                      {marketData.trends.length === 0 ? (
+                        <div className="text-center p-8">
+                          <p>No market trends added yet</p>
+                          {!readOnly && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="mt-4"
+                              onClick={handleAddTrend}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Add your first trend
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {marketData.trends.map(trend => (
+                            <EnhancedMarketTrendCard
+                              key={trend.id}
+                              trend={trend}
+                              onEdit={readOnly ? undefined : handleEditTrend}
+                              onUpdate={readOnly ? undefined : updateTrend}
+                              onDelete={readOnly ? undefined : deleteTrend}
+                              readOnly={readOnly}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="visualization" className="mt-0 h-[calc(100%-48px)]">
                   {marketData.trends.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground">
-                      <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                      <p>No market trends added yet</p>
+                    <div className="text-center p-8 border rounded-lg h-full flex flex-col items-center justify-center">
+                      <p>No market trends to visualize</p>
                       {!readOnly && (
                         <Button 
                           variant="outline" 
@@ -512,25 +539,19 @@ export function MarketAnalysis({
                           Add your first trend
                         </Button>
                       )}
-                </div>
+                    </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {marketData.trends.map(trend => (
-                        <EnhancedMarketTrendCard
-                          key={trend.id}
-                          trend={trend}
-                          onEdit={readOnly ? undefined : () => {}}
-                          onUpdate={readOnly ? undefined : updateTrend}
-                          onDelete={readOnly ? undefined : deleteTrend}
-                          readOnly={readOnly}
-                        />
-                      ))}
-              </div>
+                    <div className="h-full">
+                      <TrendVisualizationDashboard 
+                        trends={marketData.trends} 
+                        onAddTrend={!readOnly ? handleAddTrend : undefined}
+                      />
+                    </div>
                   )}
-          </CardContent>
-        </Card>
-                </motion.div>
-              )}
+                </TabsContent>
+              </Tabs>
+            </motion.div>
+          )}
 
           {/* Customers Section */}
           {currentSection === 'customers' && (
@@ -635,6 +656,15 @@ export function MarketAnalysis({
           )}
                 </motion.div>
             </AnimatePresence>
+            
+            {/* Trend Form Dialog */}
+            <TrendForm
+              open={trendFormOpen}
+              onOpenChange={setTrendFormOpen}
+              onSubmit={handleTrendFormSubmit}
+              initialData={currentTrend ? mapTrendToFormValues(currentTrend) : undefined}
+              title={currentTrend ? 'Edit Market Trend' : 'Add Market Trend'}
+            />
     </div>
   );
 }

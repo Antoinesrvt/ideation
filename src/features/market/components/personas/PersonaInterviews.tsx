@@ -146,7 +146,7 @@ export const PersonaInterviews: React.FC<PersonaInterviewsProps> = ({
   };
 
   return (
-    <Card className="overflow-hidden border-0 shadow-none">
+    <Card className="overflow-hidden border-0 shadow-none p-2">
       <CardHeader className="bg-muted/20 pb-4 px-0">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">

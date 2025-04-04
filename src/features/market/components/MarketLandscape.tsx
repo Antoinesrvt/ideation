@@ -12,19 +12,14 @@ import {
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Tooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
-} from '@/components/ui/tooltip';
+
 import { MarketAnalysisUIData } from '../types';
-import { MarketSection } from './MarketSectionNavigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { MarketSection } from './MarketAnalysis';
 
 interface SectionCircleProps {
   icon: React.ReactNode;

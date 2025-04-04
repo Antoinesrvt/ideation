@@ -1388,41 +1388,65 @@ export type Database = {
       }
       market_trends: {
         Row: {
+          confidence: number | null
           created_at: string | null
           created_by: string | null
           description: string | null
           direction: string | null
           id: string
+          impact_score: number | null
           name: string
+          opportunity_size: number | null
           project_id: string | null
+          related_personas: string[] | null
+          related_segments: string[] | null
+          related_trends: string[] | null
           sources: string[] | null
+          status: string | null
           tags: string[] | null
+          timeframe: string | null
           trend_type: string | null
           updated_at: string | null
         }
         Insert: {
+          confidence?: number | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           direction?: string | null
           id?: string
+          impact_score?: number | null
           name: string
+          opportunity_size?: number | null
           project_id?: string | null
+          related_personas?: string[] | null
+          related_segments?: string[] | null
+          related_trends?: string[] | null
           sources?: string[] | null
+          status?: string | null
           tags?: string[] | null
+          timeframe?: string | null
           trend_type?: string | null
           updated_at?: string | null
         }
         Update: {
+          confidence?: number | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           direction?: string | null
           id?: string
+          impact_score?: number | null
           name?: string
+          opportunity_size?: number | null
           project_id?: string | null
+          related_personas?: string[] | null
+          related_segments?: string[] | null
+          related_trends?: string[] | null
           sources?: string[] | null
+          status?: string | null
           tags?: string[] | null
+          timeframe?: string | null
           trend_type?: string | null
           updated_at?: string | null
         }

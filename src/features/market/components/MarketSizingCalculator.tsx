@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { MarketSize } from '../types';
-import { CurrencyInput } from './CurrencyInput';
-import { EnhancedSlider } from './EnhancedSlider';
+import { CurrencyInput } from '../../../components/CurrencyInput';
+import { EnhancedSlider } from '../../../components/EnhancedSlider';
 import { MarketSizeFunnel } from './MarketSizeFunnel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 

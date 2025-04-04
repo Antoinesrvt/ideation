@@ -47,17 +47,11 @@ export interface ExtendedMarketPersona extends MarketPersona {
   status?: 'new' | 'modified' | 'unchanged' | 'removed';
 }
 
-export interface ExtendedMarketInterview extends MarketInterview {
-  status: 'new' | 'modified' | 'unchanged' | 'removed' | string | null;
-}
 
 export interface ExtendedMarketCompetitor extends MarketCompetitor {
   status?: 'new' | 'modified' | 'unchanged' | 'removed';
 }
 
-export interface ExtendedMarketTrend extends MarketTrend {
-  status?: 'new' | 'modified' | 'unchanged' | 'removed';
-}
 
 export interface ExtendedMarketPartner extends MarketPartner {
   status?: 'new' | 'modified' | 'unchanged' | 'removed';
@@ -66,9 +60,9 @@ export interface ExtendedMarketPartner extends MarketPartner {
 // Define UI data structure
 export interface MarketAnalysisUIData {
   personas: ExtendedMarketPersona[];
-  interviews: ExtendedMarketInterview[];
+  interviews: MarketInterview[];
   competitors: ExtendedMarketCompetitor[];
-  trends: ExtendedMarketTrend[];
+  trends: MarketTrend[];
   partners?: ExtendedMarketPartner[]; // Add partners to the data structure
   overview?: MarketOverviewData; 
 }
@@ -83,7 +77,7 @@ export interface CustomerPersonaCardProps {
 }
 
 export interface CustomerInterviewCardProps {
-  interview: ExtendedMarketInterview;
+  interview: MarketInterview;
   onEdit?: (id: string) => void;
   onUpdate?: (params: { id: string; data: Partial<Omit<MarketInterview, 'id' | 'created_at' | 'updated_at'>> }) => void;
   onDelete?: (id: string) => void;
@@ -100,7 +94,7 @@ export interface CompetitorTableProps {
 }
 
 export interface MarketTrendCardProps {
-  trend: ExtendedMarketTrend;
+  trend: MarketTrend;
   onEdit?: (id: string) => void;
   onUpdate?: (params: { id: string; data: Partial<Omit<MarketTrend, 'id' | 'created_at' | 'updated_at'>> }) => void;
   onDelete?: (id: string) => void;
@@ -151,6 +145,14 @@ export interface TrendFormValues {
   description: string;
   tags: string[];
   sources: string[];
+  impact_score?: number; // 1-10 scale
+  timeframe?: 'short' | 'medium' | 'long';
+  confidence?: number; // 1-5 scale
+  related_segments?: string[];
+  related_personas?: string[];
+  related_trends?: string[];
+  status?: 'emerging' | 'established' | 'declining';
+  opportunity_size?: number; // Market value
 }
 
 export interface PartnerFormValues {

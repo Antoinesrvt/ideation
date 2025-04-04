@@ -96,7 +96,6 @@ export function MarketOverview({ data, onUpdate, isLoading }: MarketOverviewProp
   );
   
   // State for editing segments
-  const [isAddingSegment, setIsAddingSegment] = useState(false);
   const [editingSegment, setEditingSegment] = useState<{name: string; size: number; growth: number} | null>(null);
   
   // State for assumptions

@@ -7,7 +7,7 @@ import { CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { EnhancedCard } from '@/components/ui/enhanced-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CustomerInterviewCardProps } from '../types';
+import { CustomerInterviewCardProps } from '../../types';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
